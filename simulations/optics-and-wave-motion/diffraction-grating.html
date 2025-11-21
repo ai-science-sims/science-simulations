@@ -27,17 +27,18 @@
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col relative">
 
-    <div class="absolute top-4 right-4 flex gap-2 z-20">
-        <button type="button" data-lang-switch="en-US" class="px-3 py-1 text-xs font-semibold border border-gray-600 rounded-full bg-white/70 text-gray-800 hover:bg-white hover:text-gray-900 transition" data-i18n="languageButtonEnglish">EN</button>
-        <button type="button" data-lang-switch="zh-HK" class="px-3 py-1 text-xs font-semibold border border-gray-600 rounded-full bg-white/70 text-gray-800 hover:bg-white hover:text-gray-900 transition" data-i18n="languageButtonChinese">繁</button>
-    </div>
-
     <header class="bg-gray-800 border-b border-gray-700 p-4 shadow-lg">
-        <div class="max-w-6xl mx-auto flex items-center gap-3">
-            <i class="fas fa-microscope text-2xl text-blue-400"></i>
-            <div>
-                <h1 class="text-xl font-bold tracking-wider" data-i18n="headerTitle">Physics Lab: Diffraction Grating</h1>
-                <p class="text-xs text-gray-400" data-i18n="headerSubtitle">Formula Check: d sin θ = n λ</p>
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-microscope text-2xl text-blue-400"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wider" data-i18n="headerTitle">Physics Lab: Diffraction Grating</h1>
+                    <p class="text-xs text-gray-400" data-i18n="headerSubtitle">Formula Check: d sin θ = n λ</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" data-lang-switch="en-US" class="px-3 py-1 text-xs font-semibold border border-gray-600 rounded-full bg-white/70 text-gray-800 hover:bg-white hover:text-gray-900 transition" data-i18n="languageButtonEnglish">EN</button>
+                <button type="button" data-lang-switch="zh-HK" class="px-3 py-1 text-xs font-semibold border border-gray-600 rounded-full bg-white/70 text-gray-800 hover:bg-white hover:text-gray-900 transition" data-i18n="languageButtonChinese">繁</button>
             </div>
         </div>
     </header>

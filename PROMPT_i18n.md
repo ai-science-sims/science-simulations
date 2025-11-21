@@ -17,6 +17,7 @@
     *   **Initialization:** On page load, check for a `?lang=` URL parameter. If present, use it; otherwise, default to `en-US`.
 4.  **UI Components:**
     *   Add a language selector (EN / 繁) in the top-right corner (`absolute top-4 right-4`). Use the same Tailwind styling as the reference (white buttons with hover effects).
+    *   Ensure the selector does not overlap existing header controls; integrate it within the layout as needed while keeping it visually aligned to the top-right.
 5.  **Content Guidelines:**
     *   **English:** Ensure all text is natural and grammatically correct.
     *   **Chinese:** Provide "clean" translations. **Do not** include English words in parentheses (e.g., use "靜止", NOT "靜止 (Static)").

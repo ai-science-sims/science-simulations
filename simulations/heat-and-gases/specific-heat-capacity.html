@@ -26,15 +26,16 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans relative">
 
-    <div class="absolute top-4 right-4 flex gap-2 z-20">
-        <button type="button" data-lang-switch="en-US" class="px-3 py-1 text-xs font-semibold border border-slate-200 rounded-full bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 transition" data-i18n="languageButtonEnglish">EN</button>
-        <button type="button" data-lang-switch="zh-HK" class="px-3 py-1 text-xs font-semibold border border-slate-200 rounded-full bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 transition" data-i18n="languageButtonChinese">繁</button>
-    </div>
-
     <nav class="bg-blue-600 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
+        <div class="container mx-auto flex justify-between items-center gap-4">
             <h1 class="text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-temperature-high"></i><span data-i18n="navTitle">Physics Lab: Specific Heat Capacity</span></h1>
-            <span class="text-sm bg-blue-700 px-3 py-1 rounded-full" data-i18n="navFormula">Formula: E = mcΔT</span>
+            <div class="flex items-center gap-4">
+                <span class="text-sm bg-blue-700 px-3 py-1 rounded-full" data-i18n="navFormula">Formula: E = mcΔT</span>
+                <div class="flex gap-2">
+                    <button type="button" data-lang-switch="en-US" class="px-3 py-1 text-xs font-semibold border border-slate-200 rounded-full bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 transition" data-i18n="languageButtonEnglish">EN</button>
+                    <button type="button" data-lang-switch="zh-HK" class="px-3 py-1 text-xs font-semibold border border-slate-200 rounded-full bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 transition" data-i18n="languageButtonChinese">繁</button>
+                </div>
+            </div>
         </div>
     </nav>
 

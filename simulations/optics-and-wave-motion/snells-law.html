@@ -41,13 +41,8 @@
 </head>
 <body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen relative">
 
-    <div class="absolute top-4 right-4 flex gap-2 z-30">
-        <button type="button" data-lang-switch="en-US" class="px-3 py-1 text-xs font-semibold border border-indigo-200 rounded-full bg-white/80 text-indigo-700 hover:bg-white hover:text-indigo-900 transition" data-i18n="languageButtonEnglish">EN</button>
-        <button type="button" data-lang-switch="zh-HK" class="px-3 py-1 text-xs font-semibold border border-indigo-200 rounded-full bg-white/80 text-indigo-700 hover:bg-white hover:text-indigo-900 transition" data-i18n="languageButtonChinese">繁</button>
-    </div>
-
     <header class="bg-indigo-600 text-white p-4 shadow-lg">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <i class="fa-solid fa-rainbow text-2xl"></i>
                 <div>
@@ -55,9 +50,15 @@
                     <p class="text-xs text-indigo-200" data-i18n="headerSubtitle">Measure refractive index using refraction angles (Snell's Law)</p>
                 </div>
             </div>
-            <button id="resetButton" class="bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded text-sm transition flex items-center gap-2">
-                <i class="fa-solid fa-rotate-right"></i> <span data-i18n="resetButton">Reset Experiment</span>
-            </button>
+            <div class="flex items-center gap-3">
+                <div class="flex gap-2">
+                    <button type="button" data-lang-switch="en-US" class="px-3 py-1 text-xs font-semibold border border-indigo-200 rounded-full bg-white/80 text-indigo-700 hover:bg-white hover:text-indigo-900 transition" data-i18n="languageButtonEnglish">EN</button>
+                    <button type="button" data-lang-switch="zh-HK" class="px-3 py-1 text-xs font-semibold border border-indigo-200 rounded-full bg-white/80 text-indigo-700 hover:bg-white hover:text-indigo-900 transition" data-i18n="languageButtonChinese">繁</button>
+                </div>
+                <button id="resetButton" class="bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> <span data-i18n="resetButton">Reset Experiment</span>
+                </button>
+            </div>
         </div>
     </header>
 
