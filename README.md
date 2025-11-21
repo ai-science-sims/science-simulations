@@ -6,11 +6,10 @@ A collection of interactive physics simulations for education, created by Mr. B.
 
 The simulations are organized by topic:
 
-*   **Heat**: Thermodynamics, convection, specific heat capacity.
-*   **Optics**: Light reflection, refraction, diffraction.
+*   **Heat and Gases**: Thermodynamics, convection, specific heat capacity.
+*   **Optics and Wave Motion**: Light reflection, refraction, diffraction.
 *   **Force and Motion**: (Coming soon)
-*   **Wave Motion**: (Coming soon)
-*   **Electromagnetism**: (Coming soon)
+*   **Electricity and Magnetism**: (Coming soon)
 *   **Nuclear Physics**: (Coming soon)
 *   **Biology**: Ecosystems and osmosis.
 
