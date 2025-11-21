@@ -28,3 +28,7 @@ We welcome contributions from other physics teachers!
 
 *   **Found an issue?** Please [open an Issue](https://github.com/harrycslau/physics-simulations/issues) to report bugs or suggest improvements.
 *   **Want to collaborate?** If you have a simulation to share or want to help improve existing ones, feel free to submit a Pull Request or contact us via the Issues tab.
+
+## License
+
+This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
