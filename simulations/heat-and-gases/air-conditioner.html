@@ -1,27 +1,31 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="en-US">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>窗口式冷氣機運作原理模擬 (高清版)</title>
+    <title data-i18n="title">Window Air Conditioner Cycle Simulation (HD)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #f0f4f8;
         }
+
         .glass-panel {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
+
         /* Custom Slider */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
         }
+
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             height: 24px;
@@ -30,9 +34,10 @@
             background: #3b82f6;
             cursor: pointer;
             margin-top: -8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
             border: 2px solid white;
         }
+
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 8px;
@@ -40,49 +45,66 @@
             background: #dbeafe;
             border-radius: 4px;
         }
-        
+
         canvas {
             border-radius: 12px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
             background: white;
-            width: 100%; 
+            width: 100%;
             height: auto;
         }
     </style>
 </head>
+
 <body class="min-h-screen flex flex-col items-center p-4">
+
+    <div class="absolute top-4 right-4 flex gap-2 z-10">
+        <button type="button" data-lang-switch="en-US"
+            class="px-3 py-1 text-xs font-semibold border border-slate-200 rounded-full bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 transition"
+            data-i18n="languageButtonEnglish">EN</button>
+        <button type="button" data-lang-switch="zh-HK"
+            class="px-3 py-1 text-xs font-semibold border border-slate-200 rounded-full bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 transition"
+            data-i18n="languageButtonChinese">繁</button>
+    </div>
 
     <!-- Header -->
     <header class="w-full max-w-5xl mb-4 flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">窗口式冷氣機運作原理</h1>
-            <p class="text-slate-500 text-sm">物理科教學模擬：Vapor Compression Cycle</p>
+            <h1 class="text-2xl font-bold text-slate-800" data-i18n="headerTitle">Window Air Conditioner Cycle</h1>
+            <p class="text-slate-500 text-sm" data-i18n="headerSubtitle">Physics Simulation: Vapor Compression Cycle</p>
         </div>
         <div class="flex gap-4">
             <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-center shadow-sm border border-blue-200">
-                <div class="text-xs uppercase tracking-wider font-semibold">室內溫度</div>
+                <div class="text-xs uppercase tracking-wider font-semibold" data-i18n="indoorTempLabel">Indoor
+                    Temperature</div>
                 <div class="text-2xl font-bold" id="indoorTempDisplay">28.0°C</div>
             </div>
-            <div class="bg-orange-100 text-orange-800 px-4 py-2 rounded-lg text-center shadow-sm border border-orange-200">
-                <div class="text-xs uppercase tracking-wider font-semibold">室外溫度</div>
+            <div
+                class="bg-orange-100 text-orange-800 px-4 py-2 rounded-lg text-center shadow-sm border border-orange-200">
+                <div class="text-xs uppercase tracking-wider font-semibold" data-i18n="outdoorTempLabel">Outdoor
+                    Temperature</div>
                 <div class="text-2xl font-bold">32.0°C</div>
             </div>
         </div>
     </header>
 
     <!-- Main Simulation Area -->
-    <main class="relative w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-200">
-        
+    <main
+        class="relative w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-200">
+
         <!-- Canvas Container -->
         <div class="relative flex-grow bg-slate-50 p-4 flex justify-center items-center min-h-[500px]">
-            
+
             <!-- Background Dividers (Indoor/Outdoor) -->
             <div class="absolute inset-0 flex pointer-events-none">
-                <div class="w-1/2 h-full bg-blue-50/50 border-r-2 border-dashed border-slate-300 flex items-start justify-center pt-4">
-                    <span class="text-blue-300 font-bold text-4xl opacity-20 select-none">室內 (INDOOR)</span>
+                <div
+                    class="w-1/2 h-full bg-blue-50/50 border-r-2 border-dashed border-slate-300 flex items-start justify-center pt-4">
+                    <span class="text-blue-300 font-bold text-4xl opacity-20 select-none"
+                        data-i18n="indoorBackdrop">Indoor</span>
                 </div>
                 <div class="w-1/2 h-full bg-orange-50/50 flex items-start justify-center pt-4">
-                    <span class="text-orange-300 font-bold text-4xl opacity-20 select-none">室外 (OUTDOOR)</span>
+                    <span class="text-orange-300 font-bold text-4xl opacity-20 select-none"
+                        data-i18n="outdoorBackdrop">Outdoor</span>
                 </div>
             </div>
 
@@ -92,30 +114,33 @@
 
         <!-- Sidebar Controls & Info -->
         <div class="w-full md:w-80 bg-slate-50 border-l border-slate-200 p-6 flex flex-col gap-6">
-            
+
             <!-- Controls -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <label class="block text-sm font-bold text-slate-700 mb-2 flex justify-between">
-                    <span>運作功率 (Power)</span>
+                    <span data-i18n="powerLabel">Cooling Power</span>
                     <span id="powerValue" class="text-blue-600">0%</span>
                 </label>
                 <input type="range" id="powerSlider" min="0" max="100" value="0" step="1">
                 <div class="flex justify-between text-xs text-slate-400 mt-1">
-                    <span>關閉</span>
-                    <span>最大</span>
+                    <span data-i18n="powerMin">Off</span>
+                    <span data-i18n="powerMax">Max</span>
                 </div>
             </div>
 
             <!-- Legend / Status -->
             <div class="flex-grow space-y-3">
-                <h3 class="font-bold text-slate-700 border-b pb-2 text-sm">製冷劑狀態 (Refrigerant)</h3>
-                
+                <h3 class="font-bold text-slate-700 border-b pb-2 text-sm" data-i18n="legendHeading">Refrigerant States
+                </h3>
+
                 <!-- State 1 -->
                 <div class="flex items-center gap-3 text-sm bg-white p-2 rounded border border-slate-100 shadow-sm">
-                    <div class="w-4 h-4 rounded-full bg-red-500 flex-shrink-0 animate-pulse border border-red-600"></div>
+                    <div class="w-4 h-4 rounded-full bg-red-500 flex-shrink-0 animate-pulse border border-red-600">
+                    </div>
                     <div>
-                        <span class="font-bold text-slate-800 block text-xs">高溫高壓氣體</span>
-                        <span class="text-slate-500 text-[10px]">壓縮機 ➔ 冷凝器</span>
+                        <span class="font-bold text-slate-800 block text-xs" data-i18n="state1Title">High-temperature
+                            high-pressure gas</span>
+                        <span class="text-slate-500 text-[10px]" data-i18n="state1Flow">Compressor ➔ Condenser</span>
                     </div>
                 </div>
 
@@ -123,8 +148,10 @@
                 <div class="flex items-center gap-3 text-sm bg-white p-2 rounded border border-slate-100 shadow-sm">
                     <div class="w-4 h-4 rounded-full bg-orange-500 flex-shrink-0 border border-orange-600"></div>
                     <div>
-                        <span class="font-bold text-slate-800 block text-xs">中溫高壓液體</span>
-                        <span class="text-slate-500 text-[10px]">冷凝器 ➔ 膨脹閥</span>
+                        <span class="font-bold text-slate-800 block text-xs" data-i18n="state2Title">Medium-temperature
+                            high-pressure liquid</span>
+                        <span class="text-slate-500 text-[10px]" data-i18n="state2Flow">Condenser ➔ Expansion
+                            Valve</span>
                     </div>
                 </div>
 
@@ -132,156 +159,310 @@
                 <div class="flex items-center gap-3 text-sm bg-white p-2 rounded border border-slate-100 shadow-sm">
                     <div class="w-4 h-4 rounded-full bg-cyan-300 flex-shrink-0 border border-cyan-400"></div>
                     <div>
-                        <span class="font-bold text-slate-800 block text-xs">低溫低壓液體(混合)</span>
-                        <span class="text-slate-500 text-[10px]">膨脹閥 ➔ 蒸發器</span>
+                        <span class="font-bold text-slate-800 block text-xs" data-i18n="state3Title">Low-temperature
+                            low-pressure liquid (mixture)</span>
+                        <span class="text-slate-500 text-[10px]" data-i18n="state3Flow">Expansion Valve ➔
+                            Evaporator</span>
                     </div>
                 </div>
 
                 <!-- State 4 -->
                 <div class="flex items-center gap-3 text-sm bg-white p-2 rounded border border-slate-100 shadow-sm">
-                    <div class="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0 border-2 border-white ring-1 ring-blue-500"></div>
+                    <div
+                        class="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0 border-2 border-white ring-1 ring-blue-500">
+                    </div>
                     <div>
-                        <span class="font-bold text-slate-800 block text-xs">低溫低壓氣體</span>
-                        <span class="text-slate-500 text-[10px]">蒸發器 ➔ 壓縮機</span>
+                        <span class="font-bold text-slate-800 block text-xs" data-i18n="state4Title">Low-temperature
+                            low-pressure gas</span>
+                        <span class="text-slate-500 text-[10px]" data-i18n="state4Flow">Evaporator ➔ Compressor</span>
                     </div>
                 </div>
             </div>
 
             <!-- Theory Box -->
-            <div class="bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
-                <strong>💡 物理原理:</strong>
-                <ul class="list-disc pl-4 mt-1 space-y-1">
-                    <li><span class="font-bold">蒸發器 (吸熱)</span>：製冷劑蒸發，吸收室內熱量。</li>
-                    <li><span class="font-bold">壓縮機 (作功)</span>：氣體被壓縮，溫度壓力急升。</li>
-                    <li><span class="font-bold">冷凝器 (散熱)</span>：熱量排到室外，氣體凝結成液體。</li>
-                    <li><span class="font-bold">膨脹閥 (降壓)</span>：限制流量，使製冷劑急劇降壓降溫。</li>
+            <div
+                class="bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed space-y-1.5">
+                <strong data-i18n="theoryHeading">💡 Physics Principles:</strong>
+                <ul class="list-disc pl-4 mt-1 space-y-1.5">
+                    <li class="space-y-0.5">
+                        <span class="font-bold block" data-i18n="theoryEvaporatorTitle">Evaporator (Absorbs Heat)</span>
+                        <span data-i18n="theoryEvaporatorDesc">The refrigerant evaporates and absorbs heat from the
+                            indoor air.</span>
+                    </li>
+                    <li class="space-y-0.5">
+                        <span class="font-bold block" data-i18n="theoryCompressorTitle">Compressor (Work Input)</span>
+                        <span data-i18n="theoryCompressorDesc">The vapor is compressed, rapidly increasing its
+                            temperature and pressure.</span>
+                    </li>
+                    <li class="space-y-0.5">
+                        <span class="font-bold block" data-i18n="theoryCondenserTitle">Condenser (Releases Heat)</span>
+                        <span data-i18n="theoryCondenserDesc">Heat is rejected to the outdoor air and the vapor
+                            condenses to liquid.</span>
+                    </li>
+                    <li class="space-y-0.5">
+                        <span class="font-bold block" data-i18n="theoryValveTitle">Expansion Valve (Pressure
+                            Drop)</span>
+                        <span data-i18n="theoryValveDesc">Flow is restricted so the refrigerant suddenly drops in
+                            pressure and temperature.</span>
+                    </li>
                 </ul>
             </div>
         </div>
     </main>
 
     <script>
-        // Configuration
+        const translations = {
+            "en-US": {
+                title: "Window Air Conditioner Cycle Simulation (HD)",
+                headerTitle: "Window Air Conditioner Cycle",
+                headerSubtitle: "Physics Simulation: Vapor Compression Cycle",
+                indoorTempLabel: "Indoor Temperature",
+                outdoorTempLabel: "Outdoor Temperature",
+                indoorBackdrop: "Indoor",
+                outdoorBackdrop: "Outdoor",
+                powerLabel: "Cooling Power",
+                powerMin: "Off",
+                powerMax: "Max",
+                legendHeading: "Refrigerant States",
+                state1Title: "High-temperature high-pressure gas",
+                state1Flow: "Compressor ➔ Condenser",
+                state2Title: "Medium-temperature high-pressure liquid",
+                state2Flow: "Condenser ➔ Expansion Valve",
+                state3Title: "Low-temperature low-pressure liquid (mixture)",
+                state3Flow: "Expansion Valve ➔ Evaporator",
+                state4Title: "Low-temperature low-pressure gas",
+                state4Flow: "Evaporator ➔ Compressor",
+                theoryHeading: "💡 Physics Principles:",
+                theoryEvaporatorTitle: "Evaporator (Absorbs Heat)",
+                theoryEvaporatorDesc: "The refrigerant evaporates and absorbs heat from the indoor air.",
+                theoryCompressorTitle: "Compressor (Work Input)",
+                theoryCompressorDesc: "The vapor is compressed, rapidly increasing its temperature and pressure.",
+                theoryCondenserTitle: "Condenser (Releases Heat)",
+                theoryCondenserDesc: "Heat is rejected to the outdoor air and the vapor condenses to liquid.",
+                theoryValveTitle: "Expansion Valve (Pressure Drop)",
+                theoryValveDesc: "Flow is restricted so the refrigerant suddenly drops in pressure and temperature.",
+                canvasCompressorLabel: "Compressor",
+                canvasCompressorSubtitle: "Do work",
+                canvasValveLabel: "Expansion Valve",
+                canvasEvaporatorLabel: "Evaporator (Absorbs Heat)",
+                canvasCondenserLabel: "Condenser (Releases Heat)",
+                canvasColdAirLabel: "Cool Air",
+                canvasHotAirLabel: "Warm Air",
+                languageButtonEnglish: "EN",
+                languageButtonChinese: "繁"
+            },
+            "zh-HK": {
+                title: "窗口式冷氣機運作原理模擬（高清版）",
+                headerTitle: "窗口式冷氣機運作原理",
+                headerSubtitle: "物理模擬：蒸氣壓縮循環",
+                indoorTempLabel: "室內溫度",
+                outdoorTempLabel: "室外溫度",
+                indoorBackdrop: "室內區域",
+                outdoorBackdrop: "室外區域",
+                powerLabel: "運作功率",
+                powerMin: "關閉",
+                powerMax: "最大",
+                legendHeading: "製冷劑狀態",
+                state1Title: "高溫高壓氣體",
+                state1Flow: "壓縮機 ➔ 冷凝器",
+                state2Title: "中溫高壓液體",
+                state2Flow: "冷凝器 ➔ 膨脹閥",
+                state3Title: "低溫低壓液體（混合）",
+                state3Flow: "膨脹閥 ➔ 蒸發器",
+                state4Title: "低溫低壓氣體",
+                state4Flow: "蒸發器 ➔ 壓縮機",
+                theoryHeading: "💡 物理原理：",
+                theoryEvaporatorTitle: "蒸發器（吸熱）",
+                theoryEvaporatorDesc: "製冷劑在蒸發器內汽化並吸收室內熱量。",
+                theoryCompressorTitle: "壓縮機（作功）",
+                theoryCompressorDesc: "氣體被壓縮，溫度與壓力急速上升。",
+                theoryCondenserTitle: "冷凝器（放熱）",
+                theoryCondenserDesc: "熱量排向室外，氣體凝結成液體。",
+                theoryValveTitle: "膨脹閥（降壓）",
+                theoryValveDesc: "限制流量，使製冷劑瞬間降低壓力與溫度。",
+                canvasCompressorLabel: "壓縮機",
+                canvasCompressorSubtitle: "作功",
+                canvasValveLabel: "膨脹閥",
+                canvasEvaporatorLabel: "蒸發器（吸熱）",
+                canvasCondenserLabel: "冷凝器（放熱）",
+                canvasColdAirLabel: "冷風",
+                canvasHotAirLabel: "熱風",
+                languageButtonEnglish: "EN",
+                languageButtonChinese: "繁"
+            }
+        };
+
+        let currentLang = "en-US";
+
+        function getTranslation(key) {
+            const dict = translations[currentLang] || translations["en-US"];
+            return dict[key] || "";
+        }
+
+        function applyTranslations() {
+            const dict = translations[currentLang] || translations["en-US"];
+            document.documentElement.lang = currentLang;
+            document.title = dict.title || document.title;
+
+            document.querySelectorAll("[data-i18n]").forEach((el) => {
+                const key = el.dataset.i18n;
+                if (!key) return;
+                const text = dict[key];
+                if (typeof text !== "undefined") {
+                    el.textContent = text;
+                }
+            });
+        }
+
+        function updateLangButtons() {
+            document.querySelectorAll("[data-lang-switch]").forEach((btn) => {
+                const isActive = btn.dataset.langSwitch === currentLang;
+                btn.classList.toggle("text-slate-900", isActive);
+                btn.classList.toggle("text-slate-600", !isActive);
+                btn.classList.toggle("shadow-lg", isActive);
+                btn.classList.toggle("bg-white", isActive);
+                btn.classList.toggle("bg-white/70", !isActive);
+                btn.classList.toggle("ring-1", isActive);
+                btn.classList.toggle("ring-blue-400", isActive);
+            });
+        }
+
+        function setLanguage(lang, skipUrlUpdate = false) {
+            if (!translations[lang]) {
+                lang = "en-US";
+            }
+            currentLang = lang;
+            applyTranslations();
+            updateLangButtons();
+
+            if (!skipUrlUpdate) {
+                const url = new URL(window.location);
+                url.searchParams.set("lang", lang);
+                window.history.pushState({}, "", url);
+            }
+        }
+
+        function setupLanguageSwitcher() {
+            document.querySelectorAll("[data-lang-switch]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    setLanguage(btn.dataset.langSwitch);
+                });
+            });
+        }
+
+        function initLanguage() {
+            setupLanguageSwitcher();
+            const params = new URLSearchParams(window.location.search);
+            const langParam = params.get("lang");
+            const initialLang = translations[langParam] ? langParam : "en-US";
+            setLanguage(initialLang, true);
+        }
+
+        initLanguage();
+
+        // Simulation Configuration
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
         const indoorTempDisplay = document.getElementById('indoorTempDisplay');
         const powerSlider = document.getElementById('powerSlider');
         const powerValueText = document.getElementById('powerValue');
 
-        // Logical dimensions (for drawing coordinates)
         const LOGICAL_WIDTH = 800;
         const LOGICAL_HEIGHT = 500;
 
-        // State
-        let power = 0; 
+        let power = 0;
         let roomTemp = 28.0;
-        let targetRoomTemp = 28.0;
         const outdoorTemp = 32.0;
         let frameCount = 0;
 
-        // Component Coordinates
         const components = {
-            evaporator: { x: 130, y: 200, w: 140, h: 200, label: "蒸發器\nEvaporator", color: "#e0f2fe" },
-            compressor: { x: 360, y: 60, w: 80, h: 80, label: "壓縮機\nCompressor", color: "#334155" },
-            condenser: { x: 530, y: 200, w: 140, h: 200, label: "冷凝器\nCondenser", color: "#ffedd5" },
-            expansionValve: { x: 380, y: 420, w: 40, h: 60, label: "膨脹閥\nExp. Valve", color: "#94a3b8" }
+            evaporator: { x: 130, y: 200, w: 140, h: 200, label: "Evaporator", color: "#e0f2fe" },
+            compressor: { x: 360, y: 60, w: 80, h: 80, label: "Compressor", color: "#334155" },
+            condenser: { x: 530, y: 200, w: 140, h: 200, label: "Condenser", color: "#ffedd5" },
+            expansionValve: { x: 380, y: 420, w: 40, h: 60, label: "Expansion Valve", color: "#94a3b8" }
         };
 
-        // Helper to generate S-shaped (serpentine) path points
         function generateSPath(startX, startY, width, height, rows, direction) {
             const points = [];
             const rowHeight = height / rows;
             const inset = 20;
-            
-            // direction: 'up' (bottom to top) or 'down' (top to bottom)
-            // Evaporator goes UP (enters bottom, leaves top)
-            // Condenser goes DOWN (enters top, leaves bottom)
 
             if (direction === 'up') {
                 for (let i = rows - 1; i >= 0; i--) {
                     const y = startY + (i * rowHeight) + rowHeight / 2;
                     if ((rows - 1 - i) % 2 === 0) {
-                        points.push({ x: startX + inset, y: y });
-                        points.push({ x: startX + width - inset, y: y });
+                        points.push({ x: startX + inset, y });
+                        points.push({ x: startX + width - inset, y });
                     } else {
-                        points.push({ x: startX + width - inset, y: y });
-                        points.push({ x: startX + inset, y: y });
+                        points.push({ x: startX + width - inset, y });
+                        points.push({ x: startX + inset, y });
                     }
                 }
             } else {
                 for (let i = 0; i < rows; i++) {
                     const y = startY + (i * rowHeight) + rowHeight / 2;
                     if (i % 2 === 0) {
-                        points.push({ x: startX + inset, y: y });
-                        points.push({ x: startX + width - inset, y: y });
+                        points.push({ x: startX + inset, y });
+                        points.push({ x: startX + width - inset, y });
                     } else {
-                        points.push({ x: startX + width - inset, y: y });
-                        points.push({ x: startX + inset, y: y });
+                        points.push({ x: startX + width - inset, y });
+                        points.push({ x: startX + inset, y });
                     }
                 }
             }
             return points;
         }
 
-        // Define Pipe Paths
-        // We pre-calculate these to handle the complex S-shapes
         let paths = [];
 
         function initPaths() {
-            // 1. Evaporator Internal (Bottom to Top) -> Compressor
             const evapPoints = generateSPath(components.evaporator.x, components.evaporator.y, components.evaporator.w, components.evaporator.h, 5, 'up');
-            // Add connection to Compressor
-            evapPoints.push({x: components.evaporator.x + 20, y: 100}); // Up
-            evapPoints.push({x: components.compressor.x, y: 100}); // Right to Comp
+            evapPoints.push({ x: components.evaporator.x + 20, y: 100 });
+            evapPoints.push({ x: components.compressor.x, y: 100 });
 
             const path1 = {
                 points: evapPoints,
-                color: "#3b82f6", // Blue
+                color: "#3b82f6",
                 innerColor: "#bfdbfe",
                 state: "gas",
                 tempBase: 5,
                 width: 8
             };
 
-            // 2. Compressor -> Condenser (Top)
             const path2 = {
                 points: [
-                    {x: components.compressor.x + components.compressor.w, y: 100},
-                    {x: components.condenser.x + 20, y: 100},
-                    {x: components.condenser.x + 20, y: components.condenser.y + 20}
+                    { x: components.compressor.x + components.compressor.w, y: 100 },
+                    { x: components.condenser.x + 20, y: 100 },
+                    { x: components.condenser.x + 20, y: components.condenser.y + 20 }
                 ],
-                color: "#ef4444", // Red
+                color: "#ef4444",
                 innerColor: "#fecaca",
                 state: "gas",
                 tempBase: 85,
                 width: 8
             };
 
-            // 3. Condenser Internal (Top to Bottom) -> Expansion Valve
             const condPoints = generateSPath(components.condenser.x, components.condenser.y, components.condenser.w, components.condenser.h, 5, 'down');
-            // Add connection to Valve
-            // Last point of condPoints is bottom right or left
-            const lastCond = condPoints[condPoints.length-1];
-            condPoints.push({x: lastCond.x, y: 450}); // Down
-            condPoints.push({x: components.expansionValve.x + components.expansionValve.w, y: 450}); // Left to Valve
+            const lastCond = condPoints[condPoints.length - 1];
+            condPoints.push({ x: lastCond.x, y: 450 });
+            condPoints.push({ x: components.expansionValve.x + components.expansionValve.w, y: 450 });
 
             const path3 = {
                 points: condPoints,
-                color: "#f97316", // Orange
+                color: "#f97316",
                 innerColor: "#fed7aa",
                 state: "liquid",
                 tempBase: 45,
                 width: 8
             };
 
-            // 4. Expansion Valve -> Evaporator (Bottom)
             const path4 = {
                 points: [
-                    {x: components.expansionValve.x, y: 450},
-                    {x: components.evaporator.x + 20, y: 450},
-                    {x: components.evaporator.x + 20, y: components.evaporator.y + components.evaporator.h - 20} // Connect to start of S-coil
+                    { x: components.expansionValve.x, y: 450 },
+                    { x: components.evaporator.x + 20, y: 450 },
+                    { x: components.evaporator.x + 20, y: components.evaporator.y + components.evaporator.h - 20 }
                 ],
-                color: "#22d3ee", // Cyan
+                color: "#22d3ee",
                 innerColor: "#cffafe",
                 state: "mix",
                 tempBase: 2,
@@ -289,14 +470,13 @@
             };
 
             paths = [path1, path2, path3, path4];
-            
-            // Calculate path lengths for constant speed animation
+
             paths.forEach(p => {
                 let len = 0;
-                for(let i=0; i<p.points.length-1; i++) {
-                    const dx = p.points[i+1].x - p.points[i].x;
-                    const dy = p.points[i+1].y - p.points[i].y;
-                    len += Math.sqrt(dx*dx + dy*dy);
+                for (let i = 0; i < p.points.length - 1; i++) {
+                    const dx = p.points[i + 1].x - p.points[i].x;
+                    const dy = p.points[i + 1].y - p.points[i].y;
+                    len += Math.sqrt(dx * dx + dy * dy);
                 }
                 p.totalLength = len;
             });
@@ -308,43 +488,31 @@
         function init() {
             resizeCanvas();
             initPaths();
-            
-            // Create Particles
-            for(let i=0; i<maxParticles; i++) {
+
+            for (let i = 0; i < maxParticles; i++) {
                 particles.push({
                     pathIdx: Math.floor(Math.random() * 4),
-                    distance: Math.random() * 100, // random start distance
+                    distance: Math.random() * 100,
                 });
             }
-            
+
             window.addEventListener('resize', resizeCanvas);
             animate();
         }
 
         function resizeCanvas() {
-            // Handle High DPI (Retina)
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.parentElement.getBoundingClientRect();
-            
+
             canvas.width = LOGICAL_WIDTH * dpr;
             canvas.height = LOGICAL_HEIGHT * dpr;
-            
+
             canvas.style.width = "100%";
             canvas.style.height = "auto";
             canvas.style.maxWidth = LOGICAL_WIDTH + "px";
-            
+
             ctx.scale(dpr, dpr);
-            
-            // Scale coordinates if container is smaller than logical width (Responsive)
-            // Simplification: We draw to logical size, then CSS handles fit. 
-            // But canvas scale is strictly for DPI here.
-            // To fit smaller screens, we rely on CSS width:100% and viewBox concept.
-            // Actually, for simple canvas, scaling the context to match the visual ratio is tricky.
-            // Let's keep logical 800x500 and assume standard desktop/tablet view.
-            // If we want true responsive scaling of content:
             const scaleX = rect.width / LOGICAL_WIDTH;
-            // But we want to keep aspect ratio. CSS handles layout. 
-            // The canvas internal pixels are set.
         }
 
         function drawPipePath(path) {
@@ -353,34 +521,30 @@
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
 
-            // 1. Outer Stroke (Pipe Wall)
             ctx.beginPath();
             ctx.moveTo(path.points[0].x, path.points[0].y);
-            for(let i=1; i<path.points.length; i++) {
-                // Simple Lineto for now, can be curved but Lineto is clearer for S-bends
+            for (let i = 1; i < path.points.length; i++) {
                 ctx.lineTo(path.points[i].x, path.points[i].y);
             }
-            ctx.strokeStyle = "#475569"; // Dark slate
-            ctx.lineWidth = path.width + 2; // Border
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = path.width + 2;
             ctx.stroke();
 
-            // 2. Inner Fill (Fluid Color)
             ctx.beginPath();
             ctx.moveTo(path.points[0].x, path.points[0].y);
-            for(let i=1; i<path.points.length; i++) {
+            for (let i = 1; i < path.points.length; i++) {
                 ctx.lineTo(path.points[i].x, path.points[i].y);
             }
-            ctx.strokeStyle = path.innerColor; 
+            ctx.strokeStyle = path.innerColor;
             ctx.lineWidth = path.width;
             ctx.stroke();
 
-            // 3. Highlight (Shiny tube effect)
             ctx.beginPath();
             ctx.moveTo(path.points[0].x, path.points[0].y);
-            for(let i=1; i<path.points.length; i++) {
+            for (let i = 1; i < path.points.length; i++) {
                 ctx.lineTo(path.points[i].x, path.points[i].y);
             }
-            ctx.strokeStyle = "rgba(255,255,255,0.4)"; 
+            ctx.strokeStyle = "rgba(255,255,255,0.4)";
             ctx.lineWidth = 2;
             ctx.stroke();
         }
@@ -390,106 +554,91 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Draw Compressor Box
             const comp = components.compressor;
             ctx.fillStyle = comp.color;
             ctx.beginPath();
-            ctx.arc(comp.x + comp.w/2, comp.y + comp.h/2, 40, 0, Math.PI*2);
+            ctx.arc(comp.x + comp.w / 2, comp.y + comp.h / 2, 40, 0, Math.PI * 2);
             ctx.fill();
             ctx.lineWidth = 3;
             ctx.strokeStyle = "#1e293b";
             ctx.stroke();
-            
+
             ctx.fillStyle = "#fff";
-            ctx.fillText("壓縮機", comp.x + comp.w/2, comp.y + comp.h/2 - 8);
+            ctx.fillText(getTranslation("canvasCompressorLabel"), comp.x + comp.w / 2, comp.y + comp.h / 2 - 8);
             ctx.font = "10px sans-serif";
-            ctx.fillText("(Work)", comp.x + comp.w/2, comp.y + comp.h/2 + 8);
+            ctx.fillText(getTranslation("canvasCompressorSubtitle"), comp.x + comp.w / 2, comp.y + comp.h / 2 + 8);
 
-
-            // Draw Expansion Valve
             const valve = components.expansionValve;
             ctx.fillStyle = valve.color;
             ctx.strokeStyle = "#475569";
             ctx.lineWidth = 2;
-            
+
             ctx.beginPath();
-            // Bowtie shape
-            ctx.moveTo(valve.x, valve.y); 
+            ctx.moveTo(valve.x, valve.y);
             ctx.lineTo(valve.x + valve.w, valve.y);
             ctx.lineTo(valve.x, valve.y + valve.h);
             ctx.lineTo(valve.x + valve.w, valve.y + valve.h);
             ctx.lineTo(valve.x, valve.y);
             ctx.fill();
             ctx.stroke();
-            
+
             ctx.fillStyle = "#1e293b";
             ctx.font = "bold 12px 'Noto Sans TC'";
-            ctx.fillText("膨脹閥", valve.x + valve.w/2, valve.y + valve.h + 15);
+            ctx.fillText(getTranslation("canvasValveLabel"), valve.x + valve.w / 2, valve.y + valve.h + 15);
 
-            // Labels for Heat Exchangers (Background boxes are implicit or drawn lightly)
-            // Evaporator Area
             const evap = components.evaporator;
             ctx.fillStyle = "rgba(224, 242, 254, 0.5)";
             ctx.roundRect(evap.x - 10, evap.y - 10, evap.w + 20, evap.h + 20, 10);
             ctx.fill();
             ctx.fillStyle = "#0369a1";
             ctx.font = "bold 16px 'Noto Sans TC'";
-            ctx.fillText("蒸發器 (吸熱)", evap.x + evap.w/2, evap.y - 25);
+            ctx.fillText(getTranslation("canvasEvaporatorLabel"), evap.x + evap.w / 2, evap.y - 25);
 
-            // Condenser Area
             const cond = components.condenser;
             ctx.fillStyle = "rgba(255, 237, 213, 0.5)";
             ctx.roundRect(cond.x - 10, cond.y - 10, cond.w + 20, cond.h + 20, 10);
             ctx.fill();
             ctx.fillStyle = "#c2410c";
-            ctx.fillText("冷凝器 (散熱)", cond.x + cond.w/2, cond.y - 25);
+            ctx.fillText(getTranslation("canvasCondenserLabel"), cond.x + cond.w / 2, cond.y - 25);
 
-            // Heat Transfer Effects
             if (power > 0) {
-                // Cold Air (Blue Arrows out of Evap)
-                ctx.fillStyle = `rgba(59, 130, 246, ${power/100})`;
+                ctx.fillStyle = `rgba(59, 130, 246, ${power / 100})`;
                 ctx.font = "24px sans-serif";
-                ctx.fillText("❄️", evap.x - 30, evap.y + evap.h/2);
+                ctx.fillText("❄️", evap.x - 30, evap.y + evap.h / 2);
                 ctx.font = "14px sans-serif";
-                ctx.fillText("冷風", evap.x - 30, evap.y + evap.h/2 + 20);
+                ctx.fillText(getTranslation("canvasColdAirLabel"), evap.x - 30, evap.y + evap.h / 2 + 20);
 
-                // Hot Air (Red Arrows out of Cond)
-                ctx.fillStyle = `rgba(239, 68, 68, ${power/100})`;
+                ctx.fillStyle = `rgba(239, 68, 68, ${power / 100})`;
                 ctx.font = "24px sans-serif";
-                ctx.fillText("♨️", cond.x + cond.w + 30, cond.y + cond.h/2);
+                ctx.fillText("♨️", cond.x + cond.w + 30, cond.y + cond.h / 2);
                 ctx.font = "14px sans-serif";
-                ctx.fillText("熱風", cond.x + cond.w + 30, cond.y + cond.h/2 + 20);
+                ctx.fillText(getTranslation("canvasHotAirLabel"), cond.x + cond.w + 30, cond.y + cond.h / 2 + 20);
             }
         }
 
         function drawParticles() {
             particles.forEach(p => {
                 const path = paths[p.pathIdx];
-                
-                // Normalize distance to progress (0 to 1)
+
                 let progress = p.distance / path.totalLength;
-                
+
                 if (progress >= 1) {
-                    // Move to next path
                     p.pathIdx = (p.pathIdx + 1) % 4;
                     p.distance = 0;
                     progress = 0;
                 }
 
-                // Find coordinates
-                // We need to walk the segments to find where 'distance' falls
                 let currentDist = 0;
                 let targetX = 0, targetY = 0;
 
-                for(let i=0; i<path.points.length-1; i++) {
+                for (let i = 0; i < path.points.length - 1; i++) {
                     const p1 = path.points[i];
-                    const p2 = path.points[i+1];
+                    const p2 = path.points[i + 1];
                     const dx = p2.x - p1.x;
                     const dy = p2.y - p1.y;
-                    const segLen = Math.sqrt(dx*dx + dy*dy);
+                    const segLen = Math.sqrt(dx * dx + dy * dy);
 
                     if (currentDist + segLen >= p.distance) {
-                        // Particle is in this segment
                         const segProg = (p.distance - currentDist) / segLen;
                         targetX = p1.x + dx * segProg;
                         targetY = p1.y + dy * segProg;
@@ -498,50 +647,43 @@
                     currentDist += segLen;
                 }
 
-                // Draw Particle
                 ctx.fillStyle = path.color;
                 let radius = 3;
-                
-                // State styles
+
                 if (path.state === 'gas') {
                     ctx.globalAlpha = 0.7;
                     radius = 4;
-                    // Slight jitter
-                    targetX += (Math.random()-0.5)*2;
-                    targetY += (Math.random()-0.5)*2;
+                    targetX += (Math.random() - 0.5) * 2;
+                    targetY += (Math.random() - 0.5) * 2;
                 } else {
                     ctx.globalAlpha = 1.0;
                     radius = 3;
                 }
 
                 ctx.beginPath();
-                ctx.arc(targetX, targetY, radius, 0, Math.PI*2);
+                ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.globalAlpha = 1;
 
-                // Move
                 if (power > 0) {
-                    const speed = 1.5 + (power/100) * 2.5; // Pixels per frame
+                    const speed = 1.5 + (power / 100) * 2.5;
                     p.distance += speed;
                 }
             });
         }
 
         function drawFloatLabels() {
-             // Draw Pipe Readings (Temperature)
-             paths.forEach((path, idx) => {
-                // Pick a representative point (middle of total length roughly)
+            paths.forEach((path, idx) => {
                 let sampleDist = path.totalLength / 2;
                 let currentDist = 0;
                 let labelX = 0, labelY = 0;
 
-                // Find coords for label
-                for(let i=0; i<path.points.length-1; i++) {
+                for (let i = 0; i < path.points.length - 1; i++) {
                     const p1 = path.points[i];
-                    const p2 = path.points[i+1];
+                    const p2 = path.points[i + 1];
                     const dx = p2.x - p1.x;
                     const dy = p2.y - p1.y;
-                    const segLen = Math.sqrt(dx*dx + dy*dy);
+                    const segLen = Math.sqrt(dx * dx + dy * dy);
 
                     if (currentDist + segLen >= sampleDist) {
                         labelX = p1.x + dx * 0.5;
@@ -551,30 +693,27 @@
                     currentDist += segLen;
                 }
 
-                // Adjust label position slightly off pipe
-                if (idx === 0) { labelX -= 40; labelY += 0; } // Evap internal
-                if (idx === 2) { labelX += 40; labelY += 0; } // Cond internal
-                if (idx === 1) { labelY -= 20; } // Top pipe
-                if (idx === 3) { labelY += 25; } // Bottom pipe
+                if (idx === 0) { labelX -= 40; }
+                if (idx === 2) { labelX += 40; }
+                if (idx === 1) { labelY -= 20; }
+                if (idx === 3) { labelY += 25; }
 
-                // Temp Calc
                 let displayTemp = path.tempBase;
                 if (power > 0) {
-                    if (idx === 1) displayTemp += (power/100) * 15; 
-                    if (idx === 3) displayTemp -= (power/100) * 5;  
+                    if (idx === 1) displayTemp += (power / 100) * 15;
+                    if (idx === 3) displayTemp -= (power / 100) * 5;
                 }
 
-                // Draw Bubble
                 ctx.font = "bold 12px Arial";
                 const text = displayTemp.toFixed(1) + "°C";
                 const textW = ctx.measureText(text).width;
-                
+
                 ctx.fillStyle = "rgba(255,255,255,0.9)";
                 ctx.strokeStyle = path.color;
                 ctx.lineWidth = 1;
-                
+
                 ctx.beginPath();
-                ctx.roundRect(labelX - textW/2 - 4, labelY - 10, textW + 8, 20, 4);
+                ctx.roundRect(labelX - textW / 2 - 4, labelY - 10, textW + 8, 20, 4);
                 ctx.fill();
                 ctx.stroke();
 
@@ -590,7 +729,7 @@
             if (power > 0) {
                 const coolingPotential = (power / 100) * (outdoorTemp - 16);
                 target = outdoorTemp - coolingPotential;
-                rate = 0.05; 
+                rate = 0.05;
             } else {
                 target = outdoorTemp;
                 rate = 0.02;
@@ -604,20 +743,13 @@
         }
 
         function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear scaled context
-            
-            // Draw Pipes (Bottom Layer)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             paths.forEach(drawPipePath);
-            
-            // Draw Components (Middle Layer)
             drawComponents();
-
-            // Draw Particles (Top Layer)
             drawParticles();
-
-            // Draw Text Overlays
             drawFloatLabels();
-            
+
             if (frameCount % 10 === 0) {
                 updatePhysics();
             }
@@ -626,12 +758,11 @@
             requestAnimationFrame(animate);
         }
 
-        // Event Listeners
         powerSlider.addEventListener('input', (e) => {
-            power = parseInt(e.target.value);
+            power = parseInt(e.target.value, 10);
             powerValueText.innerText = power + "%";
-            
-            if(power === 0) {
+
+            if (power === 0) {
                 powerValueText.className = "text-slate-400";
             } else if (power < 50) {
                 powerValueText.className = "text-blue-500";
@@ -640,9 +771,8 @@
             }
         });
 
-        // Fix RoundRect for older browsers just in case
         if (!ctx.roundRect) {
-            ctx.roundRect = function(x, y, w, h, r) {
+            ctx.roundRect = function (x, y, w, h, r) {
                 this.beginPath();
                 this.moveTo(x + r, y);
                 this.lineTo(x + w - r, y);
@@ -661,4 +791,5 @@
 
     </script>
 </body>
+
 </html>
