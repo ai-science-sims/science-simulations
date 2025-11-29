@@ -19,7 +19,7 @@ The project originally began as a physics simulations collection, so physics inc
 ## Usage
 
 Here is our production website:
-https://harrycslau.github.io/physics-simulations/
+https://ai-science-sims.github.io/science-simulations/
 
 If you pull the repo and want to test it, 
 you can do so by running `python3 -m http.server` in the root folder,
