@@ -306,5 +306,27 @@
         "screenshotUrl": "screenshots/refraction.png",
         "createdAt": "2025-11-29",
         "updatedAt": "2025-11-29"
+    },
+    {
+        "id": "ray-diagram-lens",
+        "category": {
+            "en-US": "Optics and Wave Motion",
+            "zh-HK": "光學與波動"
+        },
+        "title": {
+            "en-US": "Lens Ray Diagram",
+            "zh-HK": "透鏡光線圖"
+        },
+        "description": {
+            "en-US": "Interactive ray diagram showing how lenses form images with convex and concave options.",
+            "zh-HK": "互動光線圖展示透鏡如何成像，支援凸透鏡和凹透鏡。"
+        },
+        "contributors": [
+            "Yin Kwong Poon"
+        ],
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/ray-diagram-lens.html",
+        "screenshotUrl": "screenshots/ray-diagram-lens.png",
+        "createdAt": "2025-11-29",
+        "updatedAt": "2025-11-29"
     }
 ]

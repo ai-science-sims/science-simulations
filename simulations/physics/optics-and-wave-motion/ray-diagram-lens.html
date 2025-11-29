@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lens Ray Diagram</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #4caf50;
+            --panel-bg: #2c2c2c;
+            --ray-color: #ffeb3b;
+            --free-ray-head: #00e5ff;
+            --free-ray-tail: #e040fb;
+            --virtual-ray-color: #ff9800;
+            --object-color: #2196f3;
+            --image-color: #f44336;
+            --reset-btn-bg: #f44336;
+            --mode-active-bg: #2196f3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 1rem;
+            text-align: center;
+            background-color: var(--panel-bg);
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            position: relative;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        p {
+            margin: 0.5rem 0 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Language Selector */
+        .lang-selector {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 20;
+        }
+
+        .lang-btn {
+            padding: 0.5rem 1rem;
+            background: #383838;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .lang-btn.active {
+            background: var(--mode-active-bg);
+            border-color: var(--mode-active-bg);
+            color: white;
+        }
+
+        #main-container {
+            display: flex;
+            flex-direction: column;
+            width: 98%;
+            max-width: 1400px;
+            padding: 10px;
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 550px;
+            background-color: #000;
+            border: 2px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            align-items: end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            background: #383838;
+            padding: 10px;
+            border-radius: 4px;
+            height: 40px;
+        }
+
+        /* Mode Switcher Styling */
+        .mode-switcher {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: #383838;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            accent-color: var(--mode-active-bg);
+            width: 18px;
+            height: 18px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        select {
+            padding: 8px;
+            background: #383838;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        input[type=checkbox] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        button#btn-reset {
+            background-color: var(--reset-btn-bg);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            height: 42px;
+        }
+
+        button#btn-reset:hover {
+            background-color: #d32f2f;
+        }
+
+        #data-panel {
+            margin-top: 10px;
+            padding: 15px;
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            text-align: center;
+        }
+
+        .data-item {
+            background: #383838;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .data-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .data-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 600px) {
+            #canvas-container {
+                height: 350px;
+            }
+
+            .lang-selector {
+                top: 0.5rem;
+                right: 0.5rem;
+            }
+
+            .lang-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <!-- Language Selector -->
+        <div class="lang-selector">
+            <button class="lang-btn" data-lang="en-US" onclick="changeLanguage('en-US')">EN</button>
+            <button class="lang-btn" data-lang="zh-HK" onclick="changeLanguage('zh-HK')">繁</button>
+        </div>
+
+        <h1 data-i18n="title">Lens Ray Diagram</h1>
+        <p id="instruction-text" data-i18n="instruction">Select a mode below to interact.</p>
+    </header>
+
+    <div id="main-container">
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot" style="background: var(--object-color)"></div><span
+                    data-i18n="legendObject">Object</span>
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: var(--image-color)"></div><span data-i18n="legendImage">Image</span>
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: var(--ray-color)"></div><span
+                    data-i18n="legendStandardRays">Standard Rays</span>
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: var(--free-ray-head)"></div><span data-i18n="legendHeadRay">Head
+                    Ray</span>
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: var(--free-ray-tail)"></div><span data-i18n="legendTailRay">Tail
+                    Ray</span>
+            </div>
+        </div>
+
+        <div id="data-panel">
+            <div class="data-item">
+                <span class="data-label" data-i18n="labelFocalLength">Focal Length (f)</span>
+                <span class="data-value" id="val-f">100</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label" data-i18n="labelObjectDist">Object Dist (do)</span>
+                <span class="data-value" id="val-do">200</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label" data-i18n="labelImageDist">Image Dist (di)</span>
+                <span class="data-value" id="val-di">200</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label" data-i18n="labelMagnification">Magnification (M)</span>
+                <span class="data-value" id="val-m">-1.00</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label" data-i18n="labelType">Type</span>
+                <span class="data-value" id="val-type">Real</span>
+            </div>
+        </div>
+
+        <div id="controls">
+            <div class="control-group">
+                <label data-i18n="labelInteractionMode">Interaction Mode:</label>
+                <div class="mode-switcher">
+                    <label class="radio-option">
+                        <input type="radio" name="interaction-mode" value="horizontal" checked>
+                        <span data-i18n="modeHorizontal">↔ Horizontal (Move Object L/R)</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="interaction-mode" value="vertical">
+                        <span data-i18n="modeVertical">↕ Vertical (Move Object/Lens U/D)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label data-i18n="labelLensType">Lens Type:</label>
+                <select id="sel-lens-type">
+                    <option value="convex" data-i18n-option="lensConvex">Convex (Converging)</option>
+                    <option value="concave" data-i18n-option="lensConcave">Concave (Diverging)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label><span data-i18n="labelFocalLengthSlider">Focal Length (f):</span> <span
+                        id="lbl-f">100</span></label>
+                <input type="range" id="slider-f" min="50" max="300" value="100">
+            </div>
+            <div class="control-group">
+                <label><span data-i18n="labelObjectHeight">Object Height (Size):</span> <span
+                        id="lbl-h">60</span></label>
+                <input type="range" id="slider-h" min="20" max="150" value="60">
+            </div>
+            <div class="control-group">
+                <label><span data-i18n="labelViewZoom">View Zoom:</span> <span id="lbl-zoom">1.0x</span></label>
+                <input type="range" id="slider-zoom" min="0.2" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="chk-free-rays">
+                <label for="chk-free-rays" style="margin:0" data-i18n="labelShowInteractiveRays">Show Interactive
+                    Rays</label>
+            </div>
+            <button id="btn-reset" data-i18n="btnReset">Reset to 2F</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Internationalization ---
+        const translations = {
+            'en-US': {
+                title: 'Lens Ray Diagram',
+                instruction: 'Select a mode below to interact.',
+                instructionHorizontal: 'Mode: <strong>Horizontal</strong>. Drag Object Left/Right to change distance.',
+                instructionVertical: 'Mode: <strong>Vertical</strong>. Drag Object Up/Down or Lens Up/Down.',
+                legendObject: 'Object',
+                legendImage: 'Image',
+                legendStandardRays: 'Standard Rays',
+                legendHeadRay: 'Head Ray',
+                legendTailRay: 'Tail Ray',
+                labelFocalLength: 'Focal Length (f)',
+                labelObjectDist: 'Object Dist (do)',
+                labelImageDist: 'Image Dist (di)',
+                labelMagnification: 'Magnification (M)',
+                labelType: 'Type',
+                labelInteractionMode: 'Interaction Mode:',
+                modeHorizontal: '↔ Horizontal (Move Object L/R)',
+                modeVertical: '↕ Vertical (Move Object/Lens U/D)',
+                labelLensType: 'Lens Type:',
+                lensConvex: 'Convex (Converging)',
+                lensConcave: 'Concave (Diverging)',
+                labelFocalLengthSlider: 'Focal Length (f):',
+                labelObjectHeight: 'Object Height (Size):',
+                labelViewZoom: 'View Zoom:',
+                labelShowInteractiveRays: 'Show Interactive Rays',
+                btnReset: 'Reset to 2F',
+                typeReal: 'Real',
+                typeVirtual: 'Virtual',
+                typeInfinity: 'Infinity'
+            },
+            'zh-HK': {
+                title: '透鏡光線圖',
+                instruction: '選擇下方模式進行互動',
+                instructionHorizontal: '模式：<strong>水平</strong>。左右拖動物體以改變距離',
+                instructionVertical: '模式：<strong>垂直</strong>。上下拖動物體或透鏡',
+                legendObject: '物體',
+                legendImage: '像',
+                legendStandardRays: '標準光線',
+                legendHeadRay: '頭部光線',
+                legendTailRay: '尾部光線',
+                labelFocalLength: '焦距',
+                labelObjectDist: '物距',
+                labelImageDist: '像距',
+                labelMagnification: '放大率',
+                labelType: '類型',
+                labelInteractionMode: '互動模式：',
+                modeHorizontal: '↔ 水平（左右移動物體）',
+                modeVertical: '↕ 垂直（上下移動物體/透鏡）',
+                labelLensType: '透鏡類型：',
+                lensConvex: '凸透鏡（會聚）',
+                lensConcave: '凹透鏡（發散）',
+                labelFocalLengthSlider: '焦距：',
+                labelObjectHeight: '物體高度（大小）：',
+                labelViewZoom: '視圖縮放：',
+                labelShowInteractiveRays: '顯示互動光線',
+                btnReset: '重設至 2F',
+                typeReal: '實像',
+                typeVirtual: '虛像',
+                typeInfinity: '無限遠'
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.title = translations[lang].title;
+
+            // Update all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+
+            // Update select options
+            document.querySelectorAll('[data-i18n-option]').forEach(option => {
+                const key = option.getAttribute('data-i18n-option');
+                if (translations[lang][key]) {
+                    option.textContent = translations[lang][key];
+                }
+            });
+
+            // Update language selector buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const btnLang = btn.getAttribute('data-lang');
+                if (btnLang === lang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update URL parameter
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+
+            // Update instruction text based on current mode
+            updateInstructions();
+
+            // Redraw to update any dynamic text
+            draw();
+        }
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        // Initialize language from URL parameter
+        function initLanguage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const langParam = urlParams.get('lang');
+            if (langParam && translations[langParam]) {
+                changeLanguage(langParam);
+            } else {
+                changeLanguage('en-US');
+            }
+        }
+
+        // --- Canvas and Physics Logic ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const sliderZoom = document.getElementById('slider-zoom');
+        const sliderF = document.getElementById('slider-f');
+        const sliderH = document.getElementById('slider-h');
+        const selLensType = document.getElementById('sel-lens-type');
+        const chkFreeRays = document.getElementById('chk-free-rays');
+        const btnReset = document.getElementById('btn-reset');
+        const modeRadios = document.getElementsByName('interaction-mode');
+        const instructionText = document.getElementById('instruction-text');
+
+        const lblZoom = document.getElementById('lbl-zoom');
+        const lblF = document.getElementById('lbl-f');
+        const lblH = document.getElementById('lbl-h');
+
+        const valF = document.getElementById('val-f');
+        const valDo = document.getElementById('val-do');
+        const valDi = document.getElementById('val-di');
+        const valM = document.getElementById('val-m');
+        const valType = document.getElementById('val-type');
+
+        // State Variables
+        let viewScale = 1.0;
+        let focalLengthMag = 100;
+        let objectDist = 200;
+        let objectHeight = 60;
+
+        // Physics Coordinates
+        let lensY = 0; // Vertical position of the axis
+        let objectBaseY = 0; // Absolute vertical position of the object base
+
+        let showFreeRays = false;
+        let lensType = 'convex';
+        let interactionMode = 'horizontal'; // 'horizontal' or 'vertical'
+
+        // Interactive Handles positions (relative to lens center)
+        let freeRayHeadOffset = 40;
+        let freeRayTailOffset = -40;
+
+        // Dragging State
+        let dragTarget = null;
+        let dragOffset = { x: 0, y: 0 };
+        let width, height, centerX, centerY;
+
+        // Initialization
+        function resize() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            width = canvas.width;
+            height = canvas.height;
+
+            centerX = width / 2;
+            centerY = height / 2;
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+
+        // Physics Calculation
+        function calculatePhysics() {
+            const f = (lensType === 'convex') ? focalLengthMag : -focalLengthMag;
+
+            // Effective height relative to the Principal Axis
+            const objTipY = objectBaseY + objectHeight;
+            const h_eff_tip = objTipY - lensY; // Height of tip relative to axis
+            const h_eff_base = objectBaseY - lensY; // Height of base relative to axis
+
+            let imageDist;
+            let imageType = "Real";
+
+            // Lens Formula: 1/f = 1/do + 1/di
+            if (lensType === 'convex' && Math.abs(objectDist - f) < 0.1) {
+                imageDist = Infinity;
+                imageType = "Infinity";
+            } else {
+                imageDist = (f * objectDist) / (objectDist - f);
+                if (imageDist < 0) imageType = "Virtual";
+            }
+
+            let magnification = (imageDist === Infinity) ? Infinity : -imageDist / objectDist;
+
+            // Calculate Image Absolute Y positions
+            let imgTipYAbs = (imageDist === Infinity) ? 0 : lensY + (h_eff_tip * magnification);
+            let imgBaseYAbs = (imageDist === Infinity) ? 0 : lensY + (h_eff_base * magnification);
+
+            return { f, imageDist, magnification, imageType, objTipY, imgTipYAbs, imgBaseYAbs };
+        }
+
+        // Coordinate Transformation
+        function toCanvasX(physX) { return centerX + (physX * viewScale); }
+        function toCanvasY(physY) { return centerY - (physY * viewScale); }
+        function toPhysX(canvasX) { return (canvasX - centerX) / viewScale; }
+        function toPhysY(canvasY) { return (centerY - canvasY) / viewScale; }
+
+        // Drawing Helpers
+        function drawArrowAbs(x, yBase, yTip, color, isDashed = false, isHovered = false) {
+            const cx = toCanvasX(x);
+            const cyBase = toCanvasY(yBase);
+            const cyTip = toCanvasY(yTip);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = isHovered ? 6 : 4;
+            if (isDashed) ctx.setLineDash([5, 5]);
+            else ctx.setLineDash([]);
+
+            ctx.moveTo(cx, cyBase);
+            ctx.lineTo(cx, cyTip);
+            ctx.stroke();
+
+            // Arrowhead at Tip
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.setLineDash([]);
+            const headSize = isHovered ? 18 : 14;
+
+            const dy = cyTip - cyBase;
+            const len = Math.abs(dy);
+            if (len > 0) {
+                const dir = dy / len; // 1 or -1
+                ctx.moveTo(cx, cyTip);
+                ctx.lineTo(cx - (headSize / 2), cyTip - (headSize * dir));
+                ctx.lineTo(cx + (headSize / 2), cyTip - (headSize * dir));
+                ctx.lineTo(cx, cyTip);
+                ctx.fill();
+            }
+
+            // Draw Base Dot (Handle)
+            ctx.beginPath();
+            ctx.arc(cx, cyBase, isHovered ? 6 : 4, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawRaySegment(x1, y1, x2, y2, color, dashed = false, showArrow = false, width = 2) {
+            const cx1 = toCanvasX(x1);
+            const cy1 = toCanvasY(y1);
+            const cx2 = toCanvasX(x2);
+            const cy2 = toCanvasY(y2);
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            if (dashed) ctx.setLineDash([5, 5]);
+            else ctx.setLineDash([]);
+
+            ctx.moveTo(cx1, cy1);
+            ctx.lineTo(cx2, cy2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (showArrow && !dashed) {
+                const midX = (cx1 + cx2) / 2;
+                const midY = (cy1 + cy2) / 2;
+                const angle = Math.atan2(cy2 - cy1, cx2 - cx1);
+
+                ctx.save();
+                ctx.translate(midX, midY);
+                ctx.rotate(angle);
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(6, 0);
+                ctx.lineTo(-6, -5);
+                ctx.lineTo(-6, 5);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawPoint(x, y, label) {
+            const cx = toCanvasX(x);
+            const cy = toCanvasY(y);
+
+            if (Math.abs(cx - centerX) < 15 && Math.abs(cy - toCanvasY(lensY)) < 15 && label !== "O") return;
+
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = "12px Arial";
+            ctx.fillText(label, cx - 5, cy + 20);
+        }
+
+        function drawHandle(physY, color) {
+            const cx = toCanvasX(0);
+            const cy = toCanvasY(physY);
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        function drawLens() {
+            const lensHeight = Math.max(120, 200 * viewScale);
+            const lensWidth = Math.max(10, 16 * viewScale);
+            const cx = centerX;
+            const cy = toCanvasY(lensY);
+            const lh = lensHeight / 2;
+            const lw = lensWidth / 2;
+
+            ctx.fillStyle = 'rgba(100, 200, 255, 0.2)';
+            ctx.strokeStyle = '#88ccff';
+            ctx.lineWidth = 2;
+
+            if (dragTarget === 'lens') {
+                ctx.fillStyle = 'rgba(100, 200, 255, 0.4)';
+                ctx.strokeStyle = '#fff';
+            }
+
+            ctx.beginPath();
+            if (lensType === 'convex') {
+                ctx.ellipse(cx, cy, lw, lh, 0, 0, 2 * Math.PI);
+            } else {
+                ctx.moveTo(cx - lw, cy - lh);
+                ctx.quadraticCurveTo(cx, cy, cx - lw, cy + lh);
+                ctx.lineTo(cx + lw, cy + lh);
+                ctx.quadraticCurveTo(cx, cy, cx + lw, cy - lh);
+                ctx.lineTo(cx - lw, cy - lh);
+            }
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function getRayEnd(startX, startY, slope) {
+            const xRight = (width - centerX) / viewScale;
+            const yTop = centerY / viewScale;
+            const yBot = (centerY - height) / viewScale;
+
+            let candidates = [];
+
+            const yAtRight = startY + slope * (xRight - startX);
+            if (yAtRight <= yTop && yAtRight >= yBot) {
+                candidates.push({ x: xRight, y: yAtRight });
+            }
+
+            if (slope !== 0) {
+                const xAtTop = startX + (yTop - startY) / slope;
+                if (xAtTop > startX && xAtTop <= xRight) {
+                    candidates.push({ x: xAtTop, y: yTop });
+                }
+            }
+
+            if (slope !== 0) {
+                const xAtBot = startX + (yBot - startY) / slope;
+                if (xAtBot > startX && xAtBot <= xRight) {
+                    candidates.push({ x: xAtBot, y: yBot });
+                }
+            }
+
+            if (candidates.length === 0) return { x: xRight, y: startY + slope * (xRight - startX) };
+            return candidates.reduce((prev, curr) => (curr.x < prev.x ? curr : prev));
+        }
+
+        function drawRefractedRay(startX, startY, lensHitY, imgX, imgY, imgType, color) {
+            drawRaySegment(startX, startY, 0, lensHitY, color, false, true, 3);
+
+            let slope;
+            if (imgType === "Infinity") {
+                slope = (lensY - startY) / (0 - startX);
+            } else {
+                slope = (lensHitY - imgY) / (0 - imgX);
+            }
+
+            const endPt = getRayEnd(0, lensHitY, slope);
+            drawRaySegment(0, lensHitY, endPt.x, endPt.y, color, false, true, 3);
+
+            if (imgType === "Virtual") {
+                drawRaySegment(0, lensHitY, imgX, imgY, color, true, false, 2);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Principal Axis
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, toCanvasY(lensY));
+            ctx.lineTo(width, toCanvasY(lensY));
+            ctx.stroke();
+
+            drawLens();
+
+            const { f, imageDist, magnification, imageType, objTipY, imgTipYAbs, imgBaseYAbs } = calculatePhysics();
+
+            // Draw Focal Points
+            drawPoint(0, lensY, "O");
+            drawPoint(-focalLengthMag, lensY, "F");
+            drawPoint(focalLengthMag, lensY, "F");
+            drawPoint(-2 * focalLengthMag, lensY, "2F");
+            drawPoint(2 * focalLengthMag, lensY, "2F");
+
+            // Object
+            const objX = -objectDist;
+            drawArrowAbs(objX, objectBaseY, objTipY, '#2196f3', false, dragTarget === 'object');
+
+            // Image
+            if (imageType !== "Infinity") {
+                const isVirtual = imageType === "Virtual";
+                drawArrowAbs(imageDist, imgBaseYAbs, imgTipYAbs, '#f44336', isVirtual);
+            }
+
+            // --- Standard Rays ---
+            const rayColor = '#ffeb3b';
+            const virtColor = '#ff9800';
+
+            // Ray 1: Parallel -> Focal
+            drawRaySegment(objX, objTipY, 0, objTipY, rayColor, false, true);
+
+            let slope1;
+            if (lensType === 'convex') {
+                slope1 = (lensY - objTipY) / (f - 0);
+                if (imageType === "Virtual") drawRaySegment(0, objTipY, imageDist, imgTipYAbs, virtColor, true, false);
+            } else {
+                slope1 = (objTipY - lensY) / (0 - (-focalLengthMag));
+                drawRaySegment(-focalLengthMag, lensY, 0, objTipY, virtColor, true, false);
+            }
+            const end1 = getRayEnd(0, objTipY, slope1);
+            drawRaySegment(0, objTipY, end1.x, end1.y, rayColor, false, true);
+
+            // Ray 2: Through Optical Center
+            const slope2 = (lensY - objTipY) / (0 - objX);
+            const end2 = getRayEnd(0, lensY, slope2);
+            drawRaySegment(objX, objTipY, 0, lensY, rayColor, false, true);
+            drawRaySegment(0, lensY, end2.x, end2.y, rayColor, false, true);
+            if (imageType === "Virtual") drawRaySegment(objX, objTipY, imageDist, imgTipYAbs, virtColor, true, false);
+
+            // Ray 3: Through Focal -> Parallel
+            if (lensType === 'convex') {
+                const slope3 = (lensY - objTipY) / (-focalLengthMag - objX);
+                const lensHitY3 = objTipY + slope3 * (0 - objX);
+
+                if (objectDist > focalLengthMag) {
+                    drawRaySegment(objX, objTipY, 0, lensHitY3, rayColor, false, true);
+                } else {
+                    drawRaySegment(objX, objTipY, 0, lensHitY3, rayColor, false, true);
+                    drawRaySegment(-focalLengthMag, lensY, objX, objTipY, virtColor, true, false);
+                }
+
+                const end3 = getRayEnd(0, lensHitY3, 0);
+                drawRaySegment(0, lensHitY3, end3.x, end3.y, rayColor, false, true);
+                if (imageType === "Virtual") drawRaySegment(0, lensHitY3, imageDist, lensHitY3, virtColor, true, false);
+
+            } else {
+                const slope3 = (lensY - objTipY) / (focalLengthMag - objX);
+                const lensHitY3 = objTipY + slope3 * (0 - objX);
+
+                drawRaySegment(objX, objTipY, 0, lensHitY3, rayColor, false, true);
+                drawRaySegment(0, lensHitY3, focalLengthMag, lensY, virtColor, true, false);
+
+                const end3 = getRayEnd(0, lensHitY3, 0);
+                drawRaySegment(0, lensHitY3, end3.x, end3.y, rayColor, false, true);
+                drawRaySegment(0, lensHitY3, imageDist, lensHitY3, virtColor, true, false);
+            }
+
+            // --- Interactive Custom Rays ---
+            if (showFreeRays) {
+                const absHeadY = lensY + freeRayHeadOffset;
+                const absTailY = lensY + freeRayTailOffset;
+
+                drawRefractedRay(objX, objTipY, absHeadY, imageDist, imgTipYAbs, imageType, '#00e5ff');
+                drawHandle(absHeadY, '#00e5ff');
+
+                drawRefractedRay(objX, objectBaseY, absTailY, imageDist, imgBaseYAbs, imageType, '#e040fb');
+                drawHandle(absTailY, '#e040fb');
+            }
+
+            updateUI(f, imageDist, magnification, imageType);
+        }
+
+        function updateUI(f, di, m, type) {
+            valF.textContent = f;
+            valDo.textContent = objectDist.toFixed(0);
+            if (type === "Infinity") {
+                valDi.textContent = "∞";
+                valM.textContent = t('typeInfinity');
+            } else {
+                valDi.textContent = di.toFixed(1);
+                valM.textContent = m.toFixed(2);
+            }
+
+            // Translate type
+            if (type === "Real") {
+                valType.textContent = t('typeReal');
+                valType.style.color = "#4caf50";
+            } else if (type === "Virtual") {
+                valType.textContent = t('typeVirtual');
+                valType.style.color = "#ff9800";
+            } else {
+                valType.textContent = t('typeInfinity');
+                valType.style.color = "#fff";
+            }
+        }
+
+        // Interaction Logic
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (evt.clientX - rect.left),
+                y: (evt.clientY - rect.top)
+            };
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
+
+        function handleStart(x, y) {
+            const physX = toPhysX(x);
+            const physY = toPhysY(y);
+            const hitDist = 20 / viewScale;
+
+            // 1. Free Ray Handles (Allowed in ANY mode if checkbox is checked)
+            if (showFreeRays) {
+                if (Math.abs(physX - 0) < hitDist && Math.abs(physY - (lensY + freeRayHeadOffset)) < hitDist) {
+                    dragTarget = 'headRay';
+                    return;
+                }
+                if (Math.abs(physX - 0) < hitDist && Math.abs(physY - (lensY + freeRayTailOffset)) < hitDist) {
+                    dragTarget = 'tailRay';
+                    return;
+                }
+            }
+
+            // 2. Object (Blue Arrow)
+            const objX = -objectDist;
+            const objTipY = objectBaseY + objectHeight;
+            const distToObj = distToSegment(physX, physY, objX, objectBaseY, objX, objTipY);
+
+            if (distToObj < hitDist) {
+                dragTarget = 'object';
+                dragOffset.x = physX - objX;
+                dragOffset.y = physY - objectBaseY;
+                draw();
+                return;
+            }
+
+            // 3. Lens Body (Only in Vertical Mode)
+            if (interactionMode === 'vertical') {
+                if (Math.abs(physX - 0) < hitDist && Math.abs(physY - lensY) < 100) {
+                    dragTarget = 'lens';
+                    dragOffset.y = physY - lensY;
+                    draw();
+                    return;
+                }
+            }
+        }
+
+        function handleMove(x, y) {
+            const physX = toPhysX(x);
+            const physY = toPhysY(y);
+            const hitDist = 20 / viewScale;
+
+            // Cursor and Hover Logic
+            if (!dragTarget) {
+                const objX = -objectDist;
+                const objTipY = objectBaseY + objectHeight;
+                const distToObj = distToSegment(physX, physY, objX, objectBaseY, objX, objTipY);
+
+                // Check Free Rays (Priority over lens body)
+                if (showFreeRays &&
+                    ((Math.abs(physX - 0) < hitDist && Math.abs(physY - (lensY + freeRayHeadOffset)) < hitDist) ||
+                        (Math.abs(physX - 0) < hitDist && Math.abs(physY - (lensY + freeRayTailOffset)) < hitDist))) {
+                    canvas.style.cursor = 'ns-resize';
+                }
+                // Check Object Hover
+                else if (distToObj < hitDist) {
+                    canvas.style.cursor = (interactionMode === 'horizontal') ? 'ew-resize' : 'ns-resize';
+                }
+                // Check Lens Hover (Vertical Mode Only)
+                else if (interactionMode === 'vertical' && Math.abs(physX - 0) < hitDist && Math.abs(physY - lensY) < 100) {
+                    canvas.style.cursor = 'ns-resize';
+                }
+                else {
+                    canvas.style.cursor = 'default';
+                }
+                return;
+            }
+
+            // Dragging Logic
+            if (dragTarget === 'object') {
+                if (interactionMode === 'horizontal') {
+                    // Only change X (Distance)
+                    let newBaseX = physX - dragOffset.x;
+                    // Constrain X (Keep object on left side)
+                    if (newBaseX > -10) newBaseX = -10;
+                    if (newBaseX < -2000) newBaseX = -2000;
+                    objectDist = -newBaseX;
+                } else {
+                    // Only change Y (Vertical Offset)
+                    let newBaseY = physY - dragOffset.y;
+                    objectBaseY = newBaseY;
+                }
+            }
+            else if (dragTarget === 'headRay') {
+                freeRayHeadOffset = physY - lensY;
+            }
+            else if (dragTarget === 'tailRay') {
+                freeRayTailOffset = physY - lensY;
+            }
+            else if (dragTarget === 'lens') {
+                lensY = physY - dragOffset.y;
+            }
+            draw();
+        }
+
+        function handleEnd() {
+            dragTarget = null;
+            draw();
+        }
+
+        // Update instruction text based on mode
+        function updateInstructions() {
+            if (interactionMode === 'horizontal') {
+                instructionText.innerHTML = t('instructionHorizontal');
+            } else {
+                instructionText.innerHTML = t('instructionVertical');
+            }
+        }
+
+        // Reset Function
+        function resetSimulation() {
+            // Defaults
+            focalLengthMag = 100;
+            objectDist = 200; // 2F
+            objectHeight = 60;
+
+            // Reset Positions
+            lensY = 0;
+            objectBaseY = 0; // On axis
+
+            viewScale = 1.0;
+            lensType = 'convex';
+            showFreeRays = false;
+            interactionMode = 'horizontal'; // Default to Horizontal
+
+            // Update UI Inputs
+            sliderF.value = focalLengthMag;
+            sliderH.value = objectHeight;
+            sliderZoom.value = viewScale;
+            selLensType.value = lensType;
+            chkFreeRays.checked = showFreeRays;
+
+            // Reset Mode Radios
+            modeRadios.forEach(r => {
+                if (r.value === 'horizontal') r.checked = true;
+            });
+
+            // Update UI Labels
+            lblF.textContent = focalLengthMag;
+            lblH.textContent = objectHeight;
+            lblZoom.textContent = "1.0x";
+
+            updateInstructions();
+            draw();
+        }
+
+        // Event Listeners
+        canvas.addEventListener('mousedown', e => {
+            const pos = getMousePos(e);
+            handleStart(pos.x, pos.y);
+        });
+        window.addEventListener('mousemove', e => {
+            const pos = getMousePos(e);
+            handleMove(pos.x, pos.y);
+        });
+        window.addEventListener('mouseup', handleEnd);
+
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            handleStart(touch.clientX - rect.left, touch.clientY - rect.top);
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            handleMove(touch.clientX - rect.left, touch.clientY - rect.top);
+        }, { passive: false });
+        window.addEventListener('touchend', handleEnd);
+
+        // Controls
+        sliderZoom.addEventListener('input', (e) => {
+            viewScale = parseFloat(e.target.value);
+            lblZoom.textContent = viewScale.toFixed(1) + "x";
+            draw();
+        });
+        sliderF.addEventListener('input', (e) => {
+            focalLengthMag = parseInt(e.target.value);
+            lblF.textContent = focalLengthMag;
+            draw();
+        });
+        sliderH.addEventListener('input', (e) => {
+            objectHeight = parseInt(e.target.value);
+            lblH.textContent = objectHeight;
+            draw();
+        });
+        chkFreeRays.addEventListener('change', (e) => {
+            showFreeRays = e.target.checked;
+            draw();
+        });
+        selLensType.addEventListener('change', (e) => {
+            lensType = e.target.value;
+            draw();
+        });
+
+        // Mode Switching
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                interactionMode = e.target.value;
+                updateInstructions();
+                draw(); // Redraw to update cursors/handles if necessary
+            });
+        });
+
+        btnReset.addEventListener('click', resetSimulation);
+
+        // Initial setup
+        initLanguage();
+        resize();
+        resetSimulation();
+
+    </script>
+
+</body>
+
+</html>
