@@ -284,5 +284,27 @@
         "screenshotUrl": "screenshots/acrobat-game.png",
         "createdAt": "2025-11-22",
         "updatedAt": "2025-11-22"
+    },
+    {
+        "id": "refraction",
+        "category": {
+            "en-US": "Optics and Wave Motion",
+            "zh-HK": "光學與波動"
+        },
+        "title": {
+            "en-US": "Refraction Lab",
+            "zh-HK": "折射實驗室"
+        },
+        "description": {
+            "en-US": "Explore how light bends between different media with realistic and ideal optics modes.",
+            "zh-HK": "探索光線如何在不同介質間彎曲，支援真實和理想光學模式。"
+        },
+        "contributors": [
+            "Harry Lau"
+        ],
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/refraction.html",
+        "screenshotUrl": "screenshots/refraction.png",
+        "createdAt": "2025-11-29",
+        "updatedAt": "2025-11-29"
     }
 ]
