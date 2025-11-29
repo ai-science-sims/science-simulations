@@ -60,7 +60,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/heat-and-gases/air-conditioner.html",
+        "simulationUrl": "simulations/physics/heat-and-gases/air-conditioner.html",
         "screenshotUrl": "screenshots/air-conditioner.png",
         "createdAt": "2025-11-21",
         "updatedAt": "2025-11-21"
@@ -82,7 +82,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/heat-and-gases/convection.html",
+        "simulationUrl": "simulations/physics/heat-and-gases/convection.html",
         "screenshotUrl": "screenshots/convection.png",
         "createdAt": "2025-11-21",
         "updatedAt": "2025-11-21"
@@ -104,7 +104,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/heat-and-gases/specific-heat-capacity.html",
+        "simulationUrl": "simulations/physics/heat-and-gases/specific-heat-capacity.html",
         "screenshotUrl": "screenshots/specific-heat-capacity.png",
         "createdAt": "2025-11-21",
         "updatedAt": "2025-11-21"
@@ -126,7 +126,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/optics-and-wave-motion/diffraction-grating.html",
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/diffraction-grating.html",
         "screenshotUrl": "screenshots/diffraction-grating.png",
         "createdAt": "2025-11-21",
         "updatedAt": "2025-11-21"
@@ -148,7 +148,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/optics-and-wave-motion/reflection-of-light.html",
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/reflection-of-light.html",
         "screenshotUrl": "screenshots/reflection-of-light.png",
         "createdAt": "2025-11-21",
         "updatedAt": "2025-11-21"
@@ -170,7 +170,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/optics-and-wave-motion/snells-law.html",
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/snells-law.html",
         "screenshotUrl": "screenshots/snells-law.png",
         "createdAt": "2025-11-21",
         "updatedAt": "2025-11-21"
@@ -192,7 +192,7 @@
         "contributors": [
             "Bryan Leung"
         ],
-        "simulationUrl": "simulations/quantum-physics/photoelectric-effect.html",
+        "simulationUrl": "simulations/physics/quantum-physics/photoelectric-effect.html",
         "screenshotUrl": "screenshots/photoelectric-effect.png",
         "createdAt": "2025-11-22",
         "updatedAt": "2025-11-22"
@@ -258,7 +258,7 @@
         "contributors": [
             "Yin Kwong Poon"
         ],
-        "simulationUrl": "simulations/force-and-motion/newton-2nd-law.html",
+        "simulationUrl": "simulations/physics/force-and-motion/newton-2nd-law.html",
         "screenshotUrl": "screenshots/newton-2nd-law.png",
         "createdAt": "2025-11-22",
         "updatedAt": "2025-11-22"
@@ -278,9 +278,9 @@
             "zh-HK": "學習單擺運動和拋體物理。"
         },
         "contributors": [
-            ""
+            "Bruce Cheung"
         ],
-        "simulationUrl": "simulations/force-and-motion/acrobat-game.html",
+        "simulationUrl": "simulations/physics/force-and-motion/acrobat-game.html",
         "screenshotUrl": "screenshots/acrobat-game.png",
         "createdAt": "2025-11-22",
         "updatedAt": "2025-11-22"
