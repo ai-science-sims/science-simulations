@@ -328,5 +328,27 @@
         "screenshotUrl": "screenshots/ray-diagram-lens.png",
         "createdAt": "2025-11-29",
         "updatedAt": "2025-11-29"
+    },
+    {
+        "id": "wave-interference",
+        "category": {
+            "en-US": "Optics and Wave Motion",
+            "zh-HK": "光學與波動"
+        },
+        "title": {
+            "en-US": "Wave Interference Lab",
+            "zh-HK": "波動干涉實驗室"
+        },
+        "description": {
+            "en-US": "Interactive wave interference simulation with AI-powered analysis and real-time visualization.",
+            "zh-HK": "互動波動干涉模擬，配備 AI 分析和即時視覺化。"
+        },
+        "contributors": [
+            "Winky Yeung"
+        ],
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/wave-interference.html",
+        "screenshotUrl": "screenshots/wave-interference.png",
+        "createdAt": "2025-11-29",
+        "updatedAt": "2025-11-29"
     }
 ]

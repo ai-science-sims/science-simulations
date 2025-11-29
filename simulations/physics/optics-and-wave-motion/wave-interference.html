@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Interference Lab</title>
+
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 2. Load React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- 3. Load Babel (to compile JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Prevent touch scrolling when dragging on canvas */
+        canvas {
+            touch-action: none;
+        }
+
+        .markdown-body {
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .markdown-body strong {
+            font-weight: 600;
+            color: #4338ca;
+        }
+
+        /* Language selector styling */
+        .lang-selector {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+
+        .lang-btn {
+            padding: 0.4rem 0.8rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #4f46e5;
+            border: 1px solid #e0e7ff;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #eef2ff;
+        }
+
+        .lang-btn.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <!-- The React Application Logic -->
+    <script type="text/babel">
+        // --- Setup Globals ---
+        const { useState, useEffect, useRef, useMemo } = React;
+        const apiKey = ""; // You can insert your Gemini API Key here if you have one.
+
+        // --- Internationalization ---
+        const translations = {
+            'en-US': {
+                title: 'Wave Lab',
+                subtitle: 'Interactive Interference Simulation',
+                pause: 'Pause',
+                simulate: 'Simulate',
+                reset: 'Reset',
+                aiTools: 'AI Tools',
+                analyze: 'Analyze',
+                labPartner: 'Lab Partner',
+                source1: 'Source 1 (S1)',
+                source2: 'Source 2 (S2)',
+                amplitude: 'Amplitude',
+                wavelength: 'Wavelength (via Freq)',
+                phase: 'Phase',
+                visualAids: 'Visual Aids & Analysis',
+                showNodalLines: 'Show Nodal Lines',
+                showAntinodalLines: 'Show Antinodal Lines',
+                analysisLine: 'Analysis Line',
+                showLine: 'Show Line',
+                horizontal: 'Horiz.',
+                vertical: 'Vert.',
+                interactive: 'Interactive:',
+                interactiveHint: 'Drag the sources (S1, S2), the red Probe (P), or the purple Analysis Line to update the graphs.',
+                displacementVsTime: 'Displacement vs. Time (at Point P)',
+                displacementVsDistance: 'Displacement vs. Distance',
+                amplitudeVsDistance: 'Amplitude vs. Distance',
+                enableAnalysisLine: 'Enable Analysis Line to see cross-section graphs.',
+                aiLabPartner: 'AI Lab Partner',
+                askAboutWaves: 'Ask about the waves...',
+                aiGreeting: "Hi! I'm your AI Physics Lab Partner. Ask me about the interference pattern you're seeing!",
+                analyzePattern: '✨ Analyze this pattern for me.',
+                maxTrough: 'Max Trough',
+                maxCrest: 'Max Crest',
+                timeMinus: 'Time -',
+                timePlus: 'Time +',
+                minusY: '-y',
+                plusY: '+y',
+                zero: '0',
+                dist: 'Dist',
+                maxAmp: 'Max Amp'
+            },
+            'zh-HK': {
+                title: '波動實驗室',
+                subtitle: '互動干涉模擬',
+                pause: '暫停',
+                simulate: '模擬',
+                reset: '重設',
+                aiTools: 'AI 工具',
+                analyze: '分析',
+                labPartner: '實驗夥伴',
+                source1: '波源 1',
+                source2: '波源 2',
+                amplitude: '振幅',
+                wavelength: '波長（經頻率）',
+                phase: '相位',
+                visualAids: '視覺輔助與分析',
+                showNodalLines: '顯示節線',
+                showAntinodalLines: '顯示腹線',
+                analysisLine: '分析線',
+                showLine: '顯示線',
+                horizontal: '水平',
+                vertical: '垂直',
+                interactive: '互動：',
+                interactiveHint: '拖動波源、紅色探測點或紫色分析線以更新圖表',
+                displacementVsTime: '位移對時間（於點 P）',
+                displacementVsDistance: '位移對距離',
+                amplitudeVsDistance: '振幅對距離',
+                enableAnalysisLine: '啟用分析線以查看橫截面圖表',
+                aiLabPartner: 'AI 實驗夥伴',
+                askAboutWaves: '詢問關於波動的問題',
+                aiGreeting: '你好！我是你的 AI 物理實驗夥伴。問我關於你看到的干涉圖樣吧！',
+                analyzePattern: '✨ 為我分析這個圖樣',
+                maxTrough: '最大波谷',
+                maxCrest: '最大波峰',
+                timeMinus: '時間 -',
+                timePlus: '時間 +',
+                minusY: '-y',
+                plusY: '+y',
+                zero: '0',
+                dist: '距離',
+                maxAmp: '最大振幅'
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        // Initialize language from URL parameter
+        function initLanguage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const langParam = urlParams.get('lang');
+            if (langParam && translations[langParam]) {
+                currentLang = langParam;
+            }
+            document.documentElement.lang = currentLang;
+            document.title = t('title');
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.title = t('title');
+
+            // Update URL parameter
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+
+            // Force re-render
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<InterferenceLab />);
+        }
+
+        // --- Icons (Inline SVG to ensure standalone functionality) ---
+        const Waves = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" /></svg>;
+        const Play = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>;
+        const Pause = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>;
+        const RefreshCw = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>;
+        const Info = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>;
+        const Eye = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>;
+        const EyeOff = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" /></svg>;
+        const Sparkles = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>;
+        const MessageSquare = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>;
+        const Activity = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>;
+        const X = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>;
+        const Send = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>;
+        const AlignHorizontalJustifyStart = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="6" height="14" x="4" y="6" rx="2" /><rect width="6" height="10" x="14" y="8" rx="2" /><path d="M4 2h16" /><path d="M4 22h16" /></svg>;
+        const AlignVerticalJustifyStart = (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="6" x="6" y="4" rx="2" /><rect width="10" height="6" x="8" y="14" rx="2" /><path d="M2 4v16" /><path d="M22 4v16" /></svg>;
+
+        // --- Constants & Helpers ---
+
+        const CANVAS_WIDTH = 400;
+        const CANVAS_HEIGHT = 400;
+        const GRID_SIZE = 2; // Pixel density (lower is faster)
+        const WAVE_SPEED = 3.0; // Generic constant speed for the wave medium
+        const BASE_COLOR = [0, 150, 255]; // Generic blue color for the waves
+
+        const INITIAL_SOURCE = {
+            amp: 1.0,
+            freq: 0.1,
+            phase: 0
+        };
+
+        // --- Gemini API Helper ---
+        async function generatePhysicsContent(prompt, systemContext) {
+            if (!apiKey) {
+                return "AI features require an API Key. Please edit the HTML file to add one.";
+            }
+            try {
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                role: "user",
+                                parts: [{ text: `Context: ${JSON.stringify(systemContext)}\n\nQuestion: ${prompt}` }]
+                            }],
+                            systemInstruction: {
+                                parts: [{ text: "You are an enthusiastic high school physics tutor embedded in a wave interference simulation. You have access to the current simulation state (sources, positions). Keep answers concise (under 80 words) and focus on the physics concepts: constructive/destructive interference, path difference, wavelength, and amplitude. Use bolding for key terms." }]
+                            }
+                        }),
+                    }
+                );
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || 'API Error');
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't generate a response.";
+            } catch (error) {
+                console.error(error);
+                return "Unable to contact the AI tutor. Please try again later.";
+            }
+        }
+
+        // --- Components ---
+
+        const MiniGraph = ({ title, data, color, rangeY, type = 'line', labels }) => {
+            const canvasRef = useRef(null);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width;
+                const h = canvas.height;
+
+                // Clear
+                ctx.clearRect(0, 0, w, h);
+
+                // Grid lines
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, h / 2);
+                ctx.lineTo(w, h / 2);
+                ctx.stroke();
+
+                if (data.length === 0) return;
+
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+
+                const normalizeY = (val) => {
+                    return h / 2 - (val / rangeY) * (h / 2 - 5);
+                };
+
+                if (type === 'line') {
+                    ctx.moveTo(0, normalizeY(data[0]));
+                    for (let i = 1; i < data.length; i++) {
+                        const x = (i / (data.length - 1)) * w;
+                        ctx.lineTo(x, normalizeY(data[i]));
+                    }
+                } else if (type === 'envelope') {
+                    ctx.fillStyle = color + '40';
+                    ctx.moveTo(0, h / 2);
+                    for (let i = 0; i < data.length; i++) {
+                        const x = (i / (data.length - 1)) * w;
+                        ctx.lineTo(x, normalizeY(Math.abs(data[i])));
+                    }
+                    ctx.lineTo(w, h / 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, normalizeY(Math.abs(data[0])));
+                    for (let i = 0; i < data.length; i++) {
+                        const x = (i / (data.length - 1)) * w;
+                        ctx.lineTo(x, normalizeY(Math.abs(data[i])));
+                    }
+                }
+
+                ctx.stroke();
+
+                // Labels
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(labels?.yMax || '', 2, 10);
+                ctx.fillText(labels?.yMin || '', 2, h - 2);
+                ctx.fillText(labels?.xMin || '', 2, h / 2 - 2);
+                ctx.fillText(labels?.xMax || '', w - 20, h / 2 - 2);
+
+            }, [data, color, rangeY, type, labels]);
+
+            return (
+                <div className="flex flex-col mb-2 bg-white rounded shadow-sm p-2 border border-slate-200 h-full">
+                    <div className="text-xs font-semibold text-slate-700 mb-1 truncate" title={title}>{title}</div>
+                    <div className="flex-1 min-h-0">
+                        <canvas ref={canvasRef} width={300} height={80} className="w-full h-full" />
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        function InterferenceLab() {
+            // State
+            const [isPlaying, setIsPlaying] = useState(true);
+            const [time, setTime] = useState(0);
+
+            // Source Parameters
+            const [s1, setS1] = useState({ ...INITIAL_SOURCE, x: 100, y: 200 });
+            const [s2, setS2] = useState({ ...INITIAL_SOURCE, x: 300, y: 200, phase: 0 });
+
+            // View Options
+            const [showNodes, setShowNodes] = useState(false);
+            const [showAntinodes, setShowAntinodes] = useState(false);
+            const [showAnalysisLine, setShowAnalysisLine] = useState(true);
+            const [analysisLineOrientation, setAnalysisLineOrientation] = useState('horizontal');
+
+            // Interactive Elements positions
+            const [probePos, setProbePos] = useState({ x: 200, y: 150 });
+            const [analysisLinePos, setAnalysisLinePos] = useState(300);
+
+            // Computed Data for Graphs
+            const [probeData, setProbeData] = useState(new Array(100).fill(0));
+            const [sectionDispData, setSectionDispData] = useState([]);
+            const [sectionAmpData, setSectionAmpData] = useState([]);
+
+            // AI State
+            const [showAiChat, setShowAiChat] = useState(false);
+            const [chatMessages, setChatMessages] = useState([{ role: 'model', text: t('aiGreeting') }]);
+            const [userPrompt, setUserPrompt] = useState('');
+            const [isAiLoading, setIsAiLoading] = useState(false);
+
+            // Refs
+            const canvasRef = useRef(null);
+            const overlayRef = useRef(null);
+            const requestRef = useRef();
+            const chatEndRef = useRef(null);
+
+            // AI Handlers
+            const handleSendMessage = async () => {
+                if (!userPrompt.trim()) return;
+                const newMessages = [...chatMessages, { role: 'user', text: userPrompt }];
+                setChatMessages(newMessages);
+                setUserPrompt('');
+                setIsAiLoading(true);
+
+                const context = {
+                    waveSpeed: WAVE_SPEED,
+                    source1: s1,
+                    source2: s2,
+                    probePosition: probePos,
+                    analysisLine: {
+                        visible: showAnalysisLine,
+                        orientation: analysisLineOrientation,
+                        position: analysisLinePos
+                    },
+                    timeTick: time
+                };
+
+                const aiResponse = await generatePhysicsContent(userPrompt, context);
+                setChatMessages([...newMessages, { role: 'model', text: aiResponse }]);
+                setIsAiLoading(false);
+            };
+
+            const handleQuickAnalysis = async () => {
+                setShowAiChat(true);
+                setIsAiLoading(true);
+                const context = { waveSpeed: WAVE_SPEED, source1: s1, source2: s2 };
+                const prompt = "Analyze the current interference pattern. Calculate the wavelength based on frequency and speed. Describe where constructive vs destructive interference is happening.";
+                setChatMessages(prev => [...prev, { role: 'user', text: t('analyzePattern') }]);
+                const aiResponse = await generatePhysicsContent(prompt, context);
+                setChatMessages(prev => [...prev, { role: 'model', text: aiResponse }]);
+                setIsAiLoading(false);
+            };
+
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [chatMessages, showAiChat]);
+
+            // Physics Engine
+            const calculateWave = (sx, sy, x, y, t, amp, freq, phase) => {
+                const dist = Math.sqrt((x - sx) ** 2 + (y - sy) ** 2);
+                const k = (2 * Math.PI * freq) / WAVE_SPEED;
+                const omega = 2 * Math.PI * freq;
+                return amp * Math.sin(k * dist - omega * t + phase);
+            };
+
+            const getResultant = (x, y, t) => {
+                const w1 = calculateWave(s1.x, s1.y, x, y, t, s1.amp, s1.freq, s1.phase * (Math.PI / 180));
+                const w2 = calculateWave(s2.x, s2.y, x, y, t, s2.amp, s2.freq, s2.phase * (Math.PI / 180));
+                return w1 + w2;
+            };
+
+            const getResultantAmp = (x, y) => {
+                const d1 = Math.sqrt((x - s1.x) ** 2 + (y - s1.y) ** 2);
+                const d2 = Math.sqrt((x - s2.x) ** 2 + (y - s2.y) ** 2);
+                const k1 = (2 * Math.PI * s1.freq) / WAVE_SPEED;
+
+                if (Math.abs(s1.freq - s2.freq) < 0.01) {
+                    const k = k1;
+                    const pathDiff = d2 - d1;
+                    const phaseDiff = (s2.phase - s1.phase) * (Math.PI / 180);
+                    const delta = k * pathDiff + phaseDiff;
+                    return Math.sqrt(s1.amp ** 2 + s2.amp ** 2 + 2 * s1.amp * s2.amp * Math.cos(delta));
+                } else {
+                    return s1.amp + s2.amp;
+                }
+            };
+
+            // Animation Loop
+            const animate = () => {
+                if (isPlaying) {
+                    setTime(prev => prev + 0.5);
+                }
+
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = CANVAS_WIDTH / GRID_SIZE;
+                const h = CANVAS_HEIGHT / GRID_SIZE;
+
+                const imgData = ctx.createImageData(w, h);
+                const data = imgData.data;
+                const baseColor = BASE_COLOR;
+
+                for (let py = 0; py < h; py++) {
+                    for (let px = 0; px < w; px++) {
+                        const x = px * GRID_SIZE;
+                        const y = py * GRID_SIZE;
+                        const val = getResultant(x, y, time);
+                        const maxExpected = s1.amp + s2.amp;
+                        const norm = (val / maxExpected + 1) / 2;
+
+                        const idx = (px + py * w) * 4;
+                        const r = 255 * norm + baseColor[0] * (1 - norm);
+                        const g = 255 * norm + baseColor[1] * (1 - norm);
+                        const b = 255 * norm + baseColor[2] * (1 - norm);
+                        data[idx] = r;
+                        data[idx + 1] = g;
+                        data[idx + 2] = b;
+                        data[idx + 3] = 255;
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // Update Graphs
+                const probeVal = getResultant(probePos.x, probePos.y, time);
+                setProbeData(prev => [...prev.slice(1), probeVal]);
+
+                if (showAnalysisLine && (isPlaying || sectionDispData.length === 0)) {
+                    const dispArr = [];
+                    const ampArr = [];
+                    const steps = 100;
+                    const isHorizontal = analysisLineOrientation === 'horizontal';
+                    const length = isHorizontal ? CANVAS_WIDTH : CANVAS_HEIGHT;
+
+                    for (let i = 0; i < steps; i++) {
+                        const pos = (i / steps) * length;
+                        const x = isHorizontal ? pos : analysisLinePos;
+                        const y = isHorizontal ? analysisLinePos : pos;
+                        dispArr.push(getResultant(x, y, time));
+                        ampArr.push(getResultantAmp(x, y));
+                    }
+                    setSectionDispData(dispArr);
+                    setSectionAmpData(ampArr);
+                }
+                requestRef.current = requestAnimationFrame(animate);
+            };
+
+            useEffect(() => {
+                requestRef.current = requestAnimationFrame(animate);
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [isPlaying, time, s1, s2, probePos, analysisLinePos, analysisLineOrientation, showAnalysisLine]);
+
+            // Overlay Rendering
+            useEffect(() => {
+                const canvas = overlayRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Sources
+                [s1, s2].forEach((s, i) => {
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = i === 0 ? '#f59e0b' : '#10b981';
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = 'black';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`S${i + 1}`, s.x, s.y + 3);
+                });
+
+                // Probe
+                ctx.beginPath();
+                ctx.arc(probePos.x, probePos.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444';
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.stroke();
+                ctx.fillStyle = 'white';
+                ctx.fillText('P', probePos.x, probePos.y - 10);
+
+                // Analysis Line
+                if (showAnalysisLine) {
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeStyle = '#6366f1';
+                    ctx.lineWidth = 2;
+                    ctx.fillStyle = '#6366f1';
+                    ctx.font = '10px sans-serif';
+
+                    if (analysisLineOrientation === 'horizontal') {
+                        ctx.moveTo(0, analysisLinePos);
+                        ctx.lineTo(CANVAS_WIDTH, analysisLinePos);
+                        ctx.stroke();
+                        ctx.fillText(t('analysisLine'), 10, analysisLinePos - 5);
+                    } else {
+                        ctx.moveTo(analysisLinePos, 0);
+                        ctx.lineTo(analysisLinePos, CANVAS_HEIGHT);
+                        ctx.stroke();
+                        ctx.save();
+                        ctx.translate(analysisLinePos + 5, 20);
+                        ctx.rotate(Math.PI / 2);
+                        ctx.fillText(t('analysisLine'), 0, 0);
+                        ctx.restore();
+                    }
+                    ctx.setLineDash([]);
+                }
+
+                // Nodal/Antinodal
+                if (showNodes || showAntinodes) {
+                    if (Math.abs(s1.freq - s2.freq) < 0.01) {
+                        const lambda = WAVE_SPEED / s1.freq;
+                        const separation = Math.sqrt((s1.x - s2.x) ** 2 + (s1.y - s2.y) ** 2);
+                        const maxOrder = Math.floor(separation / lambda);
+
+                        for (let m = -maxOrder; m <= maxOrder; m++) {
+                            if (showAntinodes) drawHyperbola(ctx, m * lambda, '#ffffff', 0.5);
+                            if (showNodes) drawHyperbola(ctx, (m + 0.5) * lambda, '#000000', 0.8);
+                        }
+                    }
+                }
+            }, [s1, s2, probePos, analysisLinePos, analysisLineOrientation, showAnalysisLine, showNodes, showAntinodes]);
+
+            const drawHyperbola = (ctx, pathDiff, color, alpha) => {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = alpha;
+                ctx.lineWidth = 2;
+                for (let x = 0; x < CANVAS_WIDTH; x += 4) {
+                    for (let y = 0; y < CANVAS_HEIGHT; y += 4) {
+                        const d1 = Math.sqrt((x - s1.x) ** 2 + (y - s1.y) ** 2);
+                        const d2 = Math.sqrt((x - s2.x) ** 2 + (y - s2.y) ** 2);
+                        const diff = d2 - d1;
+                        if (Math.abs(diff - pathDiff) < 2) ctx.rect(x, y, 2, 2);
+                    }
+                }
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            };
+
+            const handleCanvasInteraction = (e) => {
+                const rect = canvasRef.current.getBoundingClientRect();
+                const scaleX = CANVAS_WIDTH / rect.width;
+                const scaleY = CANVAS_HEIGHT / rect.height;
+
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                if (!clientX || !clientY) return;
+
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
+
+                const distS1 = Math.sqrt((x - s1.x) ** 2 + (y - s1.y) ** 2);
+                const distS2 = Math.sqrt((x - s2.x) ** 2 + (y - s2.y) ** 2);
+                const distP = Math.sqrt((x - probePos.x) ** 2 + (y - probePos.y) ** 2);
+
+                let distLine = 1000;
+                if (showAnalysisLine) {
+                    distLine = analysisLineOrientation === 'horizontal'
+                        ? Math.abs(y - analysisLinePos)
+                        : Math.abs(x - analysisLinePos);
+                }
+
+                if (e.buttons === 1 || e.type === 'touchmove') {
+                    if (distS1 < 20) setS1(p => ({ ...p, x, y }));
+                    else if (distS2 < 20) setS2(p => ({ ...p, x, y }));
+                    else if (distP < 20) setProbePos({ x, y });
+                    else if (distLine < 20) {
+                        setAnalysisLinePos(analysisLineOrientation === 'horizontal' ? y : x);
+                    }
+                }
+            };
+
+            return (
+                <div className="flex flex-col md:flex-row h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden relative">
+                    {/* Language Selector */}
+                    <div className="lang-selector">
+                        <button
+                            className={`lang-btn ${currentLang === 'en-US' ? 'active' : ''}`}
+                            onClick={() => changeLanguage('en-US')}
+                        >
+                            EN
+                        </button>
+                        <button
+                            className={`lang-btn ${currentLang === 'zh-HK' ? 'active' : ''}`}
+                            onClick={() => changeLanguage('zh-HK')}
+                        >
+                            繁
+                        </button>
+                    </div>
+
+                    {/* SIDEBAR */}
+                    <div className="w-full md:w-80 flex flex-col border-r border-slate-200 bg-white h-full overflow-y-auto z-10">
+                        <div className="p-4 border-b border-slate-100">
+                            <h1 className="text-xl font-bold flex items-center gap-2 text-indigo-600">
+                                <Waves className="w-6 h-6" /> {t('title')}
+                            </h1>
+                            <p className="text-xs text-slate-500 mt-1">{t('subtitle')}</p>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setIsPlaying(!isPlaying)}
+                                    className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg font-medium transition-colors ${isPlaying ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+                                >
+                                    {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                                    {isPlaying ? t('pause') : t('simulate')}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setS1({ ...INITIAL_SOURCE, x: 100, y: 200 });
+                                        setS2({ ...INITIAL_SOURCE, x: 300, y: 200 });
+                                        setTime(0);
+                                    }}
+                                    className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
+                                    title={t('reset')}
+                                >
+                                    <RefreshCw size={18} />
+                                </button>
+                            </div>
+
+                            <div className="bg-gradient-to-r from-violet-50 to-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                <h3 className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Sparkles size={12} /> {t('aiTools')}
+                                </h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={handleQuickAnalysis}
+                                        className="flex flex-col items-center justify-center p-2 bg-white rounded border border-indigo-200 shadow-sm text-indigo-700 text-xs hover:bg-indigo-50 transition-colors"
+                                    >
+                                        <Activity size={16} className="mb-1" />
+                                        {t('analyze')}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowAiChat(!showAiChat)}
+                                        className="flex flex-col items-center justify-center p-2 bg-white rounded border border-indigo-200 shadow-sm text-indigo-700 text-xs hover:bg-indigo-50 transition-colors"
+                                    >
+                                        <MessageSquare size={16} className="mb-1" />
+                                        {t('labPartner')}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Source 1 */}
+                        <div className="p-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 text-sm font-bold text-amber-600">
+                                    <div className="w-3 h-3 rounded-full bg-amber-500"></div> {t('source1')}
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>{t('amplitude')}</span> <span>{s1.amp.toFixed(1)}</span>
+                                    </div>
+                                    <input type="range" min="0" max="2" step="0.1" value={s1.amp} onChange={(e) => setS1({ ...s1, amp: parseFloat(e.target.value) })} className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>{t('wavelength')}</span> <span>{(WAVE_SPEED / s1.freq).toFixed(0)}px</span>
+                                    </div>
+                                    <input type="range" min="0.05" max="0.3" step="0.01" value={s1.freq} onChange={(e) => setS1({ ...s1, freq: parseFloat(e.target.value) })} className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>{t('phase')}</span> <span>{s1.phase}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="360" step="15" value={s1.phase} onChange={(e) => setS1({ ...s1, phase: parseFloat(e.target.value) })} className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Source 2 */}
+                        <div className="p-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 text-sm font-bold text-emerald-600">
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div> {t('source2')}
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>{t('amplitude')}</span> <span>{s2.amp.toFixed(1)}</span>
+                                    </div>
+                                    <input type="range" min="0" max="2" step="0.1" value={s2.amp} onChange={(e) => setS2({ ...s2, amp: parseFloat(e.target.value) })} className="w-full accent-emerald-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>{t('wavelength')}</span> <span>{(WAVE_SPEED / s2.freq).toFixed(0)}px</span>
+                                    </div>
+                                    <input type="range" min="0.05" max="0.3" step="0.01" value={s2.freq} onChange={(e) => setS2({ ...s2, freq: parseFloat(e.target.value) })} className="w-full accent-emerald-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                        <span>{t('phase')}</span> <span>{s2.phase}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="360" step="15" value={s2.phase} onChange={(e) => setS2({ ...s2, phase: parseFloat(e.target.value) })} className="w-full accent-emerald-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Overlays */}
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex-grow">
+                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">{t('visualAids')}</label>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => setShowNodes(!showNodes)}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm ${showNodes ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}
+                                >
+                                    <span>{t('showNodalLines')}</span>
+                                    {showNodes ? <Eye size={14} /> : <EyeOff size={14} />}
+                                </button>
+                                <button
+                                    onClick={() => setShowAntinodes(!showAntinodes)}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm ${showAntinodes ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}
+                                >
+                                    <span>{t('showAntinodalLines')}</span>
+                                    {showAntinodes ? <Eye size={14} /> : <EyeOff size={14} />}
+                                </button>
+
+                                {/* Analysis Line Controls */}
+                                <div className="pt-2 border-t border-slate-200 mt-2">
+                                    <label className="text-xs font-semibold text-slate-500 mb-2 block">{t('analysisLine')}</label>
+                                    <button
+                                        onClick={() => setShowAnalysisLine(!showAnalysisLine)}
+                                        className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm mb-2 ${showAnalysisLine ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 border border-slate-300'}`}
+                                    >
+                                        <span>{t('showLine')}</span>
+                                        {showAnalysisLine ? <Eye size={14} /> : <EyeOff size={14} />}
+                                    </button>
+                                    {showAnalysisLine && (
+                                        <div className="flex border border-slate-300 rounded overflow-hidden">
+                                            <button
+                                                onClick={() => setAnalysisLineOrientation('horizontal')}
+                                                className={`flex-1 py-1 text-xs flex items-center justify-center gap-1 ${analysisLineOrientation === 'horizontal' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700'}`}
+                                            >
+                                                <AlignHorizontalJustifyStart size={14} /> {t('horizontal')}
+                                            </button>
+                                            <button
+                                                onClick={() => setAnalysisLineOrientation('vertical')}
+                                                className={`flex-1 py-1 text-xs flex items-center justify-center gap-1 ${analysisLineOrientation === 'vertical' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border-l border-slate-300'}`}
+                                            >
+                                                <AlignVerticalJustifyStart size={14} /> {t('vertical')}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="mt-4 p-3 bg-blue-50 text-blue-800 rounded text-xs leading-relaxed border border-blue-100">
+                                <Info size={14} className="inline mr-1 mb-1" />
+                                <strong>{t('interactive')}</strong> {t('interactiveHint')}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* MAIN VIEWPORT */}
+                    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+                        {/* CANVAS AREA */}
+                        <div
+                            className="flex-1 bg-neutral-900 relative cursor-crosshair overflow-hidden flex items-center justify-center"
+                            onMouseMove={handleCanvasInteraction}
+                            onMouseDown={handleCanvasInteraction}
+                            onTouchMove={handleCanvasInteraction}
+                        >
+                            <canvas
+                                ref={canvasRef}
+                                width={CANVAS_WIDTH / GRID_SIZE}
+                                height={CANVAS_HEIGHT / GRID_SIZE}
+                                className="absolute w-[400px] h-[400px] shadow-2xl"
+                                style={{
+                                    width: 'min(90vw, 600px)',
+                                    height: 'min(90vw, 600px)',
+                                    imageRendering: 'pixelated'
+                                }}
+                            />
+                            <canvas
+                                ref={overlayRef}
+                                width={CANVAS_WIDTH}
+                                height={CANVAS_HEIGHT}
+                                className="absolute pointer-events-none"
+                                style={{
+                                    width: 'min(90vw, 600px)',
+                                    height: 'min(90vw, 600px)',
+                                }}
+                            />
+                        </div>
+
+                        {/* BOTTOM GRAPHS PANEL */}
+                        <div className="h-64 md:h-48 bg-white border-t border-slate-200 p-4 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-y-auto z-10">
+                            <MiniGraph
+                                title={t('displacementVsTime')}
+                                data={probeData}
+                                color="#ef4444"
+                                rangeY={s1.amp + s2.amp}
+                                labels={{ yMin: t('maxTrough'), yMax: t('maxCrest'), xMin: t('timeMinus'), xMax: t('timePlus') }}
+                            />
+
+                            {showAnalysisLine ? (
+                                <>
+                                    <MiniGraph
+                                        title={`${t('displacementVsDistance')} (${analysisLineOrientation})`}
+                                        data={sectionDispData}
+                                        color="#6366f1"
+                                        rangeY={s1.amp + s2.amp}
+                                        labels={{ yMin: t('minusY'), yMax: t('plusY'), xMin: t('zero'), xMax: t('dist') }}
+                                    />
+                                    <MiniGraph
+                                        title={`${t('amplitudeVsDistance')} (${analysisLineOrientation})`}
+                                        data={sectionAmpData}
+                                        color="#8b5cf6"
+                                        rangeY={s1.amp + s2.amp}
+                                        type="envelope"
+                                        labels={{ yMin: t('zero'), yMax: t('maxAmp'), xMin: t('zero'), xMax: t('dist') }}
+                                    />
+                                </>
+                            ) : (
+                                <div className="col-span-1 md:col-span-2 flex items-center justify-center text-slate-400 text-sm italic border border-dashed border-slate-300 rounded h-full bg-slate-50">
+                                    {t('enableAnalysisLine')}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ✨ AI CHAT OVERLAY ✨ */}
+                        {showAiChat && (
+                            <div className="absolute right-4 bottom-56 w-80 bg-white rounded-xl shadow-2xl border border-indigo-100 flex flex-col z-50 overflow-hidden ring-4 ring-black/5" style={{ maxHeight: '400px' }}>
+                                <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-3 flex items-center justify-between text-white">
+                                    <div className="flex items-center gap-2 font-medium text-sm">
+                                        <Sparkles size={16} /> {t('aiLabPartner')}
+                                    </div>
+                                    <button onClick={() => setShowAiChat(false)} className="hover:bg-white/20 rounded p-1">
+                                        <X size={16} />
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 p-3 overflow-y-auto bg-slate-50 space-y-3">
+                                    {chatMessages.map((msg, i) => (
+                                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[85%] rounded-lg p-3 text-xs leading-relaxed ${msg.role === 'user'
+                                                    ? 'bg-indigo-600 text-white rounded-br-none'
+                                                    : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm'
+                                                }`}>
+                                                <div className="markdown-body">
+                                                    {msg.text}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isAiLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-white border border-slate-200 rounded-lg rounded-bl-none p-3 shadow-sm flex gap-1">
+                                                <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
+                                                <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-100"></div>
+                                                <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-200"></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={chatEndRef} />
+                                </div>
+
+                                <div className="p-3 bg-white border-t border-slate-100 flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={userPrompt}
+                                        onChange={(e) => setUserPrompt(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        placeholder={t('askAboutWaves')}
+                                        className="flex-1 text-xs border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 bg-slate-50"
+                                    />
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={isAiLoading || !userPrompt.trim()}
+                                        className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Send size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Initialize and render
+        initLanguage();
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<InterferenceLab />);
+    </script>
+</body>
+
+</html>
