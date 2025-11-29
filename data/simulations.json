@@ -350,5 +350,49 @@
         "screenshotUrl": "screenshots/wave-interference.png",
         "createdAt": "2025-11-29",
         "updatedAt": "2025-11-29"
+    },
+    {
+        "id": "magnetic-field-3d",
+        "category": {
+            "en-US": "Electricity and Magnetism",
+            "zh-HK": "電與磁"
+        },
+        "title": {
+            "en-US": "3D Magnetic Field Simulator",
+            "zh-HK": "3D 磁場模擬器"
+        },
+        "description": {
+            "en-US": "Interactive 3D visualization of magnetic fields from magnets, wires, solenoids, and coils.",
+            "zh-HK": "互動 3D 視覺化磁鐵、導線、螺線管和線圈的磁場。"
+        },
+        "contributors": [
+            "Matthew Chan"
+        ],
+        "simulationUrl": "simulations/physics/electricity-and-magnetism/magnetic-field-3d.html",
+        "screenshotUrl": "screenshots/magnetic-field-3d.png",
+        "createdAt": "2025-11-29",
+        "updatedAt": "2025-11-29"
+    },
+    {
+        "id": "moment",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Multi-Pivot Torque Balance Simulator",
+            "zh-HK": "多支點力矩平衡模擬器"
+        },
+        "description": {
+            "en-US": "Arrange pivots and objects on a beam to study torque balance, automatic leveling, and normal forces.",
+            "zh-HK": "在橫樑上配置支點與物體，研究力矩平衡、自動調整與法向力分布。"
+        },
+        "contributors": [
+            "Yiu Fai Ma"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/moment.html",
+        "screenshotUrl": "screenshots/moment.png",
+        "createdAt": "2025-11-29",
+        "updatedAt": "2025-11-29"
     }
 ]

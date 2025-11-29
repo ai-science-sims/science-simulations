@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Pivot Torque Balance Simulator</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            user-select: none;
+            position: relative;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .language-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #d0d7de;
+            background: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            font-weight: 600;
+            color: #0b5ed7;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .lang-btn:hover {
+            background: #e7f1ff;
+        }
+
+        .lang-btn.active {
+            background: #0b5ed7;
+            color: white;
+            border-color: #0b5ed7;
+        }
+
+        .controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1100px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            gap: 6px;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 0.2s;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background-color: #FF9800;
+            color: #fff;
+            min-width: 150px;
+        }
+
+        .btn-start:hover {
+            background-color: #F57C00;
+        }
+
+        .btn-start.running {
+            background-color: #d32f2f;
+        }
+
+        .btn-start.running:hover {
+            background-color: #b71c1c;
+        }
+
+        .btn-reset {
+            background-color: #6c757d;
+        }
+
+        .btn-reset:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-add-pivot {
+            background-color: #795548;
+        }
+
+        .btn-add-pivot:hover {
+            background-color: #5D4037;
+        }
+
+        .btn-balance {
+            background-color: #28a745;
+            position: relative;
+        }
+
+        .btn-balance.active {
+            background-color: #1e7e34;
+            box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2);
+            border: 2px solid #0f3e1a;
+            animation: pulse 2s infinite;
+        }
+
+        .btn-balance.active::after {
+            content: attr(data-hint);
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+
+        .btn-normal {
+            background-color: #607D8B;
+        }
+
+        .btn-normal:hover {
+            background-color: #455A64;
+        }
+
+        .btn-normal.active {
+            background-color: #2E7D32;
+            box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        canvas {
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: default;
+        }
+
+        .status {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            width: 1000px;
+            transition: background-color 0.3s;
+        }
+
+        .status.setup {
+            background-color: #e2e6ea;
+            color: #383d41;
+            border: 1px solid #d6d8db;
+        }
+
+        .status.balanced {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.unbalanced {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        .hint {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="language-selector">
+        <button class="lang-btn active" data-lang="en-US">EN</button>
+        <button class="lang-btn" data-lang="zh-HK">繁</button>
+    </div>
+
+    <h1 data-i18n="title">Multi-Pivot Torque Balance Simulator</h1>
+    <div class="subtitle">
+        <span data-i18n="subtitleIntro">Force legend:</span>
+        <span style="color:#D32F2F" data-i18n="subtitleObject">Red = Object Weight</span>
+        <span style="color:#9C27B0" data-i18n="subtitleBeam">Purple = Beam Weight</span>
+        <span style="color:#2E7D32" data-i18n="subtitlePivot">Green = Pivot Normal Force</span>
+        <span data-i18n="subtitleTolerance">(Error tolerance 0.02 Nm)</span>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label data-i18n="labelBeamMass">Beam Mass (kg):</label>
+            <input type="number" id="beamMassInput" value="5" min="0" step="1" onchange="updateSystemParams()">
+            <label data-i18n="labelBeamLength">Beam Length (m):</label>
+            <input type="number" id="beamLengthInput" value="10" min="2" max="50" step="1"
+                onchange="updateSystemParams()">
+        </div>
+
+        <div class="control-group">
+            <label data-i18n="labelObjectMass">Object Mass (kg):</label>
+            <input type="number" id="massInput" value="10" min="1" max="100">
+            <button class="btn" data-i18n="btnAddBlock" onclick="addBlock()">+ Object</button>
+        </div>
+
+        <button class="btn btn-add-pivot" data-i18n="btnAddPivot" onclick="addPivot()">+ Add Pivot</button>
+
+        <button class="btn btn-start" id="startBtn" onclick="toggleSimulation()">▶ Start Simulation</button>
+
+        <button class="btn btn-balance" id="balanceBtn" data-i18n="btnBalance" onclick="toggleBalanceMode()">⚡ Auto
+            Balance</button>
+        <button class="btn btn-normal" id="normalForceBtn" onclick="toggleNormalForce()">⟰ Show Normal Force</button>
+        <button class="btn btn-reset" data-i18n="btnReset" onclick="resetSim()">↺ Reset</button>
+    </div>
+
+    <canvas id="simCanvas" width="1000" height="400"></canvas>
+
+    <div id="statusDisplay" class="status setup">Status: Setup mode (Place objects, then press start)</div>
+
+    <div class="hint" data-i18n="hint">Hint: The beam stays horizontal while in setup mode. Click “Start Simulation” to
+        let it tilt and click stop to return to horizontal.</div>
+
+    <script>
+        const translations = {
+            'en-US': {
+                title: 'Multi-Pivot Torque Balance Simulator',
+                subtitleIntro: 'Force legend:',
+                subtitleObject: 'Red = Object Weight',
+                subtitleBeam: 'Purple = Beam Weight',
+                subtitlePivot: 'Green = Pivot Normal Force',
+                subtitleTolerance: '(Error tolerance 0.02 Nm)',
+                labelBeamMass: 'Beam Mass (kg):',
+                labelBeamLength: 'Beam Length (m):',
+                labelObjectMass: 'Object Mass (kg):',
+                btnAddBlock: '+ Object',
+                btnAddPivot: '+ Add Pivot',
+                btnBalance: '⚡ Auto Balance',
+                btnNormalShow: '⟰ Show Normal Force',
+                btnNormalHide: '⟰ Hide Normal Force',
+                btnReset: '↺ Reset',
+                btnStart: '▶ Start Simulation',
+                btnStop: '■ Stop Simulation',
+                hint: 'Hint: The beam stays horizontal while in setup mode. Click “Start Simulation” to let it tilt and click stop to return to horizontal.',
+                alertBalanceSinglePivot: 'Auto balance is only available when exactly one pivot is present.',
+                alertOutOfRange: 'Unable to balance! The required position exceeds the board length.',
+                promptDistance: 'Enter distance (meters):',
+                trashHint: 'Drag here to delete',
+                balanceHint: 'Click an object',
+                statusSetup: 'Status: Setup mode (Place objects, then press start)',
+                statusBalancedSimple: 'Status: Balanced',
+                statusSupported: 'Status: Stable (Supported by pivots {left} and {right})',
+                statusRotating: 'Status: Rotating {direction} (Net torque: {torque} Nm)',
+                unitKg: 'kg',
+                unitMeter: 'm'
+            },
+            'zh-HK': {
+                title: '多支點力矩平衡模擬器',
+                subtitleIntro: '受力圖示：',
+                subtitleObject: '紅色 = 物體重力',
+                subtitleBeam: '紫色 = 板重力',
+                subtitlePivot: '綠色 = 支點法向力',
+                subtitleTolerance: '(誤差容許度 0.02 Nm)',
+                labelBeamMass: '板質量 (kg)：',
+                labelBeamLength: '板長 (m)：',
+                labelObjectMass: '物體 (kg)：',
+                btnAddBlock: '+ 物體',
+                btnAddPivot: '+ 加入支點',
+                btnBalance: '⚡ 自動平衡',
+                btnNormalShow: '⟰ 顯示法向力',
+                btnNormalHide: '⟰ 隱藏法向力',
+                btnReset: '↺ 重置',
+                btnStart: '▶ 開始模擬',
+                btnStop: '■ 停止模擬',
+                hint: '提示：設定模式下板子固定水平，按「開始模擬」後才會計算傾倒，可隨時按停止回到水平。',
+                alertBalanceSinglePivot: '自動平衡功能僅在單一支點時可用。',
+                alertOutOfRange: '無法平衡！位置超出板長。',
+                promptDistance: '輸入距離 (公尺)：',
+                trashHint: '拖曳至此處刪除',
+                balanceHint: '請點擊物件',
+                statusSetup: '狀態：設定模式 (請配置物件，完成後按開始)',
+                statusBalancedSimple: '狀態：平衡',
+                statusSupported: '狀態：穩定 (由支點 {left} 與 {right} 支撐)',
+                statusRotating: '狀態：傾斜旋轉中 {direction} (淨力矩: {torque} Nm)',
+                unitKg: '公斤',
+                unitMeter: '米'
+            }
+        };
+
+        let currentLang = 'en-US';
+        let currentStatusKey = 'statusSetup';
+        let currentStatusClass = 'setup';
+        let currentStatusData = {};
+
+        function t(key, vars = {}) {
+            const langPack = translations[currentLang] || translations['en-US'];
+            let template = langPack[key] || translations['en-US'][key] || key;
+            Object.keys(vars).forEach(v => {
+                template = template.replace(`{${v}}`, vars[v]);
+            });
+            return template;
+        }
+
+        function setStatus(key, statusClass, vars = {}) {
+            currentStatusKey = key;
+            currentStatusClass = statusClass;
+            currentStatusData = { ...vars };
+            statusEl.textContent = t(key, vars);
+            statusEl.className = `status ${statusClass}`;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const value = t(key);
+                el.textContent = value;
+            });
+            document.title = t('title');
+            document.documentElement.lang = currentLang;
+            statusEl.textContent = t(currentStatusKey, currentStatusData);
+            statusEl.className = `status ${currentStatusClass}`;
+            balanceBtn.setAttribute('data-hint', t('balanceHint'));
+            updateStartButton();
+            updateBalanceBtn();
+            updateNormalForceBtn();
+        }
+
+        function changeLanguage(lang, skipPushState = false) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+            langButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            });
+            applyTranslations();
+            if (!skipPushState) {
+                const url = new URL(window.location);
+                url.searchParams.set('lang', lang);
+                window.history.pushState({}, '', url);
+            }
+        }
+
+        function initLanguage() {
+            const params = new URLSearchParams(window.location.search);
+            const langParam = params.get('lang');
+            if (langParam && translations[langParam]) {
+                changeLanguage(langParam, true);
+            } else {
+                changeLanguage(currentLang, true);
+            }
+        }
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('statusDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const balanceBtn = document.getElementById('balanceBtn');
+        const normalForceBtn = document.getElementById('normalForceBtn');
+        const langButtons = document.querySelectorAll('.lang-btn');
+
+        langButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                changeLanguage(btn.getAttribute('data-lang'));
+            });
+        });
+
+        const g = 9.81;
+        const PIVOT_BOTTOM_MARGIN = 170;
+        let PIVOT_Y = canvas.height - PIVOT_BOTTOM_MARGIN; // keep same distance from bottom even if canvas height changes
+        const BEAM_HEIGHT = 14;  
+
+        let BEAM_MASS = 5;
+        let BEAM_LENGTH_M = 10;
+        let SCALE_UNIT = 70;
+        let BEAM_LENGTH_PX = 700;
+
+        let blocks = [];
+        let pivots = [];
+
+        let angle = 0;
+        let angularVelocity = 0;
+        let beamCenterX = canvas.width / 2;
+        let activePivotIndex = 0;
+        let isStable = true;
+        let isSimRunning = false;
+
+        let isDraggingBlock = false;
+        let isDraggingPivot = false;
+        let draggingPivotObj = null;
+        let draggingBlockObj = null;
+        let dragOffsetX = 0;
+        let isBalanceMode = false;
+        let showNormalForce = false;
+
+        let clickZones = [];
+
+        class Block {
+            constructor(mass, offsetFromBeamCenter) {
+                this.mass = mass;
+                this.x = offsetFromBeamCenter;
+                this.y = -BEAM_HEIGHT / 2;
+                this.width = 30 + Math.min(mass, 50) * 0.6;
+                this.height = 30 + Math.min(mass, 50) * 0.6;
+                this.color = this.getRandomColor();
+            }
+            getRandomColor() {
+                const colors = ['#1976D2', '#009688', '#FF9800', '#795548', '#607D8B', '#F57C00'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+            draw(ctx, currentAngle) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${this.mass}${t('unitKg')}`, this.x, this.y - this.height / 2 + 5);
+
+                ctx.save();
+                ctx.translate(this.x, this.y - this.height / 2);
+                ctx.rotate(-currentAngle);
+
+                ctx.beginPath();
+                ctx.strokeStyle = '#D32F2F';
+                ctx.lineWidth = 2;
+                ctx.moveTo(0, 0); ctx.lineTo(0, 55);
+                ctx.lineTo(-5, 47); ctx.moveTo(0, 55); ctx.lineTo(5, 47);
+                ctx.stroke();
+
+                ctx.fillStyle = '#D32F2F';
+                ctx.textAlign = 'left';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText('mg', 6, 20);
+                const forceVal = (this.mass * g).toFixed(1);
+                ctx.fillText(`= ${forceVal}N`, 6, 35);
+                ctx.restore();
+            }
+        }
+
+        class Pivot {
+            constructor(x) {
+                this.x = x;
+                this.force = 0;
+                this.label = '';
+            }
+        }
+
+        function updateSystemParams() {
+            BEAM_MASS = parseFloat(document.getElementById('beamMassInput').value) || 0;
+            BEAM_LENGTH_M = parseFloat(document.getElementById('beamLengthInput').value) || 10;
+            const maxDisplayWidth = canvas.width * 0.85;
+            SCALE_UNIT = maxDisplayWidth / BEAM_LENGTH_M;
+            BEAM_LENGTH_PX = BEAM_LENGTH_M * SCALE_UNIT;
+
+            if (!isSimRunning) {
+                angle = 0;
+                angularVelocity = 0;
+            }
+        }
+
+        function init() {
+            updateSystemParams();
+            resetSim();
+            requestAnimationFrame(loop);
+        }
+
+        function updateStartButton() {
+            startBtn.textContent = isSimRunning ? t('btnStop') : t('btnStart');
+            if (isSimRunning) {
+                startBtn.classList.add('running');
+            } else {
+                startBtn.classList.remove('running');
+            }
+        }
+
+        function toggleSimulation() {
+            if (!isSimRunning) {
+                isSimRunning = true;
+            } else {
+                isSimRunning = false;
+                angle = 0;
+                angularVelocity = 0;
+                beamCenterX = canvas.width / 2;
+                isStable = true;
+                setStatus('statusSetup', 'setup');
+            }
+            updateStartButton();
+        }
+
+        function resetSim() {
+            blocks = [];
+            pivots = [new Pivot(canvas.width / 2)];
+            blocks.push(new Block(10, -2 * SCALE_UNIT));
+
+            angle = 0;
+            angularVelocity = 0;
+            beamCenterX = canvas.width / 2;
+
+            isSimRunning = false;
+            isBalanceMode = false;
+            showNormalForce = false;
+
+            updateStartButton();
+            startBtn.disabled = false;
+
+            updateBalanceBtn();
+            updateNormalForceBtn();
+
+            setStatus('statusSetup', 'setup');
+        }
+
+        function addBlock() {
+            const mass = parseFloat(document.getElementById('massInput').value);
+            if (mass > 0) blocks.push(new Block(mass, 0));
+        }
+
+        function addPivot() {
+            pivots.push(new Pivot(canvas.width / 2 + 50));
+            isBalanceMode = false;
+            updateBalanceBtn();
+        }
+
+        function toggleBalanceMode() {
+            if (pivots.length !== 1) {
+                alert(t('alertBalanceSinglePivot'));
+                isBalanceMode = false;
+                updateBalanceBtn();
+                return;
+            }
+            isBalanceMode = !isBalanceMode;
+            updateBalanceBtn();
+        }
+
+        function toggleNormalForce() {
+            showNormalForce = !showNormalForce;
+            updateNormalForceBtn();
+        }
+
+        function updateBalanceBtn() {
+            balanceBtn.textContent = t('btnBalance');
+            balanceBtn.setAttribute('data-hint', t('balanceHint'));
+            if (pivots.length !== 1) {
+                balanceBtn.disabled = true;
+                balanceBtn.classList.remove('active');
+            } else {
+                balanceBtn.disabled = false;
+                if (isBalanceMode) balanceBtn.classList.add('active');
+                else balanceBtn.classList.remove('active');
+            }
+        }
+
+        function updateNormalForceBtn() {
+            if (showNormalForce) {
+                normalForceBtn.classList.add('active');
+                normalForceBtn.textContent = t('btnNormalHide');
+            } else {
+                normalForceBtn.classList.remove('active');
+                normalForceBtn.textContent = t('btnNormalShow');
+            }
+        }
+
+        function autoBalanceBlock(targetBlock) {
+            if (pivots.length !== 1) return;
+
+            const pivotX = pivots[0].x;
+            let otherTorque = 0;
+
+            if (BEAM_MASS > 0) {
+                const beamDistMeters = (beamCenterX - pivotX) / SCALE_UNIT;
+                otherTorque += BEAM_MASS * g * beamDistMeters;
+            }
+            blocks.forEach(b => {
+                if (b !== targetBlock) {
+                    const blockWorldX = beamCenterX + b.x;
+                    const distMeters = (blockWorldX - pivotX) / SCALE_UNIT;
+                    otherTorque += b.mass * g * distMeters;
+                }
+            });
+
+            const targetMass = targetBlock.mass;
+            const requiredDistMeters = -otherTorque / (targetMass * g);
+            const requiredDistPixels = requiredDistMeters * SCALE_UNIT;
+
+            let newX = requiredDistPixels + pivotX - beamCenterX;
+
+            const limit = BEAM_LENGTH_PX / 2 - targetBlock.width / 2;
+            if (newX < -limit || newX > limit) {
+                alert(t('alertOutOfRange'));
+                isBalanceMode = false;
+                updateBalanceBtn();
+                return;
+            }
+
+            targetBlock.x = newX;
+
+            angle = 0;
+            angularVelocity = 0;
+
+            isBalanceMode = false;
+            updateBalanceBtn();
+        }
+
+        function updatePhysics() {
+            pivots.sort((a, b) => a.x - b.x);
+            pivots.forEach((p, i) => {
+                p.label = String.fromCharCode(65 + i);
+                p.force = 0;
+            });
+
+            if (!isSimRunning) {
+                angle = 0;
+                angularVelocity = 0;
+                beamCenterX = canvas.width / 2;
+                isStable = true;
+                calculateStaticForces();
+                return;
+            }
+
+            let totalMass = BEAM_MASS;
+            let momentSum = BEAM_MASS * beamCenterX;
+
+            blocks.forEach(b => {
+                totalMass += b.mass;
+                momentSum += b.mass * (beamCenterX + b.x);
+            });
+
+            const systemCoG = momentSum / totalMass;
+            const totalWeight = totalMass * g;
+
+            let leftPivot = null;
+            let rightPivot = null;
+            for (let i = 0; i < pivots.length; i++) {
+                if (pivots[i].x <= systemCoG) leftPivot = pivots[i];
+                else {
+                    rightPivot = pivots[i];
+                    break;
+                }
+            }
+
+            if (!leftPivot && rightPivot) {
+                isStable = false;
+                activePivotIndex = 0;
+                pivots[0].force = totalWeight;
+                calculateTorqueForRotation(pivots[0].x);
+            }
+            else if (leftPivot && !rightPivot) {
+                isStable = false;
+                activePivotIndex = pivots.length - 1;
+                pivots[pivots.length - 1].force = totalWeight;
+                calculateTorqueForRotation(pivots[pivots.length - 1].x);
+            }
+            else if (leftPivot && rightPivot) {
+                isStable = true;
+                angle = 0;
+                angularVelocity = 0;
+                beamCenterX = canvas.width / 2;
+
+                const distLR = rightPivot.x - leftPivot.x;
+                const distCoG_L = systemCoG - leftPivot.x;
+
+                if (distLR > 0.1) {
+                    rightPivot.force = totalWeight * (distCoG_L / distLR);
+                    leftPivot.force = totalWeight - rightPivot.force;
+                } else {
+                    leftPivot.force = totalWeight / 2;
+                    rightPivot.force = totalWeight / 2;
+                }
+
+                setStatus('statusSupported', 'balanced', { left: leftPivot.label, right: rightPivot.label });
+            }
+            else if (pivots.length === 1) {
+                activePivotIndex = 0;
+                pivots[0].force = totalWeight;
+                calculateTorqueForRotation(pivots[0].x);
+                isStable = false;
+            }
+        }
+
+        function calculateStaticForces() {
+            let totalMass = BEAM_MASS;
+            let momentSum = BEAM_MASS * beamCenterX;
+            blocks.forEach(b => {
+                totalMass += b.mass;
+                momentSum += b.mass * (beamCenterX + b.x);
+            });
+            const systemCoG = momentSum / totalMass;
+            const totalWeight = totalMass * g;
+
+            if (pivots.length === 1) {
+                pivots[0].force = totalWeight;
+            } else if (pivots.length >= 2) {
+                let leftP = null, rightP = null;
+                for (let p of pivots) {
+                    if (p.x <= systemCoG) leftP = p;
+                    else { rightP = p; break; }
+                }
+                if (leftP && rightP) {
+                    const d = rightP.x - leftP.x;
+                    const dL = systemCoG - leftP.x;
+                    rightP.force = totalWeight * (dL / d);
+                    leftP.force = totalWeight - rightP.force;
+                } else if (leftP && !rightP) {
+                    leftP.force = totalWeight;
+                } else if (!leftP && rightP) {
+                    rightP.force = totalWeight;
+                }
+            }
+        }
+
+        function calculateTorqueForRotation(pivotPos) {
+            let netTorque = 0;
+            if (BEAM_MASS > 0) {
+                const beamDist = (beamCenterX - pivotPos) / SCALE_UNIT;
+                netTorque += BEAM_MASS * g * beamDist;
+            }
+            blocks.forEach(b => {
+                const dist = (beamCenterX + b.x - pivotPos) / SCALE_UNIT;
+                netTorque += b.mass * g * dist;
+            });
+
+            if (Math.abs(netTorque) < 0.02) {
+                setStatus('statusBalancedSimple', 'balanced');
+                angularVelocity = 0;
+                if (Math.abs(angle) < 0.05) angle = 0;
+            } else {
+                const direction = netTorque > 0 ? '↻' : '↺';
+                setStatus('statusRotating', 'unbalanced', { direction, torque: netTorque.toFixed(2) });
+
+                if (!isDraggingBlock && !isDraggingPivot) {
+                    let I = 200;
+                    const angularAcc = netTorque / I * 0.1;
+                    angularVelocity += angularAcc;
+                    angularVelocity *= 0.96;
+                    angle += angularVelocity;
+
+                    const maxAngle = Math.PI / 6;
+                    if (angle > maxAngle) { angle = maxAngle; angularVelocity = 0; }
+                    if (angle < -maxAngle) { angle = -maxAngle; angularVelocity = 0; }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            clickZones = [];
+
+            let renderPivotX = canvas.width / 2;
+            let renderPivotY = PIVOT_Y;
+
+            if (isSimRunning && !isStable && pivots.length > 0) {
+                renderPivotX = pivots[activePivotIndex].x;
+            } else {
+                renderPivotX = beamCenterX;
+            }
+
+            ctx.save();
+
+            if (isSimRunning && !isStable) {
+                ctx.translate(renderPivotX, renderPivotY);
+                ctx.rotate(angle);
+                const offset = beamCenterX - renderPivotX;
+                ctx.translate(offset, 0);
+            } else {
+                ctx.translate(beamCenterX, renderPivotY);
+            }
+
+            ctx.fillStyle = '#607D8B';
+            ctx.fillRect(-BEAM_LENGTH_PX / 2, -BEAM_HEIGHT / 2, BEAM_LENGTH_PX, BEAM_HEIGHT);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1;
+            const halfMeters = Math.floor(BEAM_LENGTH_M / 2);
+            for (let m = -halfMeters; m <= halfMeters; m++) {
+                const xPos = m * SCALE_UNIT;
+                ctx.beginPath(); ctx.moveTo(xPos, -BEAM_HEIGHT / 2); ctx.lineTo(xPos, BEAM_HEIGHT / 2); ctx.stroke();
+            }
+
+            blocks.forEach((b, idx) => {
+                if (isBalanceMode && b === draggingBlockObj) {
+                    ctx.strokeStyle = '#00FF00';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(b.x - b.width / 2 - 5, b.y - b.height - 5, b.width + 10, b.height + 10);
+                }
+
+                b.draw(ctx, angle);
+
+                const distMeter = (Math.abs(b.x) / SCALE_UNIT).toFixed(2);
+                clickZones.push({
+                    x: b.x, y: 40, w: 50, h: 20,
+                    type: 'dist', blockObj: b, value: distMeter,
+                    isPivot: false
+                });
+
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(0, 25); ctx.lineTo(b.x, 25); ctx.stroke();
+
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillRect(b.x / 2 - 25, 30, 50, 18);
+                ctx.fillStyle = 'blue'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+                ctx.fillText(`${distMeter}${t('unitMeter')}`, b.x / 2, 43);
+            });
+
+            if (BEAM_MASS > 0) {
+                ctx.save();
+                ctx.rotate(-angle);
+
+                ctx.strokeStyle = '#9C27B0'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 60);
+                ctx.lineTo(-5, 52); ctx.moveTo(0, 60); ctx.lineTo(5, 52); ctx.stroke();
+
+                ctx.fillStyle = '#9C27B0'; ctx.textAlign = 'left';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText('Mg', 8, 20);
+                const beamW = (BEAM_MASS * g).toFixed(1);
+                ctx.fillText(`= ${beamW}N`, 8, 35);
+
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            pivots.forEach((p, idx) => {
+                const isDrag = (draggingPivotObj === p);
+                ctx.fillStyle = isDrag ? '#5D4037' : '#795548';
+
+                ctx.beginPath();
+                ctx.moveTo(p.x, PIVOT_Y);
+                ctx.lineTo(p.x - 20, PIVOT_Y + 40);
+                ctx.lineTo(p.x + 20, PIVOT_Y + 40);
+                ctx.fill();
+
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.label, p.x, PIVOT_Y + 35);
+
+                if (showNormalForce && p.force > 0.1) {
+                    drawNormalForceArrow(ctx, p.x, PIVOT_Y, p.force, p.label);
+                }
+            });
+
+            if (isDraggingBlock || isDraggingPivot) {
+                ctx.fillStyle = '#ffebee';
+                ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+                ctx.fillStyle = '#c62828';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(t('trashHint'), canvas.width / 2, canvas.height - 20);
+            }
+        }
+
+        function drawNormalForceArrow(ctx, x, y, forceVal, label) {
+            const arrowH = 60 + Math.min(forceVal, 500) * 0.1;
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = '#2E7D32';
+            ctx.lineWidth = 3;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y - arrowH);
+            ctx.lineTo(x - 6, y - arrowH + 10);
+            ctx.moveTo(x, y - arrowH);
+            ctx.lineTo(x + 6, y - arrowH + 10);
+            ctx.stroke();
+
+            ctx.fillStyle = '#2E7D32';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            const textY = y - arrowH - 5;
+
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('N', x + 5, textY);
+            const nWidth = ctx.measureText('N').width;
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText(label, x + 5 + nWidth, textY + 3);
+
+            ctx.font = '14px Arial';
+            ctx.fillText(` = ${forceVal.toFixed(1)} N`, x + 5 + nWidth + 10, textY);
+            ctx.restore();
+        }
+
+        function loop() {
+            updatePhysics();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function getBeamCoords(ex, ey) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = ex - rect.left;
+            const mouseY = ey - rect.top;
+
+            let cx = beamCenterX;
+            if (isSimRunning && !isStable && pivots.length > 0) cx = pivots[activePivotIndex].x;
+            else cx = beamCenterX;
+
+            const dx = mouseX - cx;
+            const dy = mouseY - PIVOT_Y;
+            const localX_rotated = dx * Math.cos(-angle) - dy * Math.sin(-angle);
+
+            const beamCenterRelToPivot = beamCenterX - cx;
+            const localX = localX_rotated - beamCenterRelToPivot;
+
+            return { mouseX, mouseY, localX };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const { mouseX, mouseY, localX } = getBeamCoords(e.clientX, e.clientY);
+
+            for (let b of blocks) {
+                if (Math.abs(localX - b.x) < b.width / 2 + 10 && mouseY > PIVOT_Y - 100 && mouseY < PIVOT_Y + 50) {
+
+                    if (isBalanceMode) {
+                        try { autoBalanceBlock(b); } catch (err) { console.error(err); }
+                        return;
+                    }
+
+                    isDraggingBlock = true;
+                    draggingBlockObj = b;
+                    dragOffsetX = localX - b.x;
+                    return;
+                }
+            }
+
+            for (let z of clickZones) {
+                if (Math.abs(localX - z.x) < 25 && mouseY > PIVOT_Y - 50 && mouseY < PIVOT_Y + 50) {
+                    const newVal = prompt(t('promptDistance'), z.value);
+                    if (newVal !== null && !isNaN(newVal)) {
+                        const meters = parseFloat(newVal);
+                        const b = z.blockObj;
+                        const sign = b.x >= 0 ? 1 : -1;
+                        b.x = meters * SCALE_UNIT * sign;
+                    }
+                    return;
+                }
+            }
+
+            for (let p of pivots) {
+                if (Math.abs(mouseX - p.x) < 20 && mouseY >= PIVOT_Y && mouseY < PIVOT_Y + 50) {
+                    isDraggingPivot = true;
+                    draggingPivotObj = p;
+                    return;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const { mouseX, mouseY, localX } = getBeamCoords(e.clientX, e.clientY);
+
+            let cursor = 'default';
+            let hoveredBlock = null;
+            for (let b of blocks) {
+                if (Math.abs(localX - b.x) < b.width / 2 + 10 && mouseY > PIVOT_Y - 100 && mouseY < PIVOT_Y + 50) {
+                    hoveredBlock = b;
+                }
+            }
+
+            if (hoveredBlock) {
+                cursor = isBalanceMode ? 'crosshair' : 'grab';
+                if (!isDraggingBlock) draggingBlockObj = hoveredBlock;
+            } else {
+                if (!isDraggingBlock) draggingBlockObj = null;
+            }
+
+            for (let p of pivots) if (Math.abs(mouseX - p.x) < 20 && mouseY > PIVOT_Y) cursor = 'ew-resize';
+            if (isDraggingBlock || isDraggingPivot) cursor = 'grabbing';
+            canvas.style.cursor = cursor;
+
+            if (isDraggingPivot && draggingPivotObj) {
+                draggingPivotObj.x = mouseX;
+                updateBalanceBtn();
+            } else if (isDraggingBlock && draggingBlockObj) {
+                let newX = localX - dragOffsetX;
+                newX = Math.max(-BEAM_LENGTH_PX / 2 + 20, Math.min(BEAM_LENGTH_PX / 2 - 20, newX));
+                draggingBlockObj.x = newX;
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+
+            if (isDraggingPivot && draggingPivotObj) {
+                if (mouseY > canvas.height - 50 && pivots.length > 1) {
+                    const idx = pivots.indexOf(draggingPivotObj);
+                    if (idx > -1) pivots.splice(idx, 1);
+                }
+                updateBalanceBtn();
+            } else if (isDraggingBlock && draggingBlockObj) {
+                if (mouseY > canvas.height - 50) {
+                    const idx = blocks.indexOf(draggingBlockObj);
+                    if (idx > -1) blocks.splice(idx, 1);
+                }
+            }
+
+            isDraggingBlock = false;
+            draggingBlockObj = null;
+            isDraggingPivot = false;
+            draggingPivotObj = null;
+        });
+
+        initLanguage();
+        init();
+    </script>
+</body>
+
+</html>

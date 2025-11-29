@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Magnetic Field Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f8fafc;
+            color: #0f172a;
+            font-family: sans-serif;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(203, 213, 225, 0.6);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        /* Scrollbar for custom panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Language Selector */
+        .lang-selector {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        .lang-btn {
+            padding: 0.4rem 0.8rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #4f46e5;
+            border: 1px solid #e0e7ff;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            backdrop-filter: blur(12px);
+        }
+
+        .lang-btn:hover {
+            background: #eef2ff;
+        }
+
+        .lang-btn.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- Language Selector -->
+    <div class="lang-selector">
+        <button class="lang-btn active" data-lang="en-US" onclick="changeLanguage('en-US')">EN</button>
+        <button class="lang-btn" data-lang="zh-HK" onclick="changeLanguage('zh-HK')">繁</button>
+    </div>
+
+    <!-- UI Overlay -->
+    <div class="absolute top-4 left-4 flex flex-col gap-3 pointer-events-none w-64 z-10">
+        <!-- Main Controls -->
+        <div class="panel p-4 rounded-lg pointer-events-auto">
+            <h1 id="mainTitle" class="text-lg font-bold text-slate-700 mb-1">3D Field Sim</h1>
+            <p id="controlInstructions" class="text-xs text-slate-500 mb-4">
+                <span class="font-bold" id="ctrlLeftClick">Left Click + Drag:</span> <span id="ctrlMoveObj">Move
+                    Objects</span><br>
+                <span class="font-bold" id="ctrlRightClick">Right Click:</span> <span id="ctrlRotateCam">Rotate
+                    Camera</span><br>
+                <span class="font-bold">W, A, S, D:</span> <span id="ctrlPanH">Pan Horizontally</span><br>
+                <span class="font-bold">Shift / Ctrl:</span> <span id="ctrlPanV">Pan Up / Down</span>
+            </p>
+
+            <div class="flex gap-2 mb-2">
+                <button id="addMagnetBtn"
+                    class="flex-1 bg-sky-500 hover:bg-sky-600 text-white py-2 px-2 rounded text-xs font-bold transition shadow-sm">
+                    + Magnet
+                </button>
+                <button id="addWireBtn"
+                    class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2 px-2 rounded text-xs font-bold transition shadow-sm">
+                    + Wire
+                </button>
+            </div>
+            <!-- Modified grid layout for buttons -->
+            <div class="flex gap-2 mb-2">
+                <button id="addSolenoidBtn"
+                    class="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 px-2 rounded text-xs font-bold transition shadow-sm">
+                    + Solenoid
+                </button>
+                <button id="addCoilBtn"
+                    class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-2 rounded text-xs font-bold transition shadow-sm">
+                    + Coil
+                </button>
+            </div>
+
+            <button id="toggleSliceBtn"
+                class="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-1 px-2 rounded text-xs transition mb-2 shadow-sm">
+                Toggle 3D View
+            </button>
+
+            <button id="toggleFieldBtn"
+                class="w-full bg-teal-500 hover:bg-teal-600 text-white py-1 px-2 rounded text-xs transition mb-2 shadow-sm">
+                Hide Field
+            </button>
+
+            <!-- New Flow Button -->
+            <button id="toggleFlowBtn"
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-xs transition mb-2 shadow-sm">
+                Start Flow
+            </button>
+
+            <button id="resetBtn"
+                class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 px-2 rounded text-xs transition">
+                Clear Scene
+            </button>
+        </div>
+
+        <!-- Object Properties Panel -->
+        <div id="propsPanel" class="panel p-4 rounded-lg pointer-events-auto hidden">
+            <div class="flex justify-between items-end mb-3">
+                <h2 id="propTitle" class="text-sm font-bold text-slate-700">Properties</h2>
+                <button id="deleteBtn" class="text-red-500 hover:text-red-600 text-xs underline">Remove</button>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label id="labelStrength" class="block text-xs text-slate-500 mb-1">Strength / Current</label>
+                    <input type="range" id="strengthSlider" min="1" max="200" value="100"
+                        class="w-full h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                </div>
+
+                <div id="rotControl">
+                    <label id="labelRot" class="block text-xs text-slate-500 mb-1">Rotation</label>
+                    <input type="range" id="rotationSlider" min="0" max="360" value="0"
+                        class="w-full h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                </div>
+
+                <!-- Wire/Solenoid Controls -->
+                <div id="wireControl" class="hidden space-y-3">
+                    <div>
+                        <label id="labelCurrDir" class="block text-xs text-slate-500 mb-1">Current Direction</label>
+                        <div class="flex bg-slate-100 rounded p-1 border border-slate-200">
+                            <button id="dirUpBtn"
+                                class="flex-1 text-xs py-1 rounded bg-slate-600 text-white shadow-sm transition">Up/Out</button>
+                            <button id="dirDownBtn"
+                                class="flex-1 text-xs py-1 rounded text-slate-500 hover:bg-slate-200 transition">Down/In</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Internationalization ---
+        const translations = {
+            'en-US': {
+                title: '3D Magnetic Field Simulator',
+                controlLeftClick: 'Left Click + Drag:',
+                controlMoveObjects: 'Move Objects',
+                controlRightClick: 'Right Click:',
+                controlRotateCamera: 'Rotate Camera',
+                controlPanHorizontal: 'Pan Horizontally',
+                controlPanVertical: 'Pan Up / Down',
+                btnAddMagnet: '+ Magnet',
+                btnAddWire: '+ Wire',
+                btnAddSolenoid: '+ Solenoid',
+                btnAddCoil: '+ Coil',
+                btnToggle3DView: 'Toggle 3D View',
+                btnToggle2DSlice: 'Toggle 2D Slice',
+                btnHideField: 'Hide Field',
+                btnShowField: 'Show Field',
+                btnStartFlow: 'Start Flow',
+                btnPauseFlow: 'Pause Flow',
+                btnClearScene: 'Clear Scene',
+                properties: 'Properties',
+                btnRemove: 'Remove',
+                labelStrengthCurrent: 'Strength / Current',
+                labelRotation: 'Rotation',
+                labelCurrentDirection: 'Current Direction',
+                btnUpOut: 'Up/Out',
+                btnDownIn: 'Down/In',
+                magnetProperties: 'Magnet Properties',
+                wireProperties: 'Wire Properties',
+                solenoidProperties: 'Solenoid Properties',
+                coilProperties: 'Coil Properties'
+            },
+            'zh-HK': {
+                title: '3D 磁場模擬器',
+                controlLeftClick: '左鍵拖曳：',
+                controlMoveObjects: '移動物件',
+                controlRightClick: '右鍵：',
+                controlRotateCamera: '旋轉鏡頭',
+                controlPanHorizontal: '水平平移',
+                controlPanVertical: '上下平移',
+                btnAddMagnet: '+ 磁鐵',
+                btnAddWire: '+ 導線',
+                btnAddSolenoid: '+ 螺線管',
+                btnAddCoil: '+ 線圈',
+                btnToggle3DView: '切換 3D 視圖',
+                btnToggle2DSlice: '切換 2D 切面',
+                btnHideField: '隱藏磁場',
+                btnShowField: '顯示磁場',
+                btnStartFlow: '開始流動',
+                btnPauseFlow: '暫停流動',
+                btnClearScene: '清除場景',
+                properties: '屬性',
+                btnRemove: '移除',
+                labelStrengthCurrent: '強度 / 電流',
+                labelRotation: '旋轉',
+                labelCurrentDirection: '電流方向',
+                btnUpOut: '向上/向外',
+                btnDownIn: '向下/向內',
+                magnetProperties: '磁鐵屬性',
+                wireProperties: '導線屬性',
+                solenoidProperties: '螺線管屬性',
+                coilProperties: '線圈屬性'
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.title = t('title');
+
+            // Update language selector buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const btnLang = btn.getAttribute('data-lang');
+                if (btnLang === lang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update URL parameter
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+
+            // Update button texts
+            document.getElementById('addMagnetBtn').textContent = t('btnAddMagnet');
+            document.getElementById('addWireBtn').textContent = t('btnAddWire');
+            document.getElementById('addSolenoidBtn').textContent = t('btnAddSolenoid');
+            document.getElementById('addCoilBtn').textContent = t('btnAddCoil');
+            document.getElementById('resetBtn').textContent = t('btnClearScene');
+            document.getElementById('deleteBtn').textContent = t('btnRemove');
+
+            // Update toggle buttons based on current state
+            if (isSliceMode) {
+                document.getElementById('toggleSliceBtn').textContent = t('btnToggle3DView');
+            } else {
+                document.getElementById('toggleSliceBtn').textContent = t('btnToggle2DSlice');
+            }
+
+            if (isFieldVisible) {
+                document.getElementById('toggleFieldBtn').textContent = t('btnHideField');
+            } else {
+                document.getElementById('toggleFieldBtn').textContent = t('btnShowField');
+            }
+
+            if (isFlowing) {
+                document.getElementById('toggleFlowBtn').textContent = t('btnPauseFlow');
+            } else {
+                document.getElementById('toggleFlowBtn').textContent = t('btnStartFlow');
+            }
+
+            // Update dynamic UI if object is selected
+            updateUI();
+
+            // Update static text elements
+            document.getElementById('mainTitle').textContent = t('title');
+            document.getElementById('ctrlLeftClick').textContent = t('controlLeftClick');
+            document.getElementById('ctrlMoveObj').textContent = t('controlMoveObjects');
+            document.getElementById('ctrlRightClick').textContent = t('controlRightClick');
+            document.getElementById('ctrlRotateCam').textContent = t('controlRotateCamera');
+            document.getElementById('ctrlPanH').textContent = t('controlPanHorizontal');
+            document.getElementById('ctrlPanV').textContent = t('controlPanVertical');
+            document.getElementById('labelStrength').textContent = t('labelStrengthCurrent');
+            document.getElementById('labelRot').textContent = t('labelRotation');
+            document.getElementById('labelCurrDir').textContent = t('labelCurrentDirection');
+            document.getElementById('dirUpBtn').textContent = t('btnUpOut');
+            document.getElementById('dirDownBtn').textContent = t('btnDownIn');
+        }
+
+        // Initialize language from URL parameter
+        function initLanguage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const langParam = urlParams.get('lang');
+            if (langParam && translations[langParam]) {
+                changeLanguage(langParam);
+            }
+        }
+
+        // --- Global Variables ---
+        let scene, camera, renderer;
+        let objects = []; // Magnets, Wires, Solenoids, Coils
+        let fieldArrows = []; // The vector field grid
+        let selectedObject = null;
+        let isFlowing = false; // Static field
+        let isSliceMode = true; // Toggle for 2D slice vs 3D volume
+        let isFieldVisible = true; // New toggle for field visibility
+
+        // Interaction state
+        let isDraggingObj = false;
+        let dragPlane;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+
+        // Camera control state
+        let isRotating = false;
+        let isPanning = false;
+        let lastMouseX = 0, lastMouseY = 0;
+        let cameraAngle = Math.PI / 4;
+        let cameraHeight = Math.PI / 6;
+        let cameraRadius = 80;
+        let cameraTarget = new THREE.Vector3(0, 0, 0);
+
+        // Animation Clock
+        const clock = new THREE.Clock();
+
+        // Keyboard State
+        const keys = {
+            KeyW: false,
+            KeyS: false,
+            KeyA: false,
+            KeyD: false,
+            Shift: false,
+            Control: false
+        };
+
+        // Config
+        const GRID_SIZE = 14; // Adjusted for balance
+        const GRID_STEP = 8;  // Increased step (was 5) to reduce density
+
+        // --- Helper Functions ---
+
+        function createFlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            // Base Copper Color
+            ctx.fillStyle = '#d97706';
+            ctx.fillRect(0, 0, 64, 64);
+
+            // Draw Chevron / Arrow Pattern
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+
+            // Draw a "V" shape pointing up
+            ctx.beginPath();
+            ctx.moveTo(16, 40);
+            ctx.lineTo(32, 24);
+            ctx.lineTo(48, 40);
+            ctx.stroke();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 4);
+            return tex;
+        }
+
+        function getSegmentB(p, a, b, I) {
+            const ab = new THREE.Vector3().subVectors(b, a);
+            const ap = new THREE.Vector3().subVectors(p, a);
+            const bp = new THREE.Vector3().subVectors(p, b);
+
+            const abLen = ab.length();
+            if (abLen < 0.0001) return new THREE.Vector3();
+
+            const apLen = ap.length();
+            const bpLen = bp.length();
+
+            const cross = new THREE.Vector3().crossVectors(ab, ap);
+            const crossLenSq = cross.lengthSq();
+
+            if (crossLenSq < 0.01) return new THREE.Vector3();
+
+            const K = 2.0;
+            const term1 = ab.dot(ap) / apLen;
+            const term2 = ab.dot(bp) / bpLen;
+            const scalar = (K * I * (term1 - term2)) / crossLenSq;
+
+            return cross.multiplyScalar(scalar);
+        }
+
+        // --- Initialization ---
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene
+            scene = new THREE.Scene();
+            const bgColor = 0xf8fafc;
+            scene.background = new THREE.Color(bgColor);
+            scene.fog = new THREE.FogExp2(bgColor, 0.008);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(20, 50, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            // Floor Grid
+            const gridHelper = new THREE.GridHelper(200, 20, 0x94a3b8, 0xe2e8f0);
+            scene.add(gridHelper);
+
+            // Drag Plane
+            const planeGeo = new THREE.PlaneGeometry(500, 500);
+            const planeMat = new THREE.MeshBasicMaterial({ visible: false });
+            dragPlane = new THREE.Mesh(planeGeo, planeMat);
+            dragPlane.rotation.x = -Math.PI / 2;
+            scene.add(dragPlane);
+
+            // Initialize Field Grid
+            createFieldGrid();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            window.addEventListener('mouseup', onMouseUp, false);
+            renderer.domElement.addEventListener('wheel', onWheel, false);
+            renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+            // Keyboard Listeners
+            window.addEventListener('keydown', (e) => {
+                let key = e.code;
+                if (e.key === 'Shift') keys.Shift = true;
+                if (e.key === 'Control') keys.Control = true;
+                if (keys.hasOwnProperty(key)) keys[key] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                let key = e.code;
+                if (e.key === 'Shift') keys.Shift = false;
+                if (e.key === 'Control') keys.Control = false;
+                if (keys.hasOwnProperty(key)) keys[key] = false;
+            });
+
+            // Start Loop
+            animate();
+
+            // Add demo objects
+            addMagnet(0, 0);
+        }
+
+        function createFieldGrid() {
+            fieldArrows.forEach(a => scene.remove(a));
+            fieldArrows = [];
+
+            const dir = new THREE.Vector3(0, 1, 0);
+            const origin = new THREE.Vector3(0, 0, 0);
+            const length = 1;
+            const hex = 0x38bdf8;
+
+            for (let x = -GRID_SIZE; x <= GRID_SIZE; x++) {
+                for (let y = 1; y <= GRID_SIZE; y++) {
+                    for (let z = -GRID_SIZE; z <= GRID_SIZE; z++) {
+                        const arrow = new THREE.ArrowHelper(dir, origin, length, hex, 0.2, 0.1);
+                        const px = x * GRID_STEP;
+                        const py = y * GRID_STEP;
+                        const pz = z * GRID_STEP;
+
+                        arrow.position.set(px, py, pz);
+                        arrow.userData.origin = new THREE.Vector3(px, py, pz);
+                        arrow.userData.traveled = 0;
+                        arrow.userData.pathLimit = 70 + Math.random() * 40;
+
+                        scene.add(arrow);
+                        fieldArrows.push(arrow);
+                    }
+                }
+            }
+        }
+
+        // --- Classes ---
+
+        class SimulationObject {
+            constructor(mesh, type) {
+                this.mesh = mesh;
+                this.type = type;
+                this.mesh.userData.parentObj = this;
+                scene.add(this.mesh);
+                objects.push(this);
+            }
+
+            remove() {
+                scene.remove(this.mesh);
+                objects = objects.filter(o => o !== this);
+                if (selectedObject === this) {
+                    selectedObject = null;
+                    updateUI();
+                }
+            }
+
+            setPosition(x, z) {
+                this.mesh.position.x = x;
+                this.mesh.position.z = z;
+            }
+
+            getDescription() { return "Object"; }
+
+            isInFocus(p) { return false; }
+            isInside(p) { return false; }
+        }
+
+        class Magnet3D extends SimulationObject {
+            constructor(x, z) {
+                const group = new THREE.Group();
+
+                // Enlarged Magnet Dimensions: 20 x 8 x 8
+                const geo = new THREE.BoxGeometry(20, 8, 8);
+                const matN = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+                const matS = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4 });
+
+                // Halves
+                const meshS = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 8), matS);
+                meshS.position.x = -5;
+                const meshN = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 8), matN);
+                meshN.position.x = 5;
+
+                group.add(meshS);
+                group.add(meshN);
+
+                // Visualization Plane (Green Slice)
+                const planeGeo = new THREE.PlaneGeometry(80, 60);
+                const planeMat = new THREE.MeshBasicMaterial({
+                    color: 0x4ade80,
+                    transparent: true,
+                    opacity: 0.25,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+                planeMesh.rotation.x = -Math.PI / 2; // Horizontal slice
+                group.add(planeMesh);
+
+                // Align Y to 8 (First Grid Layer) to match grid steps
+                group.position.set(x, 8, z);
+
+                const outlineGeo = new THREE.BoxGeometry(21, 9, 9);
+                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true, visible: false });
+                const outline = new THREE.Mesh(outlineGeo, outlineMat);
+                group.add(outline);
+                group.userData.outline = outline;
+
+                super(group, 'magnet');
+
+                this.planeMesh = planeMesh;
+                this.strength = 100;
+                this.angle = 0;
+            }
+
+            // Update method for toggling plane visibility
+            update(dt) {
+                if (this.planeMesh) this.planeMesh.visible = isSliceMode;
+            }
+
+            updateRotation(deg) {
+                this.angle = deg * (Math.PI / 180);
+                this.mesh.rotation.y = -this.angle;
+            }
+
+            getDescription() { return "Magnet"; }
+
+            isInFocus(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyQuaternion(this.mesh.quaternion.clone().invert()); // Handle rotation
+
+                if (isSliceMode) {
+                    // Restrict to thin horizontal slice
+                    const distFromPlane = Math.abs(local.y);
+                    return (distFromPlane < 6 && Math.abs(local.x) < 45 && Math.abs(local.z) < 35);
+                } else {
+                    // Full 3D volume
+                    return this.mesh.position.distanceToSquared(p) < 55 * 55;
+                }
+            }
+
+            isInside(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyQuaternion(this.mesh.quaternion.clone().invert());
+                // Dimensions 20x8x8 -> Half: 10, 4, 4
+                return (Math.abs(local.x) < 9.8 && Math.abs(local.y) < 3.8 && Math.abs(local.z) < 3.8);
+            }
+
+            getFieldAt(p) {
+                const d = 8; // Pole offset (approx 0.8 * halfWidth of 10)
+                const cos = Math.cos(this.angle);
+                const sin = Math.sin(this.angle);
+
+                const nx = this.mesh.position.x + d * cos;
+                const nz = this.mesh.position.z - d * sin;
+                const ny = this.mesh.position.y;
+
+                const sx = this.mesh.position.x - d * cos;
+                const sz = this.mesh.position.z + d * sin;
+                const sy = this.mesh.position.y;
+
+                const m = this.strength * 4; // Increased strength scalar for larger magnet
+
+                const rx1 = p.x - nx;
+                const ry1 = p.y - ny;
+                const rz1 = p.z - nz;
+                const r1Sq = rx1 * rx1 + ry1 * ry1 + rz1 * rz1;
+                let r1 = Math.sqrt(r1Sq);
+                if (r1 < 3) r1 = 3;
+                const mag1 = m / (Math.pow(r1, 3));
+
+                const rx2 = p.x - sx;
+                const ry2 = p.y - sy;
+                const rz2 = p.z - sz;
+                const r2Sq = rx2 * rx2 + ry2 * ry2 + rz2 * rz2;
+                let r2 = Math.sqrt(r2Sq);
+                if (r2 < 3) r2 = 3;
+                const mag2 = -m / (Math.pow(r2, 3));
+
+                return {
+                    x: mag1 * rx1 + mag2 * rx2,
+                    y: mag1 * ry1 + mag2 * ry2,
+                    z: mag1 * rz1 + mag2 * rz2
+                };
+            }
+        }
+
+        class Wire3D extends SimulationObject {
+            constructor(x, z) {
+                const group = new THREE.Group();
+                const radius = 1.0;
+                const length = 60;
+
+                const geo = new THREE.CylinderGeometry(radius, radius, length, 16);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.5 });
+                const mesh = new THREE.Mesh(geo, mat);
+                group.add(mesh);
+
+                // Visualization Plane (Green Slice)
+                const planeGeo = new THREE.PlaneGeometry(60, 60);
+                const planeMat = new THREE.MeshBasicMaterial({
+                    color: 0x4ade80,
+                    transparent: true,
+                    opacity: 0.25,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+                planeMesh.rotation.x = -Math.PI / 2; // Cuts perpendicular to wire (XZ plane)
+                group.add(planeMesh);
+
+                const rings = [];
+                const ringGeo = new THREE.TorusGeometry(radius * 2, 0.3, 8, 24);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                const ringCount = 5;
+                const spacing = length / ringCount;
+                const startY = -length / 2 + spacing / 2;
+
+                for (let i = 0; i < ringCount; i++) {
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.position.y = startY + (i * spacing);
+                    ring.rotation.x = Math.PI / 2;
+                    group.add(ring);
+                    rings.push(ring);
+                }
+
+                const hitGeo = new THREE.CylinderGeometry(6, 6, length, 8);
+                const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+                const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+                group.add(hitMesh);
+
+                // Align Y to 32 (Multiple of 8)
+                group.position.set(x, 32, z);
+
+                const outlineGeo = new THREE.CylinderGeometry(radius + 0.5, radius + 0.5, length + 0.5, 16);
+                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true, visible: false });
+                const outline = new THREE.Mesh(outlineGeo, outlineMat);
+                group.add(outline);
+                group.userData.outline = outline;
+
+                super(group, 'wire');
+
+                this.planeMesh = planeMesh; // Assign AFTER super()
+                this.rings = rings;
+                this.current = 100;
+                this.angle = 0;
+                this.length = length;
+            }
+
+            update(dt) {
+                const speed = this.current * 0.3 * dt;
+                const isVisible = Math.abs(this.current) > 1;
+                const halfLen = this.length / 2;
+
+                // Toggle Plane Visibility
+                if (this.planeMesh) this.planeMesh.visible = isSliceMode;
+
+                for (let ring of this.rings) {
+                    ring.visible = isVisible;
+                    if (isVisible) {
+                        ring.position.y += speed;
+                        if (ring.position.y > halfLen) ring.position.y -= this.length;
+                        if (ring.position.y < -halfLen) ring.position.y += this.length;
+                    }
+                }
+            }
+
+            updateArrow() { }
+
+            updateRotation(deg) {
+                this.angle = deg * (Math.PI / 180);
+                this.mesh.rotation.z = this.angle;
+            }
+
+            getDescription() { return "Wire"; }
+
+            isInFocus(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyAxisAngle(new THREE.Vector3(0, 0, 1), -this.angle);
+
+                if (isSliceMode) {
+                    // Check distance along the wire (Y axis in local space)
+                    // Plane is at local Y=0.
+                    const distFromPlane = Math.abs(local.y);
+                    const distFromCenter = Math.sqrt(local.x * local.x + local.z * local.z);
+                    // Slice perpendicular to wire
+                    return (distFromPlane < 6 && distFromCenter < 35);
+                } else {
+                    // Full cylinder volume
+                    const r2 = local.x * local.x + local.z * local.z;
+                    return (r2 < 400 && Math.abs(local.y) < 40);
+                }
+            }
+
+            isInside(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyAxisAngle(new THREE.Vector3(0, 0, 1), -this.angle);
+                const r2 = local.x * local.x + local.z * local.z;
+                return (r2 < 1.5 && Math.abs(local.y) < 30);
+            }
+
+            getFieldAt(p) {
+                const s = Math.sin(this.angle);
+                const c = Math.cos(this.angle);
+                const dx = -s;
+                const dy = c;
+                const dz = 0;
+
+                const vx = p.x - this.mesh.position.x;
+                const vy = p.y - this.mesh.position.y;
+                const vz = p.z - this.mesh.position.z;
+
+                const dot = vx * dx + vy * dy + vz * dz;
+                const rx = vx - dot * dx;
+                const ry = vy - dot * dy;
+                const rz = vz - dot * dz;
+                const rSq = rx * rx + ry * ry + rz * rz;
+                if (rSq < 0.1) return { x: 0, y: 0, z: 0 };
+
+                const mag = (this.current * 0.15) / rSq;
+
+                const bx = mag * (dy * rz - dz * ry);
+                const by = mag * (dz * rx - dx * rz);
+                const bz = mag * (dx * ry - dy * rx);
+
+                return { x: bx, y: by, z: bz };
+            }
+        }
+
+        class Solenoid3D extends SimulationObject {
+            constructor(x, z) {
+                const group = new THREE.Group();
+                const radius = 6;
+                const length = 60;
+                const turns = 16;
+                const tubeRadius = 0.6;
+
+                const coils = [];
+                const spacing = length / (turns - 1);
+                const startX = -length / 2;
+
+                const coilGeo = new THREE.TorusGeometry(radius, tubeRadius, 12, 32);
+                const coilMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.5 });
+
+                const pulseGeo = new THREE.SphereGeometry(tubeRadius * 1.5, 8, 8);
+                const pulseMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                const allPulses = [];
+
+                for (let i = 0; i < turns; i++) {
+                    const coil = new THREE.Mesh(coilGeo, coilMat);
+                    coil.rotation.y = Math.PI / 2;
+                    const cx = startX + (i * spacing);
+                    coil.position.set(cx, 0, 0);
+                    group.add(coil);
+                    coils.push(coil);
+
+                    for (let p = 0; p < 3; p++) {
+                        const pulse = new THREE.Mesh(pulseGeo, pulseMat);
+                        coil.add(pulse);
+                        allPulses.push({ mesh: pulse, phase: p / 3, radius: radius });
+                    }
+                }
+
+                const planeGeo = new THREE.PlaneGeometry(length + 40, radius * 12);
+                const planeMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
+                const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+                planeMesh.rotation.x = -Math.PI / 2;
+                group.add(planeMesh);
+
+                const hitGeo = new THREE.CylinderGeometry(radius + 3, radius + 3, length + 6, 16);
+                hitGeo.rotateZ(Math.PI / 2);
+                const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+                const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+                group.add(hitMesh);
+
+                const outlineGeo = new THREE.CylinderGeometry(radius + 1.5, radius + 1.5, length + 2, 16, 1, true);
+                outlineGeo.rotateZ(Math.PI / 2);
+                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true, visible: false });
+                const outline = new THREE.Mesh(outlineGeo, outlineMat);
+                group.add(outline);
+                group.userData.outline = outline;
+
+                const batGroup = new THREE.Group();
+                batGroup.position.set(0, -16, 0);
+                batGroup.rotation.z = Math.PI / 2;
+
+                const cell = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 20, 16), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+                cell.add(new THREE.Mesh(new THREE.CylinderGeometry(4.05, 4.05, 12, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xdddddd })));
+                batGroup.add(cell);
+
+                const posTerm = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 2, 16), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+                posTerm.position.y = 11;
+                batGroup.add(posTerm);
+                const negTerm = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 2, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+                negTerm.position.y = -11;
+                batGroup.add(negTerm);
+                group.add(batGroup);
+
+                const wireMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+                function makeConnector(p1, p2) {
+                    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+                    mid.y -= 4;
+                    const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+                    return new THREE.Mesh(new THREE.TubeGeometry(curve, 8, 0.5, 8, false), wireMat);
+                }
+
+                const firstX = startX;
+                const lastX = startX + (spacing * (turns - 1));
+                const w1 = makeConnector(new THREE.Vector3(lastX, -radius, 0), new THREE.Vector3(11, -16, 0));
+                const w2 = makeConnector(new THREE.Vector3(firstX, -radius, 0), new THREE.Vector3(-11, -16, 0));
+                group.add(w1);
+                group.add(w2);
+
+                // Align Y to 24 (Grid Layer 3) to ensure slice visibility
+                group.position.set(x, 24, z);
+
+                super(group, 'solenoid');
+
+                this.planeMesh = planeMesh;
+                this.coils = coils;
+                this.allPulses = allPulses;
+                this.radius = radius;
+                this.length = length;
+                this.turns = turns;
+                this.current = 100;
+                this.angle = 0;
+
+                this.segments = [];
+                const segsPerCoil = 16;
+
+                for (let t = 0; t < turns; t++) {
+                    const cx = startX + (t * spacing);
+                    for (let i = 0; i < segsPerCoil; i++) {
+                        const theta1 = (i / segsPerCoil) * Math.PI * 2;
+                        const theta2 = ((i + 1) / segsPerCoil) * Math.PI * 2;
+                        const p1 = new THREE.Vector3(cx, Math.cos(theta1) * radius, Math.sin(theta1) * radius);
+                        const p2 = new THREE.Vector3(cx, Math.cos(theta2) * radius, Math.sin(theta2) * radius);
+                        this.segments.push({ a: p1, b: p2 });
+                    }
+                }
+            }
+
+            update(dt) {
+                const speed = this.current * 0.005 * dt;
+                const isVisible = Math.abs(this.current) > 1;
+
+                if (this.planeMesh) this.planeMesh.visible = isSliceMode;
+
+                for (let p of this.allPulses) {
+                    p.mesh.visible = isVisible;
+                    if (isVisible) {
+                        p.phase += speed;
+                        if (p.phase > 1) p.phase -= 1;
+                        if (p.phase < 0) p.phase += 1;
+
+                        const theta = p.phase * Math.PI * 2;
+                        p.mesh.position.set(
+                            Math.cos(theta) * p.radius,
+                            Math.sin(theta) * p.radius,
+                            0
+                        );
+                    }
+                }
+            }
+
+            updateRotation(deg) {
+                const rad = deg * (Math.PI / 180);
+                this.mesh.rotation.y = rad;
+                this.angle = rad;
+            }
+
+            updateArrow() { }
+
+            getDescription() { return "Solenoid"; }
+
+            isInFocus(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.angle);
+
+                if (isSliceMode) {
+                    const distFromPlane = Math.abs(local.y);
+                    return (distFromPlane < 6 && Math.abs(local.x) < 60 && Math.abs(local.z) < 40);
+                }
+                else {
+                    return (Math.abs(local.x) < 60 && local.y * local.y + local.z * local.z < 1600);
+                }
+            }
+
+            isInside(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.angle);
+
+                const r2 = local.y * local.y + local.z * local.z;
+                return (r2 > 25 && r2 < 50 && Math.abs(local.x) < 32);
+            }
+
+            getFieldAt(p) {
+                const localP = p.clone();
+                this.mesh.worldToLocal(localP);
+
+                let bx = 0, by = 0, bz = 0;
+                const I = this.current * 0.6;
+
+                for (let seg of this.segments) {
+                    const bSeg = getSegmentB(localP, seg.a, seg.b, I);
+                    bx += bSeg.x;
+                    by += bSeg.y;
+                    bz += bSeg.z;
+                }
+
+                const bVec = new THREE.Vector3(bx, by, bz);
+                bVec.applyQuaternion(this.mesh.quaternion);
+
+                return bVec;
+            }
+        }
+
+        class Coil3D extends SimulationObject {
+            constructor(x, z) {
+                const group = new THREE.Group();
+                const radius = 12;
+                const tubeRadius = 1.5;
+
+                const geo = new THREE.TorusGeometry(radius, tubeRadius, 16, 64);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.5 });
+                const mesh = new THREE.Mesh(geo, mat);
+                group.add(mesh);
+
+                const planeGeo = new THREE.PlaneGeometry(60, 60);
+                const planeMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
+                const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+                planeMesh.rotation.x = -Math.PI / 2;
+                group.add(planeMesh);
+
+                const hitGeo = new THREE.TorusGeometry(radius, tubeRadius + 4, 16, 32);
+                const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+                const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+                group.add(hitMesh);
+
+                const outlineGeo = new THREE.TorusGeometry(radius, tubeRadius + 0.5, 16, 64);
+                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, wireframe: true, visible: false });
+                const outline = new THREE.Mesh(outlineGeo, outlineMat);
+                group.add(outline);
+                group.userData.outline = outline;
+
+                const pulses = [];
+                const pulseGeo = new THREE.SphereGeometry(2.0, 8, 8);
+                const pulseMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                for (let i = 0; i < 6; i++) {
+                    const pulse = new THREE.Mesh(pulseGeo, pulseMat);
+                    group.add(pulse);
+                    pulses.push({ mesh: pulse, phase: i / 6 });
+                }
+
+                group.rotation.y = Math.PI / 2;
+                group.position.set(x, 16, z);
+
+                super(group, 'coil');
+
+                this.planeMesh = planeMesh; // Assigned AFTER super
+                this.pulses = pulses;
+                this.radius = radius;
+                this.current = 100;
+                this.angle = Math.PI / 2;
+
+                this.segments = [];
+                const segCount = 40;
+                for (let i = 0; i < segCount; i++) {
+                    const theta1 = (i / segCount) * Math.PI * 2;
+                    const theta2 = ((i + 1) / segCount) * Math.PI * 2;
+                    const p1 = new THREE.Vector3(Math.cos(theta1) * radius, Math.sin(theta1) * radius, 0);
+                    const p2 = new THREE.Vector3(Math.cos(theta2) * radius, Math.sin(theta2) * radius, 0);
+                    this.segments.push({ a: p1, b: p2 });
+                }
+            }
+
+            update(dt) {
+                const speed = this.current * 0.005 * dt;
+                const isVisible = Math.abs(this.current) > 1;
+
+                if (this.planeMesh) this.planeMesh.visible = isSliceMode;
+
+                for (let p of this.pulses) {
+                    p.mesh.visible = isVisible;
+                    if (isVisible) {
+                        p.phase += speed;
+                        if (p.phase > 1) p.phase -= 1;
+                        if (p.phase < 0) p.phase += 1;
+
+                        const theta = p.phase * Math.PI * 2;
+                        p.mesh.position.set(
+                            Math.cos(theta) * this.radius,
+                            Math.sin(theta) * this.radius,
+                            0
+                        );
+                    }
+                }
+            }
+
+            updateRotation(deg) {
+                const rad = deg * (Math.PI / 180);
+                this.mesh.rotation.y = rad;
+                this.angle = rad;
+            }
+
+            updateArrow() { }
+
+            getDescription() { return "Circular Coil"; }
+
+            isInFocus(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyQuaternion(this.mesh.quaternion.clone().invert());
+
+                if (isSliceMode) {
+                    const distFromPlane = Math.abs(local.y);
+                    const distFromCenter = Math.sqrt(local.x * local.x + local.z * local.z);
+                    return (distFromPlane < 6 && distFromCenter < 35);
+                }
+                else {
+                    return local.lengthSq() < 35 * 35;
+                }
+            }
+
+            isInside(p) {
+                const local = p.clone().sub(this.mesh.position);
+                local.applyQuaternion(this.mesh.quaternion.clone().invert());
+                const dCenter = Math.sqrt(local.x * local.x + local.y * local.y);
+                const dWire = Math.sqrt(Math.pow(dCenter - this.radius, 2) + local.z * local.z);
+                return dWire < 2.0;
+            }
+
+            getFieldAt(p) {
+                const localP = p.clone();
+                this.mesh.worldToLocal(localP);
+
+                let bx = 0, by = 0, bz = 0;
+                const I = this.current * 0.5;
+
+                for (let seg of this.segments) {
+                    const bSeg = getSegmentB(localP, seg.a, seg.b, I);
+                    bx += bSeg.x;
+                    by += bSeg.y;
+                    bz += bSeg.z;
+                }
+
+                const bVec = new THREE.Vector3(bx, by, bz);
+                bVec.applyQuaternion(this.mesh.quaternion);
+
+                return bVec;
+            }
+        }
+
+        // --- Physics Loop ---
+
+        function updateField(dt) {
+            const dummyPos = new THREE.Vector3();
+            const totalB = new THREE.Vector3();
+            const FOCUS_RADIUS_SQ = 45 * 45;
+            const FLOW_SPEED = 12.0; // Speed of the flow
+
+            fieldArrows.forEach(arrow => {
+                // Global visibility check
+                if (!isFieldVisible) {
+                    arrow.visible = false;
+                    return;
+                }
+
+                dummyPos.copy(arrow.position);
+
+                let isNear = false;
+                let isInside = false;
+
+                for (const obj of objects) {
+                    if (obj.isInFocus(dummyPos)) isNear = true;
+                    if (obj.isInside(dummyPos)) isInside = true;
+                }
+
+                if (!isNear || isInside) {
+                    arrow.visible = false;
+                    // Reset if hidden so it doesn't get stuck
+                    if (arrow.userData.traveled > 0) {
+                        arrow.position.copy(arrow.userData.origin);
+                        arrow.userData.traveled = 0;
+                    }
+                    return;
+                }
+
+                totalB.set(0, 0, 0);
+
+                for (const obj of objects) {
+                    if (obj.isInside(dummyPos)) continue;
+
+                    const b = obj.getFieldAt(dummyPos);
+                    totalB.x += b.x;
+                    totalB.y += b.y;
+                    totalB.z += b.z;
+                }
+
+                const len = totalB.length();
+
+                // 3. Safety Checks (NaN / Zero)
+                if (len > 0.01 && !isNaN(len)) {
+                    const dir = totalB.normalize();
+
+                    // Verify direction is valid
+                    if (isNaN(dir.x) || isNaN(dir.y) || isNaN(dir.z)) {
+                        arrow.visible = false;
+                        return;
+                    }
+
+                    // 4. Flow Animation (Restored Logic)
+                    if (isFlowing) {
+                        const moveStep = FLOW_SPEED * dt;
+                        arrow.position.add(dir.clone().multiplyScalar(moveStep));
+
+                        // Track distance
+                        arrow.userData.traveled += moveStep;
+
+                        // Reset if exceeded path limit
+                        if (arrow.userData.traveled > arrow.userData.pathLimit) {
+                            arrow.position.copy(arrow.userData.origin);
+                            arrow.userData.traveled = 0;
+                        }
+                    }
+
+                    // 5. Visual Updates
+                    let scale = Math.min(len * 5, 2.5);
+                    scale = Math.max(scale, 0.5);
+
+                    arrow.setDirection(dir);
+                    arrow.setLength(scale, scale * 0.25, scale * 0.2);
+
+                    const intensity = Math.min(len * 5, 1);
+
+                    // Color: Deep Blue
+                    const h = 0.66;
+                    const s = 1.0;
+                    const l = 0.2 + (intensity * 0.4);
+
+                    const color = new THREE.Color().setHSL(h, s, l);
+                    arrow.setColor(color);
+
+                    arrow.visible = true;
+                } else {
+                    arrow.visible = false;
+                }
+            });
+        }
+
+        // --- Interaction & Camera Control ---
+
+        function updateCameraPosition() {
+            camera.position.x = cameraTarget.x + cameraRadius * Math.sin(cameraAngle) * Math.cos(cameraHeight);
+            camera.position.z = cameraTarget.z + cameraRadius * Math.cos(cameraAngle) * Math.cos(cameraHeight);
+            camera.position.y = cameraTarget.y + cameraRadius * Math.sin(cameraHeight);
+            camera.lookAt(cameraTarget);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onMouseDown(event) {
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            if (event.button === 1 || (event.button === 0 && event.shiftKey)) {
+                isPanning = true;
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+                return;
+            }
+
+            if (event.button === 2) {
+                isRotating = true;
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+                return;
+            }
+
+            raycaster.setFromCamera(mouse, camera);
+            const interactableMeshes = objects.map(o => o.mesh);
+            const intersects = raycaster.intersectObjects(interactableMeshes, true);
+
+            if (intersects.length > 0) {
+                let target = intersects[0].object;
+                while (target.parent && !target.userData.parentObj) {
+                    target = target.parent;
+                }
+                if (target.userData.parentObj) {
+                    selectObject(target.userData.parentObj);
+                    isDraggingObj = true;
+                }
+            } else {
+                selectObject(null);
+                isDraggingObj = false;
+            }
+        }
+
+        function onMouseMove(event) {
+            event.preventDefault();
+
+            if (isPanning) {
+                const deltaX = event.clientX - lastMouseX;
+                const deltaY = event.clientY - lastMouseY;
+                const panSpeed = cameraRadius * 0.0015;
+                const sin = Math.sin(cameraAngle);
+                const cos = Math.cos(cameraAngle);
+                cameraTarget.x -= (deltaX * cos - deltaY * sin) * panSpeed;
+                cameraTarget.z -= (deltaX * sin + deltaY * cos) * panSpeed;
+                updateCameraPosition();
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+                return;
+            }
+
+            if (isRotating) {
+                const deltaX = event.clientX - lastMouseX;
+                const deltaY = event.clientY - lastMouseY;
+                cameraAngle -= deltaX * 0.005;
+                cameraHeight += deltaY * 0.005;
+                cameraHeight = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraHeight));
+                updateCameraPosition();
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+                return;
+            }
+
+            if (isDraggingObj && selectedObject) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(dragPlane);
+                if (intersects.length > 0) {
+                    selectedObject.setPosition(intersects[0].point.x, intersects[0].point.z);
+                }
+            }
+        }
+
+        function onMouseUp() {
+            isDraggingObj = false;
+            isRotating = false;
+            isPanning = false;
+        }
+
+        function onWheel(event) {
+            cameraRadius += event.deltaY * 0.05;
+            cameraRadius = Math.max(20, Math.min(200, cameraRadius));
+            updateCameraPosition();
+        }
+
+        function handleKeyboardPan() {
+            const panSpeed = 1.0;
+            const s = Math.sin(cameraAngle);
+            const c = Math.cos(cameraAngle);
+            let dx = 0; let dz = 0; let dy = 0;
+
+            if (keys.KeyW) { dx -= s * panSpeed; dz -= c * panSpeed; }
+            if (keys.KeyS) { dx += s * panSpeed; dz += c * panSpeed; }
+            if (keys.KeyA) { dx -= c * panSpeed; dz += s * panSpeed; }
+            if (keys.KeyD) { dx += c * panSpeed; dz -= s * panSpeed; }
+            if (keys.Shift) dy += panSpeed;
+            if (keys.Control) dy -= panSpeed;
+
+            if (dx !== 0 || dz !== 0 || dy !== 0) {
+                cameraTarget.x += dx; cameraTarget.z += dz; cameraTarget.y += dy;
+                updateCameraPosition();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            handleKeyboardPan();
+            objects.forEach(obj => { if (obj.update) obj.update(delta); });
+            updateField(delta);
+            renderer.render(scene, camera);
+        }
+
+        // --- UI Binding ---
+        const ui = {
+            panel: document.getElementById('propsPanel'),
+            title: document.getElementById('propTitle'),
+            strength: document.getElementById('strengthSlider'),
+            rotation: document.getElementById('rotationSlider'),
+            rotControl: document.getElementById('rotControl'),
+            wireControl: document.getElementById('wireControl'),
+            dirUp: document.getElementById('dirUpBtn'),
+            dirDown: document.getElementById('dirDownBtn'),
+            delete: document.getElementById('deleteBtn'),
+            sliceToggle: document.getElementById('toggleSliceBtn'),
+            fieldToggle: document.getElementById('toggleFieldBtn'),
+            flowToggle: document.getElementById('toggleFlowBtn') // Added binding
+        };
+
+        document.getElementById('addMagnetBtn').onclick = () => addMagnet((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+        document.getElementById('addWireBtn').onclick = () => addWire((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+        document.getElementById('addSolenoidBtn').onclick = () => addSolenoid((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+        document.getElementById('addCoilBtn').onclick = () => addCoil((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+
+        document.getElementById('resetBtn').onclick = () => {
+            [...objects].forEach(o => o.remove());
+            selectObject(null);
+            cameraTarget.set(0, 0, 0);
+            updateCameraPosition();
+        };
+
+        ui.strength.oninput = (e) => {
+            if (!selectedObject) return;
+            const val = parseInt(e.target.value);
+            if (selectedObject.type === 'magnet') selectedObject.strength = val;
+            else {
+                const sign = Math.sign(selectedObject.current) || 1;
+                selectedObject.current = val * sign;
+            }
+        };
+
+        ui.rotation.oninput = (e) => {
+            if (!selectedObject) return;
+            selectedObject.updateRotation(parseInt(e.target.value));
+        };
+
+        ui.dirUp.onclick = () => {
+            if (!selectedObject || (selectedObject.type !== 'wire' && selectedObject.type !== 'solenoid' && selectedObject.type !== 'coil')) return;
+            selectedObject.current = Math.abs(selectedObject.current);
+            selectedObject.updateArrow();
+            updateUI();
+        };
+
+        ui.dirDown.onclick = () => {
+            if (!selectedObject || (selectedObject.type !== 'wire' && selectedObject.type !== 'solenoid' && selectedObject.type !== 'coil')) return;
+            selectedObject.current = -Math.abs(selectedObject.current);
+            selectedObject.updateArrow();
+            updateUI();
+        };
+
+        ui.delete.onclick = () => {
+            if (selectedObject) selectedObject.remove();
+        };
+
+        // Toggle Logic
+        ui.sliceToggle.onclick = () => {
+            isSliceMode = !isSliceMode;
+            if (isSliceMode) {
+                ui.sliceToggle.textContent = t('btnToggle3DView');
+                ui.sliceToggle.classList.replace('bg-purple-500', 'bg-indigo-500');
+                ui.sliceToggle.classList.replace('hover:bg-purple-600', 'hover:bg-indigo-600');
+            } else {
+                ui.sliceToggle.textContent = t('btnToggle2DSlice');
+                ui.sliceToggle.classList.replace('bg-indigo-500', 'bg-purple-500');
+                ui.sliceToggle.classList.replace('hover:bg-indigo-600', 'hover:bg-purple-600');
+            }
+        };
+
+        ui.fieldToggle.onclick = () => {
+            isFieldVisible = !isFieldVisible;
+            if (isFieldVisible) {
+                ui.fieldToggle.textContent = t('btnHideField');
+                ui.fieldToggle.classList.replace('bg-gray-500', 'bg-teal-500');
+                ui.fieldToggle.classList.replace('hover:bg-gray-600', 'hover:bg-teal-600');
+            } else {
+                ui.fieldToggle.textContent = t('btnShowField');
+                ui.fieldToggle.classList.replace('bg-teal-500', 'bg-gray-500');
+                ui.fieldToggle.classList.replace('hover:bg-teal-600', 'hover:bg-gray-600');
+            }
+        };
+
+        // New Flow Toggle Logic
+        ui.flowToggle.onclick = () => {
+            isFlowing = !isFlowing;
+            if (isFlowing) {
+                ui.flowToggle.textContent = t('btnPauseFlow');
+                ui.flowToggle.classList.replace('bg-blue-500', 'bg-red-500');
+                ui.flowToggle.classList.replace('hover:bg-blue-600', 'hover:bg-red-600');
+            } else {
+                ui.flowToggle.textContent = t('btnStartFlow');
+                ui.flowToggle.classList.replace('bg-red-500', 'bg-blue-500');
+                ui.flowToggle.classList.replace('hover:bg-red-600', 'hover:bg-blue-600');
+
+                // Reset all arrows to their initial grid positions immediately
+                fieldArrows.forEach(arrow => {
+                    if (arrow.userData.origin) {
+                        arrow.position.copy(arrow.userData.origin);
+                        arrow.userData.traveled = 0;
+                    }
+                });
+            }
+        };
+
+        function updateUI() {
+            if (!selectedObject) {
+                ui.panel.classList.add('hidden');
+                return;
+            }
+            ui.panel.classList.remove('hidden');
+            ui.rotControl.classList.remove('hidden');
+
+            if (selectedObject.type === 'magnet') {
+                ui.title.textContent = t('magnetProperties');
+                ui.wireControl.classList.add('hidden');
+                ui.strength.value = selectedObject.strength;
+                ui.rotation.value = (selectedObject.angle * 180 / Math.PI);
+            } else {
+                // Wire, Solenoid, or Coil
+                let typeName = 'wireProperties';
+                if (selectedObject.type === 'solenoid') typeName = 'solenoidProperties';
+                if (selectedObject.type === 'coil') typeName = 'coilProperties';
+
+                ui.title.textContent = t(typeName);
+                ui.wireControl.classList.remove('hidden');
+                ui.strength.value = Math.abs(selectedObject.current);
+                ui.rotation.value = (selectedObject.angle * 180 / Math.PI);
+
+                if (selectedObject.current > 0) {
+                    ui.dirUp.classList.replace('text-slate-500', 'text-white');
+                    ui.dirUp.classList.replace('hover:bg-slate-200', 'bg-slate-600');
+                    ui.dirUp.classList.add('shadow-sm');
+                    ui.dirDown.classList.replace('text-white', 'text-slate-500');
+                    ui.dirDown.classList.replace('bg-slate-600', 'hover:bg-slate-200');
+                    ui.dirDown.classList.remove('shadow-sm');
+                } else {
+                    ui.dirDown.classList.replace('text-slate-500', 'text-white');
+                    ui.dirDown.classList.replace('hover:bg-slate-200', 'bg-slate-600');
+                    ui.dirDown.classList.add('shadow-sm');
+                    ui.dirUp.classList.replace('text-white', 'text-slate-500');
+                    ui.dirUp.classList.replace('bg-slate-600', 'hover:bg-slate-200');
+                    ui.dirUp.classList.remove('shadow-sm');
+                }
+            }
+        }
+
+        function addMagnet(x, z) {
+            const m = new Magnet3D(x, z);
+            selectObject(m);
+        }
+
+        function addWire(x, z) {
+            const w = new Wire3D(x, z);
+            selectObject(w);
+        }
+
+        function addSolenoid(x, z) {
+            const s = new Solenoid3D(x, z);
+            selectObject(s);
+        }
+
+        function addCoil(x, z) {
+            const c = new Coil3D(x, z);
+            selectObject(c);
+        }
+
+        function selectObject(obj) {
+            if (selectedObject && selectedObject.mesh.userData.outline) {
+                selectedObject.mesh.userData.outline.visible = false;
+            }
+            selectedObject = obj;
+            if (selectedObject && selectedObject.mesh.userData.outline) {
+                selectedObject.mesh.userData.outline.visible = true;
+            }
+            updateUI();
+        }
+
+        // Start
+        initLanguage();
+        init();
+
+    </script>
+</body>
+
+</html>
