@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ideal Gas Simulation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* Theme color variables (white theme) */
+            --bg-color: #ffffff;
+            --panel-color: #f8f9fa;
+            --input-bg: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+
+            --accent-color: #00bcd4;
+            --danger-color: #ff5252;
+            --success-color: #66bb6a;
+            --locked-color: #ff9800;
+            --font-mono: 'Roboto Mono', 'Consolas', monospace;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            gap: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            flex-shrink: 0;
+        }
+
+        .formula-display {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            font-size: 1.3rem;
+            color: #333;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 5px 15px;
+            border-radius: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Language Selector */
+        .language-selector {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 30;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            border-color: #007bff;
+            background: #f0f7ff;
+            color: #007bff;
+        }
+
+        .lang-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 10px;
+            gap: 15px;
+            height: 100%;
+        }
+
+        /* Left side: Simulation canvas */
+        .simulation-area {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: #f0f2f5;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+        }
+
+        canvas#simCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: col-resize;
+        }
+
+        /* Right side: Data and controls */
+        .sidebar {
+            flex: 1;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+
+        .card {
+            background-color: var(--panel-color);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lock-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .lock-btn {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            color: #495057;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .lock-btn:hover {
+            background: #dde0e3;
+        }
+
+        .lock-btn.active {
+            background: rgba(255, 152, 0, 0.15);
+            border-color: var(--locked-color);
+            color: #d35400;
+            font-weight: bold;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .data-item {
+            background: rgba(0, 0, 0, 0.03);
+            padding: 8px;
+            border-radius: 4px;
+            position: relative;
+            border: 1px solid #e9ecef;
+        }
+
+        .data-item.locked {
+            opacity: 0.8;
+            background: repeating-linear-gradient(45deg,
+                    rgba(0, 0, 0, 0.02),
+                    rgba(0, 0, 0, 0.02) 10px,
+                    rgba(0, 0, 0, 0.05) 10px,
+                    rgba(0, 0, 0, 0.05) 20px);
+            border-color: var(--locked-color);
+        }
+
+        .data-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        input.editable-val {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-primary);
+            background: var(--input-bg);
+            border: none;
+            border-bottom: 2px solid #ced4da;
+            width: 100%;
+            padding: 2px 5px;
+        }
+
+        input.editable-val:focus {
+            outline: none;
+            border-bottom-color: var(--accent-color);
+            background: #f1f3f5;
+        }
+
+        .unit {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            font-size: 0.8rem;
+            color: #888;
+            pointer-events: none;
+        }
+
+        .control-row {
+            margin-bottom: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: filter 0.2s;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-add {
+            background-color: var(--success-color);
+        }
+
+        .btn-remove {
+            background-color: var(--danger-color);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        sup {
+            font-size: 0.7em;
+            vertical-align: super;
+        }
+
+        /* Chart and options styles */
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+
+        #chartPlaceholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.9rem;
+            text-align: center;
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        #chartOptions {
+            font-size: 0.85rem;
+            display: none;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        #chartOptions label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1 data-i18n="title">Ideal Gas Simulator</h1>
+        <div class="formula-display">pV = nRT</div>
+        <div class="language-selector">
+            <button class="lang-btn" data-lang="en-US">EN</button>
+            <button class="lang-btn" data-lang="zh-HK">繁</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="simulation-area" id="simArea">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <div class="sidebar">
+
+            <div class="card">
+                <h3 data-i18n="systemParameters">System Parameters (Click to Edit)</h3>
+
+                <div class="lock-controls">
+                    <div class="lock-btn" id="btnLockP" onclick="toggleLock('P')"><span>🔓</span> <span
+                            data-i18n="lockP">Lock P</span></div>
+                    <div class="lock-btn" id="btnLockV" onclick="toggleLock('V')"><span>🔓</span> <span
+                            data-i18n="lockV">Lock V</span></div>
+                    <div class="lock-btn" id="btnLockT" onclick="toggleLock('T')"><span>🔓</span> <span
+                            data-i18n="lockT">Lock T</span></div>
+                </div>
+
+                <div class="data-grid">
+                    <div class="data-item" id="boxP">
+                        <label class="data-label" data-i18n="pressure">Pressure</label>
+                        <input type="number" id="inP" class="editable-val" value="0" onchange="handleUserChange('P')">
+                        <span class="unit">Pa</span>
+                    </div>
+                    <div class="data-item" id="boxV">
+                        <label class="data-label" data-i18n="volume">Volume</label>
+                        <input type="number" id="inV" class="editable-val" step="0.01" value="1.0"
+                            onchange="handleUserChange('V')">
+                        <span class="unit">m³</span>
+                    </div>
+                    <div class="data-item" id="boxT">
+                        <label class="data-label" data-i18n="temperature">Temperature</label>
+                        <input type="number" id="inT" class="editable-val" value="300" onchange="handleUserChange('T')">
+                        <span class="unit">K</span>
+                    </div>
+                    <div class="data-item" id="boxn">
+                        <label class="data-label" data-i18n="amountOfSubstance">Amount of Substance (n)</label>
+                        <input type="number" id="inN" class="editable-val" step="0.01" value="0.0"
+                            onchange="handleUserChange('n')">
+                        <span class="unit">mol</span>
+                    </div>
+                    <div class="data-item" style="grid-column: span 2;">
+                        <label class="data-label" data-i18n="totalParticles">Total Particles (N)</label>
+                        <input type="text" id="inRealN" class="editable-val" value="0"
+                            onchange="handleUserChange('N_real')">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 data-i18n="quickControls">Quick Controls</h3>
+                <div class="control-row">
+                    <div class="btn-group">
+                        <button class="btn-add" onclick="modifyGas(1)"><span data-i18n="inject">+ Inject (2×10²²
+                                particles)</span></button>
+                        <button class="btn-remove" onclick="modifyGas(-1)"><span data-i18n="leak">- Leak</span></button>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label style="font-size:0.8rem; color:#aaa;" data-i18n="volumeControl">Volume Control</label>
+                    <input type="range" id="sliderVol" min="0.1" max="2.0" step="0.01" value="1.0">
+                </div>
+                <div class="control-row">
+                    <label style="font-size:0.8rem; color:#aaa;" data-i18n="temperatureControl">Temperature
+                        Control</label>
+                    <input type="range" id="sliderTemp" min="50" max="1000" step="10" value="300">
+                </div>
+            </div>
+
+            <div class="card" style="flex: 1; display:flex; flex-direction:column;">
+                <h3>
+                    <span id="chartTitle" data-i18n="relationshipChart">Relationship Chart</span>
+
+                    <div id="chartOptions">
+                        <label>
+                            <input type="checkbox" id="chkInverseV" onchange="updateChartConfig(); updateChartData();">
+                            <span data-i18n="showPInverseV">Show P - 1/V Chart</span>
+                        </label>
+                    </div>
+                </h3>
+
+                <div style="font-size:0.75rem; color:#666; margin-bottom:5px;" id="chartSub"></div>
+
+                <div class="chart-container">
+                    <div id="chartPlaceholder" data-i18n="chartPlaceholder">Click above to<br>lock P, V or T to view
+                        chart</div>
+                    <canvas id="relationChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Translations
+        const translations = {
+            "en-US": {
+                title: "Ideal Gas Simulator",
+                systemParameters: "System Parameters (Click to Edit)",
+                lockP: "Lock P",
+                lockV: "Lock V",
+                lockT: "Lock T",
+                unlockP: "Unlock P",
+                unlockV: "Unlock V",
+                unlockT: "Unlock T",
+                pressure: "Pressure",
+                volume: "Volume",
+                temperature: "Temperature",
+                amountOfSubstance: "Amount of Substance (n)",
+                totalParticles: "Total Particles (N)",
+                quickControls: "Quick Controls",
+                inject: "+ Inject (2×10²² particles)",
+                leak: "- Leak",
+                volumeControl: "Volume Control",
+                temperatureControl: "Temperature Control",
+                relationshipChart: "Relationship Chart",
+                showPInverseV: "Show P - 1/V Chart",
+                chartPlaceholder: "Click above to<br>lock P, V or T to view chart",
+                pvChart: "P-V Chart",
+                ptChart: "P-T Chart",
+                vtChart: "V-T Chart",
+                pInverseVChart: "P - 1/V Chart",
+                isothermal: "Isothermal",
+                isochoric: "Isochoric",
+                isobaric: "Isobaric",
+                theoreticalCurve: "Theoretical Curve",
+                currentState: "Current State"
+            },
+            "zh-HK": {
+                title: "理想氣體模擬器",
+                systemParameters: "系統參數（可點擊輸入）",
+                lockP: "固定 P",
+                lockV: "固定 V",
+                lockT: "固定 T",
+                unlockP: "解鎖 P",
+                unlockV: "解鎖 V",
+                unlockT: "解鎖 T",
+                pressure: "壓強",
+                volume: "體積",
+                temperature: "溫度",
+                amountOfSubstance: "物質的量 (n)",
+                totalParticles: "真實粒子總數 (N)",
+                quickControls: "快速控制",
+                inject: "+ 注入（2×10²² 粒）",
+                leak: "- 洩漏",
+                volumeControl: "體積調節",
+                temperatureControl: "溫度調節",
+                relationshipChart: "關係圖",
+                showPInverseV: "顯示 P - 1/V 圖",
+                chartPlaceholder: "請點擊上方按鈕<br>固定 P, V 或 T 以檢視圖表",
+                pvChart: "P-V 圖",
+                ptChart: "P-T 圖",
+                vtChart: "V-T 圖",
+                pInverseVChart: "P - 1/V 圖",
+                isothermal: "等溫",
+                isochoric: "等容",
+                isobaric: "等壓",
+                theoreticalCurve: "理論曲線",
+                currentState: "當前狀態"
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        // Constants - MUST be declared before language initialization
+        const R_GAS_CONSTANT = 8.314;
+        const AVOGADRO = 6.022e23;
+        const PARTICLES_PER_DOT = 2e22;
+        const MOLES_PER_DOT = PARTICLES_PER_DOT / AVOGADRO;
+        const MAX_VOLUME_M3 = 2.0;
+
+        const state = {
+            P: 0,
+            V: 1.0,
+            T: 300,
+            n: 0,
+            locked: null
+        };
+
+        // DOM elements - MUST be declared before language initialization
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const containerElem = document.getElementById('simArea');
+        let particles = [];
+        let canvasWidth, canvasHeight;
+        let containerPixelWidth = 0;
+        const particleRadius = 4;
+        let screenCollisionCount = 0;
+
+        let myChart = null;
+
+        const dom = {
+            inP: document.getElementById('inP'),
+            inV: document.getElementById('inV'),
+            inT: document.getElementById('inT'),
+            inN: document.getElementById('inN'),
+            inRealN: document.getElementById('inRealN'),
+            sliderVol: document.getElementById('sliderVol'),
+            sliderTemp: document.getElementById('sliderTemp'),
+            btnLockP: document.getElementById('btnLockP'),
+            btnLockV: document.getElementById('btnLockV'),
+            btnLockT: document.getElementById('btnLockT'),
+            boxP: document.getElementById('boxP'),
+            boxV: document.getElementById('boxV'),
+            boxT: document.getElementById('boxT'),
+            chartTitle: document.getElementById('chartTitle'),
+            chartSub: document.getElementById('chartSub'),
+            chartPlaceholder: document.getElementById('chartPlaceholder'),
+            chartCanvas: document.getElementById('relationChart'),
+            chartOptions: document.getElementById('chartOptions'),
+            chkInverseV: document.getElementById('chkInverseV')
+        };
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang === 'zh-HK' ? 'zh-Hant' : 'en';
+            document.title = t('title');
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const translation = t(key);
+
+                if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+                    el.placeholder = translation;
+                } else {
+                    el.innerHTML = translation;
+                }
+            });
+
+            // Update language selector buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            // Update lock buttons
+            updateUI();
+
+            // Update chart labels if chart exists
+            if (myChart) {
+                myChart.data.datasets[0].label = t('theoreticalCurve');
+                myChart.data.datasets[1].label = t('currentState');
+                updateChartConfig();
+                myChart.update('none');
+            }
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+        }
+
+        // Language selector event listeners
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                changeLanguage(btn.dataset.lang);
+            });
+        });
+
+        // Initialize language from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        if (langParam && translations[langParam]) {
+            changeLanguage(langParam);
+        } else {
+            changeLanguage('en-US');
+        }
+
+        function init() {
+            resize();
+            state.n = MOLES_PER_DOT * 10;
+            updateParticlesFromMoles(state.n);
+            calculateEquilibrium('n');
+            animate();
+            initChart();
+            updateUI();
+        }
+
+        function toggleLock(target) {
+            if (state.locked === target) {
+                state.locked = null;
+            } else {
+                state.locked = target;
+            }
+            updateChartConfig();
+            updateUI();
+        }
+
+        function handleUserChange(changedVar) {
+            switch (changedVar) {
+                case 'P': state.P = parseFloat(dom.inP.value); break;
+                case 'V': state.V = parseFloat(dom.inV.value); break;
+                case 'T': state.T = parseFloat(dom.inT.value); break;
+                case 'n':
+                    state.n = parseFloat(dom.inN.value);
+                    updateParticlesFromMoles(state.n);
+                    break;
+                case 'N_real':
+                    let realN = parseFloat(dom.inRealN.value);
+                    if (isNaN(realN)) realN = 0;
+                    state.n = realN / AVOGADRO;
+                    updateParticlesFromMoles(state.n);
+                    changedVar = 'n';
+                    break;
+            }
+
+            if (state.V < 0.01) state.V = 0.01;
+            if (state.V > MAX_VOLUME_M3) state.V = MAX_VOLUME_M3;
+            if (state.T < 1) state.T = 1;
+            if (state.P < 0) state.P = 0;
+            if (state.n < 0) state.n = 0;
+
+            if (state.locked === changedVar) state.locked = null;
+
+            calculateEquilibrium(changedVar);
+            updateUI();
+            updateContainerGeometry();
+        }
+
+        function calculateEquilibrium(sourceVar) {
+            const R = R_GAS_CONSTANT;
+            const calcP = () => (state.n * R * state.T) / state.V;
+            const calcV = () => (state.n * R * state.T) / state.P;
+            const calcT = () => (state.P * state.V) / (state.n * R);
+
+            if (state.n <= 0) {
+                state.P = 0;
+                return;
+            }
+
+            if (sourceVar === 'n') {
+                if (state.locked === 'P') state.V = calcV();
+                else if (state.locked === 'V') state.P = calcP();
+                else if (state.locked === 'T') state.P = calcP();
+                else state.P = calcP();
+            }
+            else if (sourceVar === 'V') {
+                if (state.locked === 'P') state.T = calcT();
+                else state.P = calcP();
+            }
+            else if (sourceVar === 'T') {
+                if (state.locked === 'P') state.V = calcV();
+                else if (state.locked === 'V') state.P = calcP();
+                else state.P = calcP();
+            }
+            else if (sourceVar === 'P') {
+                if (state.locked === 'V') state.T = calcT();
+                else state.V = calcV();
+            }
+            if (state.V > MAX_VOLUME_M3) state.V = MAX_VOLUME_M3;
+        }
+
+        function modifyGas(sign) {
+            let delta = sign * MOLES_PER_DOT;
+            let newN = state.n + delta;
+            if (newN < 0) newN = 0;
+            dom.inN.value = newN;
+            handleUserChange('n');
+        }
+
+        // Chart.js logic
+
+        function initChart() {
+            const ctxChart = dom.chartCanvas.getContext('2d');
+            myChart = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: t('theoreticalCurve'),
+                            data: [],
+                            borderColor: '#555',
+                            borderWidth: 4,
+                            pointRadius: 0,
+                            borderDash: [],
+                            fill: false,
+                            tension: 0.3
+                        },
+                        {
+                            label: t('currentState'),
+                            data: [],
+                            backgroundColor: '#ff5252',
+                            borderColor: '#fff',
+                            borderWidth: 2,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            clip: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    layout: { padding: 15 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function (context) {
+                                    let x = context.parsed.x;
+                                    let y = context.parsed.y;
+                                    return `(${x.toFixed(2)}, ${Math.round(y)})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            grid: { color: '#e0e0e0' },
+                            ticks: { color: '#666' },
+                            title: { display: true, text: 'X', color: '#333' }
+                        },
+                        y: {
+                            grid: { color: '#e0e0e0' },
+                            ticks: { color: '#666' },
+                            title: { display: true, text: 'Y', color: '#333' }
+                        }
+                    }
+                }
+            });
+            updateChartConfig();
+        }
+
+        function updateChartConfig() {
+            const isInverseV = dom.chkInverseV.checked;
+
+            if (!state.locked) {
+                dom.chartPlaceholder.style.display = 'flex';
+                dom.chartCanvas.style.display = 'none';
+                dom.chartTitle.innerHTML = t('relationshipChart');
+                dom.chartSub.innerText = "";
+                dom.chartOptions.style.display = 'none';
+                return;
+            }
+
+            dom.chartPlaceholder.style.display = 'none';
+            dom.chartCanvas.style.display = 'block';
+
+            const opts = myChart.options;
+            delete opts.scales.x.max;
+            delete opts.scales.y.max;
+            delete opts.scales.x.min;
+            delete opts.scales.y.min;
+            opts.scales.x.min = 0;
+
+            if (state.locked === 'T') {
+                dom.chartOptions.style.display = 'flex';
+                dom.chartSub.innerText = `(T=${Math.round(state.T)}K, ${t('isothermal')})`;
+
+                if (isInverseV) {
+                    dom.chartTitle.innerText = t('pInverseVChart');
+                    opts.scales.x.title.text = "1/V (m⁻³)";
+                    opts.scales.y.title.text = currentLang === 'zh-HK' ? "壓強 P (Pa)" : "Pressure P (Pa)";
+                } else {
+                    dom.chartTitle.innerText = t('pvChart');
+                    opts.scales.x.title.text = currentLang === 'zh-HK' ? "體積 V (m³)" : "Volume V (m³)";
+                    opts.scales.y.title.text = currentLang === 'zh-HK' ? "壓強 P (Pa)" : "Pressure P (Pa)";
+                    opts.scales.x.max = MAX_VOLUME_M3;
+                }
+            }
+            else if (state.locked === 'V') {
+                dom.chartOptions.style.display = 'none';
+                dom.chartTitle.innerText = t('ptChart');
+                dom.chartSub.innerText = `(V=${state.V.toFixed(2)}m³, ${t('isochoric')})`;
+                opts.scales.x.title.text = currentLang === 'zh-HK' ? "溫度 T (K)" : "Temperature T (K)";
+                opts.scales.y.title.text = currentLang === 'zh-HK' ? "壓強 P (Pa)" : "Pressure P (Pa)";
+                opts.scales.x.max = 1000;
+            }
+            else if (state.locked === 'P') {
+                dom.chartOptions.style.display = 'none';
+                dom.chartTitle.innerText = t('vtChart');
+                dom.chartSub.innerText = `(P=${Math.round(state.P)}Pa, ${t('isobaric')})`;
+                opts.scales.x.title.text = currentLang === 'zh-HK' ? "溫度 T (K)" : "Temperature T (K)";
+                opts.scales.y.title.text = currentLang === 'zh-HK' ? "體積 V (m³)" : "Volume V (m³)";
+                opts.scales.x.max = 1000;
+                opts.scales.y.max = MAX_VOLUME_M3;
+            }
+        }
+
+        function updateChartData() {
+            if (!state.locked || !myChart) return;
+
+            const nR = state.n * R_GAS_CONSTANT;
+            const curveData = [];
+            const pointData = [];
+            const isInverseV = dom.chkInverseV.checked;
+
+            if (state.locked === 'T') {
+                if (isInverseV) {
+                    // P - 1/V
+                    const slope = nR * state.T;
+                    curveData.push({ x: 0, y: 0 });
+                    curveData.push({ x: 11, y: 11 * slope });
+                    if (state.V > 0) {
+                        pointData.push({ x: 1 / state.V, y: state.P });
+                    }
+                } else {
+                    // P - V
+                    const k = nR * state.T;
+                    for (let v = 0.05; v <= MAX_VOLUME_M3; v += 0.05) {
+                        curveData.push({ x: v, y: k / v });
+                    }
+                    pointData.push({ x: state.V, y: state.P });
+                }
+            }
+            else if (state.locked === 'V') {
+                const k = nR / (state.V || 0.001);
+                curveData.push({ x: 0, y: 0 });
+                curveData.push({ x: 1000, y: k * 1000 });
+                pointData.push({ x: state.T, y: state.P });
+            }
+            else if (state.locked === 'P') {
+                const k = nR / (state.P || 0.001);
+                curveData.push({ x: 0, y: 0 });
+                let maxT = 1000;
+                if (k * 1000 > MAX_VOLUME_M3) {
+                    maxT = MAX_VOLUME_M3 / k;
+                }
+                curveData.push({ x: 0, y: 0 });
+                curveData.push({ x: 1000, y: k * 1000 });
+                pointData.push({ x: state.T, y: state.V });
+            }
+
+            myChart.data.datasets[0].data = curveData;
+            myChart.data.datasets[1].data = pointData;
+
+            const time = Date.now();
+            const pulse = 7 + Math.sin(time / 150) * 2;
+            myChart.data.datasets[1].pointRadius = pulse;
+            myChart.data.datasets[1].pointHoverRadius = pulse + 2;
+
+            myChart.update('none');
+        }
+
+        function updateUI() {
+            const updateIfNoFocus = (el, val) => {
+                if (document.activeElement !== el) el.value = val;
+            };
+
+            updateIfNoFocus(dom.inP, Math.round(state.P));
+            updateIfNoFocus(dom.inV, state.V.toFixed(2));
+            updateIfNoFocus(dom.inT, Math.round(state.T));
+            updateIfNoFocus(dom.inN, state.n.toFixed(4));
+
+            const realN = state.n * AVOGADRO;
+            if (document.activeElement !== dom.inRealN) {
+                dom.inRealN.value = realN === 0 ? "0" : realN.toExponential(2);
+            }
+
+            dom.sliderVol.value = state.V;
+            dom.sliderTemp.value = state.T;
+
+            dom.btnLockP.className = state.locked === 'P' ? 'lock-btn active' : 'lock-btn';
+            dom.btnLockV.className = state.locked === 'V' ? 'lock-btn active' : 'lock-btn';
+            dom.btnLockT.className = state.locked === 'T' ? 'lock-btn active' : 'lock-btn';
+
+            dom.btnLockP.innerHTML = state.locked === 'P' ? `🔒 <span data-i18n="unlockP">${t('unlockP')}</span>` : `🔓 <span data-i18n="lockP">${t('lockP')}</span>`;
+            dom.btnLockV.innerHTML = state.locked === 'V' ? `🔒 <span data-i18n="unlockV">${t('unlockV')}</span>` : `🔓 <span data-i18n="lockV">${t('lockV')}</span>`;
+            dom.btnLockT.innerHTML = state.locked === 'T' ? `🔒 <span data-i18n="unlockT">${t('unlockT')}</span>` : `🔓 <span data-i18n="lockT">${t('lockT')}</span>`;
+
+            dom.boxP.classList.toggle('locked', state.locked === 'P');
+            dom.boxV.classList.toggle('locked', state.locked === 'V');
+            dom.boxT.classList.toggle('locked', state.locked === 'T');
+        }
+
+        function updateParticlesFromMoles(newMoles) {
+            const targetCount = Math.round(newMoles / MOLES_PER_DOT);
+            const currentCount = particles.length;
+            if (targetCount > currentCount) {
+                for (let i = 0; i < targetCount - currentCount; i++) particles.push(new Particle());
+            } else if (targetCount < currentCount) {
+                particles.splice(0, currentCount - targetCount);
+            }
+        }
+
+        dom.sliderVol.addEventListener('input', (e) => {
+            dom.inV.value = e.target.value;
+            handleUserChange('V');
+        });
+        dom.sliderTemp.addEventListener('input', (e) => {
+            dom.inT.value = e.target.value;
+            handleUserChange('T');
+        });
+
+        function resize() {
+            canvasWidth = containerElem.clientWidth;
+            canvasHeight = containerElem.clientHeight;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            updateContainerGeometry();
+        }
+        window.addEventListener('resize', resize);
+
+        function updateContainerGeometry() {
+            containerPixelWidth = canvasWidth * (state.V / MAX_VOLUME_M3);
+            particles.forEach(p => {
+                if (p.x > containerPixelWidth) {
+                    p.x = containerPixelWidth - 10;
+                    p.vx = -Math.abs(p.vx);
+                }
+            });
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * (containerPixelWidth - 20) + 10;
+                this.y = Math.random() * (canvasHeight - 20) + 10;
+                const angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(angle);
+                this.vy = Math.sin(angle);
+            }
+            update() {
+                const speed = Math.sqrt(state.T) * 0.25;
+                this.x += this.vx * speed;
+                this.y += this.vy * speed;
+
+                if (this.x - particleRadius < 0) {
+                    this.x = particleRadius;
+                    this.vx *= -1;
+                } else if (this.x + particleRadius > containerPixelWidth) {
+                    this.x = containerPixelWidth - particleRadius;
+                    this.vx *= -1;
+                }
+                if (this.y - particleRadius < 0) {
+                    this.y = particleRadius;
+                    this.vy *= -1;
+                } else if (this.y + particleRadius > canvasHeight) {
+                    this.y = canvasHeight - particleRadius;
+                    this.vy *= -1;
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, particleRadius, 0, Math.PI * 2);
+                ctx.fillStyle = getTempColor(state.T);
+                ctx.fill();
+            }
+        }
+
+        function getTempColor(t) {
+            const p = Math.max(0, Math.min(1, (t - 50) / 950));
+            return `hsl(${(1 - p) * 240}, 100%, 50%)`;
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            ctx.fillStyle = '#f0f2f5';
+            ctx.fillRect(0, 0, containerPixelWidth, canvasHeight);
+            ctx.beginPath();
+            ctx.moveTo(containerPixelWidth, 0);
+            ctx.lineTo(containerPixelWidth, canvasHeight);
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            particles.forEach(p => { p.update(); p.draw(); });
+
+            updateChartData();
+
+            requestAnimationFrame(animate);
+        }
+
+        let isDragging = false;
+        canvas.addEventListener('mousedown', (e) => {
+            if (Math.abs(e.clientX - canvas.getBoundingClientRect().left - containerPixelWidth) < 20) {
+                isDragging = true;
+                canvas.style.cursor = 'col-resize';
+            }
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                let x = e.clientX - canvas.getBoundingClientRect().left;
+                let newVol = (x / canvasWidth) * MAX_VOLUME_M3;
+                dom.inV.value = newVol;
+                handleUserChange('V');
+            }
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; canvas.style.cursor = 'default'; });
+
+        init();
+
+    </script>
+</body>
+
+</html>

@@ -438,5 +438,49 @@
         "screenshotUrl": "screenshots/coefficient-of-friction.png",
         "createdAt": "2025-12-08",
         "updatedAt": "2025-12-08"
+    },
+    {
+        "id": "electrostatic-induction",
+        "category": {
+            "en-US": "Electricity and Magnetism",
+            "zh-HK": "電與磁"
+        },
+        "title": {
+            "en-US": "Electrostatics Lab",
+            "zh-HK": "靜電學實驗室"
+        },
+        "description": {
+            "en-US": "Interactive electrostatic induction simulation with multi-stage polarization, grounding effects, and free sandbox mode for exploring charge distribution and electric fields.",
+            "zh-HK": "互動靜電感應模擬，包含多階段極化、接地效應和自由沙盒模式，用於探索電荷分布和電場。"
+        },
+        "contributors": [
+            "Unknown"
+        ],
+        "simulationUrl": "simulations/physics/electricity-and-magnetism/electrostatic-induction.html",
+        "screenshotUrl": "screenshots/electrostatic-induction.png",
+        "createdAt": "2025-12-08",
+        "updatedAt": "2025-12-08"
+    },
+    {
+        "id": "ideal-gas",
+        "category": {
+            "en-US": "Heat and Gases",
+            "zh-HK": "熱與氣體"
+        },
+        "title": {
+            "en-US": "Ideal Gas Simulator",
+            "zh-HK": "理想氣體模擬器"
+        },
+        "description": {
+            "en-US": "Interactive ideal gas law simulator with real-time particle animation, lock P/V/T controls, dynamic charts (P-V, P-T, V-T), and visual demonstrations of thermodynamic processes.",
+            "zh-HK": "互動理想氣體定律模擬器，具有實時粒子動畫、鎖定 P/V/T 控制、動態圖表（P-V、P-T、V-T）以及熱力學過程的視覺演示。"
+        },
+        "contributors": [
+            "Yiu Fai Ma"
+        ],
+        "simulationUrl": "simulations/physics/heat-and-gases/ideal-gas.html",
+        "screenshotUrl": "screenshots/ideal-gas.png",
+        "createdAt": "2025-12-08",
+        "updatedAt": "2025-12-08"
     }
 ]

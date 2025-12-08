@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Induction: Multi-Stage Polarization</title>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --panel-bg: #ffffff;
+            --text-color: #333;
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --pos-color: #e74c3c;
+            --neg-color: #2980b9;
+            --neutral-color: #95a5a6;
+            --highlight-color: #f1c40f;
+            --trash-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        .hkdse-tag {
+            background: #e67e22;
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 60px);
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background-color: #eef2f5;
+            background-image: radial-gradient(#dbe4eb 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden;
+            cursor: default;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        #controls {
+            width: 340px;
+            background-color: var(--panel-bg);
+            padding: 15px;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: var(--primary-color);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 6px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+            text-align: left;
+        }
+
+        .btn-mode {
+            background-color: #ecf0f1;
+            color: var(--text-color);
+        }
+
+        .btn-mode.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-tool {
+            background-color: #fff;
+            border: 1px solid #ccc;
+        }
+
+        .btn-tool.active {
+            border-color: var(--accent-color);
+            background-color: #eaf6ff;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .toggle-label input {
+            margin-right: 8px;
+        }
+
+        #ground-panel {
+            background-color: #e8f6f3;
+            border: 1px solid #1abc9c;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #notification {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+
+        /* Language Selector */
+        .language-selector {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 30;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: var(--primary-color);
+            border-color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1><span data-i18n="title">Electrostatics Lab</span> <span class="hkdse-tag" data-i18n="hkdseTag">HKDSE
+                Physics</span></h1>
+        <div class="language-selector">
+            <button class="lang-btn" data-lang="en-US">EN</button>
+            <button class="lang-btn" data-lang="zh-HK">繁</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div id="canvas-container">
+            <div id="notification"></div>
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <div id="controls">
+            <div class="control-group">
+                <h3 data-i18n="modeSelection">Mode Selection</h3>
+                <button class="btn btn-mode active" onclick="setMode(1)" data-i18n="mode1">1. Single Sphere
+                    Induction</button>
+                <button class="btn btn-mode" onclick="setMode(2)" data-i18n="mode2">2. Two Spheres (Separation)</button>
+                <button class="btn btn-mode" onclick="setMode(3)" data-i18n="mode3">3. Free Sandbox</button>
+            </div>
+
+            <div id="ground-panel">
+                <h3 style="margin-top:0; color:#16a085;" data-i18n="selectedConductor">Selected Conductor</h3>
+                <div id="ground-controls"></div>
+                <div id="physics-explanation" style="font-size:0.8rem; color:#555; margin-top:5px; font-style:italic;">
+                </div>
+            </div>
+
+            <div class="control-group" id="tools-group">
+                <h3 data-i18n="tools">Tools</h3>
+                <button class="btn btn-tool active" onclick="setTool('drag')"><span data-i18n="dragSelect">✋ Drag /
+                        Select</span></button>
+
+                <div id="sandbox-tools" style="display: none;">
+                    <button class="btn btn-tool" onclick="setTool('rod_pos')"><span data-i18n="positiveRod">🟥 Positive
+                            Rod</span></button>
+                    <button class="btn btn-tool" onclick="setTool('rod_neg')"><span data-i18n="negativeRod">🟦 Negative
+                            Rod</span></button>
+                    <button class="btn btn-tool" onclick="setTool('sphere')"><span data-i18n="metalSphere">⚪ Metal
+                            Sphere</span></button>
+                    <button class="btn btn-tool" onclick="setTool('point_pos')"><span data-i18n="pointChargePos">➕ Point
+                            Charge (+)</span></button>
+                    <button class="btn btn-tool" onclick="setTool('point_neg')"><span data-i18n="pointChargeNeg">➖ Point
+                            Charge (-)</span></button>
+                </div>
+
+                <div id="preset-tools">
+                    <button class="btn btn-tool" onclick="spawnRod(1)"><span data-i18n="addPositiveRod">🟥 Add Positive
+                            Rod</span></button>
+                    <button class="btn btn-tool" onclick="spawnRod(-1)"><span data-i18n="addNegativeRod">🟦 Add Negative
+                            Rod</span></button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3 data-i18n="visualizationOptions">Visualization Options</h3>
+                <label class="toggle-label"><input type="checkbox" id="check-charges" checked> <span
+                        data-i18n="showChargeDistribution">Show Charge Distribution</span></label>
+                <label class="toggle-label"><input type="checkbox" id="check-field"> <span
+                        data-i18n="showFieldLines">Show Field Lines</span></label>
+                <label class="toggle-label"><input type="checkbox" id="check-vectors"> <span
+                        data-i18n="showForceVectors">Show Force Vectors</span></label>
+                <button class="btn"
+                    style="background:var(--primary-color); color:white; text-align:center; margin-top:10px;"
+                    onclick="resetSimulation()"><span data-i18n="reset">↺ Reset</span></button>
+            </div>
+
+            <div style="font-size:0.8rem; color:#777;">
+                <strong data-i18n="tip">Tip:</strong> <span data-i18n="trashTip">Drag items to the Trash Bin
+                    (bottom-right) to remove them.</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Translations
+        const translations = {
+            "en-US": {
+                title: "Electrostatics Lab",
+                hkdseTag: "HKDSE Physics",
+                modeSelection: "Mode Selection",
+                mode1: "1. Single Sphere Induction",
+                mode2: "2. Two Spheres (Separation)",
+                mode3: "3. Free Sandbox",
+                selectedConductor: "Selected Conductor",
+                tools: "Tools",
+                dragSelect: "✋ Drag / Select",
+                positiveRod: "🟥 Positive Rod",
+                negativeRod: "🟦 Negative Rod",
+                metalSphere: "⚪ Metal Sphere",
+                pointChargePos: "➕ Point Charge (+)",
+                pointChargeNeg: "➖ Point Charge (-)",
+                addPositiveRod: "🟥 Add Positive Rod",
+                addNegativeRod: "🟦 Add Negative Rod",
+                visualizationOptions: "Visualization Options",
+                showChargeDistribution: "Show Charge Distribution",
+                showFieldLines: "Show Field Lines",
+                showForceVectors: "Show Force Vectors",
+                reset: "↺ Reset",
+                tip: "Tip:",
+                trashTip: "Drag items to the Trash Bin (bottom-right) to remove them.",
+                connectGround: "Connect Ground (Earth)",
+                disconnectGround: "Disconnect Ground",
+                processElectronsUp: "<strong>Process:</strong> Electrons flow <strong>UP</strong> to neutralize free positive charges. <br><strong>Result:</strong> Net Negative Charge.",
+                processElectronsDown: "<strong>Process:</strong> Free electrons flow <strong>DOWN</strong> to Earth. <br><strong>Result:</strong> Net Positive Charge.",
+                connectedToEarth: "Connected to Earth. Potential is zero.",
+                selectGrounding: "Select grounding to neutralize free charges.",
+                earth: "EARTH"
+            },
+            "zh-HK": {
+                title: "靜電學實驗室",
+                hkdseTag: "香港中學文憑物理",
+                modeSelection: "模式選擇",
+                mode1: "1. 單球感應",
+                mode2: "2. 雙球（分離）",
+                mode3: "3. 自由沙盒",
+                selectedConductor: "已選導體",
+                tools: "工具",
+                dragSelect: "✋ 拖曳 / 選擇",
+                positiveRod: "🟥 正電棒",
+                negativeRod: "🟦 負電棒",
+                metalSphere: "⚪ 金屬球",
+                pointChargePos: "➕ 點電荷 (+)",
+                pointChargeNeg: "➖ 點電荷 (-)",
+                addPositiveRod: "🟥 新增正電棒",
+                addNegativeRod: "🟦 新增負電棒",
+                visualizationOptions: "視覺化選項",
+                showChargeDistribution: "顯示電荷分布",
+                showFieldLines: "顯示電場線",
+                showForceVectors: "顯示力向量",
+                reset: "↺ 重設",
+                tip: "提示：",
+                trashTip: "將物件拖曳至垃圾桶（右下角）以移除。",
+                connectGround: "連接地線（接地）",
+                disconnectGround: "斷開地線",
+                processElectronsUp: "<strong>過程：</strong>電子向<strong>上</strong>流動以中和自由正電荷。<br><strong>結果：</strong>淨負電荷。",
+                processElectronsDown: "<strong>過程：</strong>自由電子向<strong>下</strong>流至地球。<br><strong>結果：</strong>淨正電荷。",
+                connectedToEarth: "已連接至地球。電位為零。",
+                selectGrounding: "選擇接地以中和自由電荷。",
+                earth: "地球"
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        // GLOBAL STATE - MUST be declared before language initialization
+        let canvas, ctx;
+        let objects = [];
+        let activeMode = 1;
+        let currentTool = 'drag';
+        let selectedObject = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let width, height;
+        let trashHover = false;
+        let electronFlowParticles = [];
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang === 'zh-HK' ? 'zh-Hant' : 'en';
+            document.title = t('title');
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const translation = t(key);
+
+                if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+                    el.placeholder = translation;
+                } else {
+                    el.innerHTML = translation;
+                }
+            });
+
+            // Update language selector buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            // Update ground panel if visible
+            updateUI();
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+        }
+
+        // Language selector event listeners
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                changeLanguage(btn.dataset.lang);
+            });
+        });
+
+        // Initialize language from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        if (langParam && translations[langParam]) {
+            changeLanguage(langParam);
+        } else {
+            changeLanguage('en-US');
+        }
+
+        /**
+         * HKDSE ELECTROSTATICS SIMULATION - MULTI-STAGE INDUCTION
+         * Core Update: Spheres generate fields based on their particle distribution (Dipoles),
+         * allowing Sphere A to induce Sphere B.
+         */
+
+        const CONSTANTS = {
+            K: 1000,
+            SPHERE_RADIUS: 60,
+            ROD_WIDTH: 30,
+            ROD_HEIGHT: 150,
+            PARTICLE_RADIUS: 8,
+            // Factor to tune how strong the "visual" particles act as sources of E-field
+            PARTICLE_FIELD_STRENGTH: 0.8,
+            COLORS: {
+                POS: '#e74c3c',
+                NEG: '#2980b9',
+                NEUTRAL: '#95a5a6',
+                HIGHLIGHT: '#f1c40f',
+                TRASH: '#c0392b'
+            }
+        };
+
+        // CLASSES
+
+        class Vector2 {
+            constructor(x, y) { this.x = x; this.y = y; }
+            add(v) { return new Vector2(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vector2(this.x - v.x, this.y - v.y); }
+            mult(s) { return new Vector2(this.x * s, this.y * s); }
+            mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+            normalize() {
+                let m = this.mag();
+                return m === 0 ? new Vector2(0, 0) : new Vector2(this.x / m, this.y / m);
+            }
+            dist(v) { return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2)); }
+        }
+
+        class ChargeParticle {
+            constructor(parent, chargeType) {
+                this.parent = parent;
+                this.charge = chargeType;
+                this.currentPos = new Vector2(0, 0);
+                this.targetPos = new Vector2(0, 0);
+            }
+            update() {
+                this.currentPos.x += (this.targetPos.x - this.currentPos.x) * 0.1;
+                this.currentPos.y += (this.targetPos.y - this.currentPos.y) * 0.1;
+            }
+            draw(ctx, parentPos) {
+                if (!document.getElementById('check-charges').checked) return;
+                const x = parentPos.x + this.currentPos.x;
+                const y = parentPos.y + this.currentPos.y;
+                ctx.beginPath();
+                ctx.arc(x, y, CONSTANTS.PARTICLE_RADIUS, 0, Math.PI * 2);
+
+                if (this.charge > 0) ctx.fillStyle = CONSTANTS.COLORS.POS;
+                else if (this.charge < 0) ctx.fillStyle = CONSTANTS.COLORS.NEG;
+                else ctx.fillStyle = CONSTANTS.COLORS.NEUTRAL;
+
+                ctx.fill();
+                ctx.fillStyle = "white"; ctx.font = "12px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText(this.charge > 0 ? "+" : (this.charge < 0 ? "−" : "ø"), x, y);
+            }
+        }
+
+        class ElectronFlowParticle {
+            constructor(startX, startY, endX, endY) {
+                this.pos = new Vector2(startX, startY);
+                this.target = new Vector2(endX, endY);
+                this.speed = 3;
+                this.life = 1.0;
+                this.reached = false;
+            }
+            update() {
+                let dir = this.target.sub(this.pos).normalize();
+                this.pos = this.pos.add(dir.mult(this.speed));
+                if (this.pos.dist(this.target) < 5) this.reached = true;
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.pos.x, this.pos.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = CONSTANTS.COLORS.NEG;
+                ctx.fill();
+                ctx.fillStyle = "white"; ctx.font = "8px Arial";
+                ctx.fillText("-", this.pos.x - 2, this.pos.y + 3);
+            }
+        }
+
+        class SimObject {
+            constructor(x, y) {
+                this.pos = new Vector2(x, y);
+                this.charge = 0;
+                this.isFixed = false;
+                this.particles = [];
+            }
+            contains(point) { return false; }
+
+            /**
+             * Calculates Electric Field at this object's center generated by ALL OTHER objects.
+             * UPDATED: Now accounts for individual particle positions on Spheres (Dipoles).
+             */
+            getExternalField() {
+                let E = new Vector2(0, 0);
+                objects.forEach(obj => {
+                    if (obj !== this) {
+                        if (obj instanceof Sphere) {
+                            // Dipole/Multipole Calculation: Sum field from all visual particles
+                            // This allows Sphere A to induce Sphere B
+                            obj.particles.forEach(p => {
+                                // Absolute position of the particle
+                                let particleWorldPos = obj.pos.add(p.currentPos);
+                                let distVec = this.pos.sub(particleWorldPos);
+                                let r = distVec.mag();
+
+                                if (r > 15) {
+                                    // p.charge is +1, -1, or 0.
+                                    // Scale by PARTICLE_FIELD_STRENGTH to represent physical charge magnitude
+                                    let q_eff = p.charge * CONSTANTS.PARTICLE_FIELD_STRENGTH;
+
+                                    // E = k * q / r^2
+                                    let mag = (CONSTANTS.K * q_eff) / (r * r);
+                                    E = E.add(distVec.normalize().mult(mag));
+                                }
+                            });
+                        } else {
+                            // Monopole Calculation (Rods, Point Charges)
+                            let r = this.pos.dist(obj.pos);
+                            if (r > 10) {
+                                let dir = this.pos.sub(obj.pos).normalize();
+                                // Rods have strong charge
+                                let q = obj.charge;
+                                E = E.add(dir.mult((CONSTANTS.K * q) / (r * r)));
+                            }
+                        }
+                    }
+                });
+                return E;
+            }
+        }
+
+        class Rod extends SimObject {
+            constructor(x, y, polarity) {
+                super(x, y);
+                this.charge = polarity * 5;
+                this.width = CONSTANTS.ROD_WIDTH;
+                this.height = CONSTANTS.ROD_HEIGHT;
+                this.initParticles();
+            }
+            initParticles() {
+                let count = 4;
+                let spacing = this.height / (count + 1);
+                for (let i = 0; i < count; i++) {
+                    let p = new ChargeParticle(this, Math.sign(this.charge));
+                    p.currentPos = new Vector2(0, -this.height / 2 + spacing * (i + 1));
+                    p.targetPos = p.currentPos;
+                    this.particles.push(p);
+                }
+            }
+            contains(point) {
+                return point.x >= this.pos.x - this.width / 2 && point.x <= this.pos.x + this.width / 2 &&
+                    point.y >= this.pos.y - this.height / 2 && point.y <= this.pos.y + this.height / 2;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.pos.x, this.pos.y);
+                ctx.fillStyle = this.charge > 0 ? "#ffcccb" : "#add8e6";
+                ctx.strokeStyle = (this === selectedObject) ? CONSTANTS.COLORS.HIGHLIGHT : "#7f8c8d";
+                ctx.lineWidth = (this === selectedObject) ? 3 : 1;
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                ctx.fillStyle = "#555"; ctx.fillRect(-5, this.height / 2, 10, 40); // Handle
+                ctx.restore();
+                this.particles.forEach(p => p.draw(ctx, this.pos));
+            }
+            update() { }
+        }
+
+        class Sphere extends SimObject {
+            constructor(x, y, isMovable = true) {
+                super(x, y);
+                this.radius = CONSTANTS.SPHERE_RADIUS;
+                this.isFixed = !isMovable;
+                this.netCharge = 0;
+                this.isGrounded = false;
+                this.groundFlowTimer = 0;
+            }
+
+            contains(point) { return this.pos.dist(point) <= this.radius; }
+
+            update() {
+                // Calculate E field from Rods AND other Spheres (via particles)
+                let E = this.getExternalField();
+
+                // Calculate Electric Potential at center (Scalar) for Grounding Logic
+                let externalPotential = 0;
+                objects.forEach(obj => {
+                    if (obj !== this) {
+                        // Approximate potential calc
+                        let r = this.pos.dist(obj.pos);
+                        let q = (obj instanceof Sphere) ? obj.netCharge : obj.charge;
+                        // High sensitivity for potential
+                        if (r > 0) externalPotential += (q * 800) / r;
+                    }
+                });
+
+                // GROUNDING LOGIC
+                if (this.isGrounded) {
+                    let targetQ = -externalPotential * 0.05;
+                    targetQ = Math.max(-5, Math.min(5, targetQ));
+
+                    let diff = targetQ - this.netCharge;
+
+                    if (Math.abs(diff) > 0.05) {
+                        this.groundFlowTimer++;
+                        if (this.groundFlowTimer > 5) {
+                            this.groundFlowTimer = 0;
+                            let wireTop = new Vector2(this.pos.x, this.pos.y + this.radius);
+                            let wireBot = new Vector2(this.pos.x, this.pos.y + this.radius + 60);
+
+                            if (diff < 0) {
+                                electronFlowParticles.push(new ElectronFlowParticle(wireBot.x, wireBot.y, wireTop.x, wireTop.y));
+                                this.netCharge -= 0.1;
+                            } else {
+                                electronFlowParticles.push(new ElectronFlowParticle(wireTop.x, wireTop.y, wireBot.x, wireBot.y));
+                                this.netCharge += 0.1;
+                            }
+                        }
+                    }
+                }
+
+                // CONDUCTION (Charge Sharing)
+                objects.forEach(obj => {
+                    // Sphere-Sphere Sharing
+                    if (obj instanceof Sphere && obj !== this) {
+                        if (this.pos.dist(obj.pos) < this.radius + obj.radius + 5) {
+                            let total = this.netCharge + obj.netCharge;
+                            let avg = total / 2;
+                            this.netCharge += (avg - this.netCharge) * 0.2;
+                            obj.netCharge += (avg - obj.netCharge) * 0.2;
+                        }
+                    }
+                    // Sphere-Rod Charging (Charging by Conduction)
+                    if (obj instanceof Rod) {
+                        if (this.pos.dist(obj.pos) < this.radius + 60) {
+                            let target = Math.sign(obj.charge) * 3;
+                            this.netCharge += (target - this.netCharge) * 0.1;
+                        }
+                    }
+                });
+
+                // DISPLAY LOGIC (NET CHARGE ONLY)
+                let displayState = 0;
+                if (this.netCharge > 0.3) displayState = 1;
+                else if (this.netCharge < -0.3) displayState = -1;
+
+                let particleCount = 0;
+                if (displayState === 0) {
+                    particleCount = (E.mag() > 0.02) ? 6 : 4;
+                } else {
+                    particleCount = 4 + Math.floor(Math.abs(this.netCharge) * 2);
+                    particleCount = Math.min(16, particleCount);
+                }
+
+                let desiredPos = 0, desiredNeg = 0, desiredNeu = 0;
+
+                if (displayState === 0) {
+                    if (E.mag() > 0.02) {
+                        desiredPos = particleCount; desiredNeg = particleCount;
+                    } else {
+                        desiredNeu = 4;
+                    }
+                } else if (displayState === 1) {
+                    desiredPos = particleCount;
+                } else {
+                    desiredNeg = particleCount;
+                }
+
+                // Grounding Suppression Visuals
+                if (this.isGrounded && Math.abs(externalPotential) > 1.0) {
+                    if (externalPotential > 0) { // Positive rod near -> Sphere becomes negative
+                        desiredPos = 0; desiredNeg = Math.max(4, desiredNeg);
+                    } else { // Negative rod near -> Sphere becomes positive
+                        desiredNeg = 0; desiredPos = Math.max(4, desiredPos);
+                    }
+                }
+
+                this.updateParticleCount(desiredPos, 1);
+                this.updateParticleCount(desiredNeg, -1);
+                this.updateParticleCount(desiredNeu, 0);
+
+                // DISTRIBUTE PARTICLES
+                let eAngle = Math.atan2(E.y, E.x);
+                let separation = Math.min(E.mag() * 60, 1.2);
+
+                let posP = this.particles.filter(p => p.charge > 0);
+                let negP = this.particles.filter(p => p.charge < 0);
+                let neuP = this.particles.filter(p => p.charge === 0);
+
+                // Positives move with field, Negatives against field
+                distributeCluster(posP, eAngle, separation, this.radius - 12);
+                distributeCluster(negP, eAngle + Math.PI, separation, this.radius - 12);
+                if (neuP.length > 0) distributeCluster(neuP, 0, 0, this.radius - 12);
+
+                this.particles.forEach(p => p.update());
+            }
+
+            updateParticleCount(target, sign) {
+                let current = this.particles.filter(p => p.charge === sign).length;
+                if (current < target) this.particles.push(new ChargeParticle(this, sign));
+                else if (current > target) {
+                    let idx = this.particles.findIndex(p => p.charge === sign);
+                    if (idx > -1) this.particles.splice(idx, 1);
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+                let grad = ctx.createRadialGradient(this.pos.x - 20, this.pos.y - 20, 10, this.pos.x, this.pos.y, this.radius);
+                grad.addColorStop(0, "#ecf0f1"); grad.addColorStop(1, "#bdc3c7");
+                ctx.fillStyle = grad; ctx.fill();
+
+                if (this === selectedObject) {
+                    ctx.strokeStyle = CONSTANTS.COLORS.HIGHLIGHT; ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = "#7f8c8d"; ctx.lineWidth = 1;
+                }
+                ctx.stroke();
+
+                if (this.isGrounded) drawGroundSymbol(ctx, this.pos.x, this.pos.y + this.radius);
+
+                this.particles.forEach(p => p.draw(ctx, this.pos));
+
+                ctx.fillStyle = "#333"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
+                let q = this.netCharge.toFixed(1);
+                ctx.fillText(`Q: ${this.netCharge > 0 ? '+' : ''}${q}`, this.pos.x, this.pos.y + this.radius + 20);
+            }
+        }
+
+        class PointCharge extends SimObject {
+            constructor(x, y, charge) {
+                super(x, y); this.charge = charge; this.radius = 15;
+            }
+            contains(point) { return this.pos.dist(point) <= this.radius; }
+            draw(ctx) {
+                ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.charge > 0 ? CONSTANTS.COLORS.POS : CONSTANTS.COLORS.NEG;
+                ctx.fill();
+                if (this === selectedObject) { ctx.strokeStyle = CONSTANTS.COLORS.HIGHLIGHT; ctx.lineWidth = 3; ctx.stroke(); }
+                ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText(this.charge > 0 ? "+" : "-", this.pos.x, this.pos.y);
+            }
+            update() { }
+        }
+
+        // UTILS
+
+        function distributeCluster(particles, angle, spread, radius) {
+            if (particles.length === 0) return;
+            let arc = Math.PI * 2 * (1 - (spread * 0.6));
+            if (particles.length === 1) arc = 0;
+            let start = angle - arc / 2;
+            let step = particles.length > 1 ? arc / (particles.length - 1) : 0;
+
+            particles.forEach((p, i) => {
+                let a = start + step * i + (Math.random() - 0.5) * 0.1;
+                p.targetPos = new Vector2(Math.cos(a) * radius, Math.sin(a) * radius);
+            });
+        }
+
+        function drawGroundSymbol(ctx, x, y) {
+            ctx.beginPath(); ctx.strokeStyle = "#27ae60"; ctx.lineWidth = 2;
+            ctx.moveTo(x, y); ctx.lineTo(x, y + 60);
+            ctx.moveTo(x - 20, y + 60); ctx.lineTo(x + 20, y + 60);
+            ctx.moveTo(x - 12, y + 65); ctx.lineTo(x + 12, y + 65);
+            ctx.moveTo(x - 6, y + 70); ctx.lineTo(x + 6, y + 70);
+            ctx.stroke();
+            ctx.fillStyle = "#27ae60"; ctx.font = "10px Arial"; ctx.textAlign = "center";
+            ctx.fillText(t('earth'), x, y + 82);
+        }
+
+        function drawTrashBin(ctx) {
+            const x = width - 50; const y = height - 50;
+            ctx.save(); ctx.translate(x, y);
+            if (trashHover) ctx.scale(1.2, 1.2);
+            ctx.fillStyle = trashHover ? CONSTANTS.COLORS.TRASH : "#95a5a6";
+            ctx.fillRect(-15, -20, 30, 5); ctx.fillRect(-5, -24, 10, 4);
+            ctx.beginPath(); ctx.moveTo(-12, -13); ctx.lineTo(12, -13); ctx.lineTo(10, 15); ctx.lineTo(-10, 15); ctx.fill();
+            ctx.fillStyle = "white"; ctx.font = "10px Arial"; ctx.textAlign = "center"; ctx.fillText("🗑️", 0, 5);
+            ctx.restore();
+        }
+
+        // ENGINE
+
+        function init() {
+            canvas = document.getElementById('simCanvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+
+            let startFn = (e) => {
+                let rect = canvas.getBoundingClientRect();
+                let x = (e.clientX || e.touches[0].clientX) - rect.left;
+                let y = (e.clientY || e.touches[0].clientY) - rect.top;
+                onDown(new Vector2(x, y));
+            };
+            let moveFn = (e) => {
+                let rect = canvas.getBoundingClientRect();
+                let x = (e.clientX || e.touches[0].clientX) - rect.left;
+                let y = (e.clientY || e.touches[0].clientY) - rect.top;
+                onMove(new Vector2(x, y));
+            };
+            let endFn = () => onUp();
+
+            canvas.addEventListener('mousedown', startFn);
+            canvas.addEventListener('mousemove', moveFn);
+            canvas.addEventListener('mouseup', endFn);
+            canvas.addEventListener('touchstart', startFn);
+            canvas.addEventListener('touchmove', moveFn);
+            canvas.addEventListener('touchend', endFn);
+
+            setMode(1);
+            loop();
+        }
+
+        function resize() {
+            let el = document.getElementById('canvas-container');
+            width = el.clientWidth; height = el.clientHeight;
+            canvas.width = width; canvas.height = height;
+            objects.forEach(o => { o.pos.x = Math.min(width, Math.max(0, o.pos.x)); o.pos.y = Math.min(height, Math.max(0, o.pos.y)); });
+        }
+
+        function setMode(mode) {
+            activeMode = mode; objects = []; isDragging = false; selectedObject = null; updateUI();
+            document.querySelectorAll('.btn-mode').forEach((b, i) => b.classList.toggle('active', i + 1 === mode));
+
+            let midX = width / 2, midY = height / 2;
+            if (mode === 1) {
+                document.getElementById('sandbox-tools').style.display = 'none'; document.getElementById('preset-tools').style.display = 'block';
+                objects.push(new Sphere(midX, midY, false));
+                objects.push(new Rod(100, midY, 1));
+            } else if (mode === 2) {
+                document.getElementById('sandbox-tools').style.display = 'none'; document.getElementById('preset-tools').style.display = 'block';
+                objects.push(new Sphere(midX - 70, midY, false));
+                objects.push(new Sphere(midX + 70, midY, true));
+                objects.push(new Rod(100, midY, 1));
+            } else {
+                document.getElementById('sandbox-tools').style.display = 'block'; document.getElementById('preset-tools').style.display = 'none';
+            }
+        }
+
+
+        // Helper function to find a non-overlapping position near center
+        function findNonOverlappingPosition(objectType) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const maxAttempts = 50;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                // Random position within 200px of center
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 200;
+                const x = centerX + Math.cos(angle) * distance;
+                const y = centerY + Math.sin(angle) * distance;
+
+                // Check if position is valid (not too close to edges or other objects)
+                let valid = true;
+
+                // Check edges
+                const margin = 100;
+                if (x < margin || x > width - margin || y < margin || y > height - margin) {
+                    valid = false;
+                    continue;
+                }
+
+                // Check overlap with existing objects
+                for (let obj of objects) {
+                    const minDist = objectType === 'sphere' ? 150 : 120;
+                    if (new Vector2(x, y).dist(obj.pos) < minDist) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if (valid) return new Vector2(x, y);
+            }
+
+            // Fallback to center if no valid position found
+            return new Vector2(centerX, centerY);
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
+
+            // In sandbox mode, immediately spawn the object
+            if (activeMode === 3 && tool !== 'drag') {
+                let pos = findNonOverlappingPosition(tool);
+
+                if (tool === 'rod_pos') objects.push(new Rod(pos.x, pos.y, 1));
+                else if (tool === 'rod_neg') objects.push(new Rod(pos.x, pos.y, -1));
+                else if (tool === 'sphere') objects.push(new Sphere(pos.x, pos.y, true));
+                else if (tool === 'point_pos') objects.push(new PointCharge(pos.x, pos.y, 2));
+                else if (tool === 'point_neg') objects.push(new PointCharge(pos.x, pos.y, -2));
+
+                // Automatically switch back to drag mode
+                currentTool = 'drag';
+                tool = 'drag';
+            }
+
+            // Find and activate the drag button
+            document.querySelectorAll('.btn-tool').forEach(btn => {
+                if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`'${tool}'`)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function spawnRod(polarity) { objects.push(new Rod(100, height / 2, polarity)); }
+        function resetSimulation() { setMode(activeMode); }
+
+        function onDown(pos) {
+            if (pos.dist(new Vector2(width - 50, height - 50)) < 40) return;
+
+            if (currentTool === 'drag') {
+                selectedObject = null;
+                for (let i = objects.length - 1; i >= 0; i--) {
+                    if (objects[i].contains(pos)) {
+                        selectedObject = objects[i];
+                        if (!objects[i].isFixed) {
+                            isDragging = true;
+                            dragOffset = pos.sub(objects[i].pos);
+                        }
+                        break;
+                    }
+                }
+                updateUI();
+            }
+        }
+
+        function onMove(pos) {
+            trashHover = pos.dist(new Vector2(width - 50, height - 50)) < 40;
+            document.body.style.cursor = trashHover ? "copy" : "default";
+            if (isDragging && selectedObject) selectedObject.pos = pos.sub(dragOffset);
+        }
+
+        function onUp() {
+            if (isDragging && trashHover && selectedObject) {
+                objects = objects.filter(o => o !== selectedObject);
+                selectedObject = null;
+                updateUI();
+            }
+            isDragging = false; trashHover = false;
+            document.body.style.cursor = "default";
+        }
+
+        function toggleGround() {
+            if (selectedObject && selectedObject instanceof Sphere) {
+                selectedObject.isGrounded = !selectedObject.isGrounded;
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            const p = document.getElementById('ground-panel');
+            const c = document.getElementById('ground-controls');
+            const txt = document.getElementById('physics-explanation');
+
+            if (selectedObject && selectedObject instanceof Sphere) {
+                p.style.display = 'block';
+                let btnCol = selectedObject.isGrounded ? '#e74c3c' : '#27ae60';
+                let btnTxt = selectedObject.isGrounded ? t('disconnectGround') : t('connectGround');
+                c.innerHTML = `<button class="btn" style="background:${btnCol}; color:white; text-align:center;" onclick="toggleGround()">⏚ ${btnTxt}</button>`;
+
+                if (selectedObject.isGrounded) {
+                    if (selectedObject.netCharge < -0.5) {
+                        txt.innerHTML = t('processElectronsUp');
+                    } else if (selectedObject.netCharge > 0.5) {
+                        txt.innerHTML = t('processElectronsDown');
+                    } else {
+                        txt.innerHTML = t('connectedToEarth');
+                    }
+                } else {
+                    txt.innerHTML = t('selectGrounding');
+                }
+            } else {
+                p.style.display = 'none';
+            }
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, width, height);
+            objects.forEach(o => o.update());
+
+            for (let i = electronFlowParticles.length - 1; i >= 0; i--) {
+                electronFlowParticles[i].update();
+                if (electronFlowParticles[i].reached) electronFlowParticles.splice(i, 1);
+            }
+
+            if (document.getElementById('check-field').checked) drawField();
+            objects.forEach(o => o.draw(ctx));
+            electronFlowParticles.forEach(p => p.draw(ctx));
+            if (document.getElementById('check-vectors').checked) drawVectors();
+            drawTrashBin(ctx);
+            requestAnimationFrame(loop);
+        }
+
+        function drawField() {
+            ctx.strokeStyle = "rgba(52, 152, 219, 0.2)"; ctx.lineWidth = 1;
+            let step = 30;
+            for (let x = 15; x < width; x += step) {
+                for (let y = 15; y < height; y += step) {
+                    let pos = new Vector2(x, y);
+                    let E = new Vector2(0, 0);
+                    objects.forEach(o => {
+                        let d = pos.sub(o.pos); let r = d.mag();
+                        if (r > 30) {
+                            let q = (o instanceof Sphere) ? o.netCharge : o.charge;
+                            if (Math.abs(q) > 0.1) E = E.add(d.normalize().mult(q / (r * r)));
+                        }
+                    });
+                    if (E.mag() > 0.0001) {
+                        let dir = E.normalize();
+                        ctx.beginPath(); ctx.moveTo(x - dir.x * 8, y - dir.y * 8); ctx.lineTo(x + dir.x * 8, y + dir.y * 8); ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawVectors() {
+            objects.forEach(o => {
+                if (o instanceof Sphere && Math.abs(o.netCharge) > 0.2) {
+                    let E = o.getExternalField();
+                    let F = E.mult(o.netCharge * 500);
+                    let end = o.pos.add(F);
+                    if (F.mag() > 5) {
+                        ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(o.pos.x, o.pos.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(end.x, end.y, 3, 0, Math.PI * 2); ctx.fill();
+                    }
+                }
+            });
+        }
+
+        init();
+
+    </script>
+</body>
+
+</html>
