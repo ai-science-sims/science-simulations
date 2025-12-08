@@ -454,7 +454,7 @@
             "zh-HK": "互動靜電感應模擬，包含多階段極化、接地效應和自由沙盒模式，用於探索電荷分布和電場。"
         },
         "contributors": [
-            "Unknown"
+            "CH Chan"
         ],
         "simulationUrl": "simulations/physics/electricity-and-magnetism/electrostatic-induction.html",
         "screenshotUrl": "screenshots/electrostatic-induction.png",
