@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circular Motion Laboratory</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: auto;
+        }
+
+        h1 {
+            color: #222;
+            margin: 15px 0;
+            font-size: 1.6rem;
+            flex-shrink: 0;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            max-width: 1300px;
+            gap: 20px;
+            padding: 10px 20px 20px 20px;
+            box-sizing: border-box;
+            flex-wrap: wrap;
+            min-height: 0;
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            flex: 2;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            min-width: 350px;
+            min-height: 400px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: default;
+        }
+
+        /* Controls Area */
+        .controls-container {
+            flex: 1;
+            min-width: 340px;
+            background: #fdfdfd;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: calc(100vh - 80px);
+        }
+
+        .section {
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+
+        .obj1-title {
+            color: #007bff;
+        }
+
+        .obj2-title {
+            color: #dc3545;
+        }
+
+        .scenario-title {
+            color: #6f42c1;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        input[type="range"]:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .active-slider input[type="range"] {
+            accent-color: #6f42c1;
+            box-shadow: 0 0 5px rgba(111, 66, 193, 0.3);
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 0.95rem;
+            background-color: #f9f9f9;
+        }
+
+        .value-display {
+            float: right;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .data-readout {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            line-height: 1.8;
+            border-left: 4px solid #aaa;
+        }
+
+        .data-readout span {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .mode-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border: 1px solid #eee;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 3px;
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .exp-badge {
+            background: #6f42c1;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            display: none;
+        }
+
+        /* Buttons */
+        .btn-group {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .ctrl-btn {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0.2s;
+        }
+
+        .btn-pause {
+            background-color: #28a745;
+        }
+
+        .btn-pause:hover {
+            background-color: #218838;
+        }
+
+        .btn-pause.paused {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .btn-help {
+            background-color: #17a2b8;
+        }
+
+        .btn-help:hover {
+            background-color: #138496;
+        }
+
+        .hint-text {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            display: none;
+            white-space: nowrap;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-modal:hover {
+            color: black;
+        }
+
+        .modal-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        /* Language Selector */
+        .language-selector {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            display: flex;
+            gap: 8px;
+            z-index: 30;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+
+        .lang-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="language-selector">
+        <button class="lang-btn" data-lang="en-US">EN</button>
+        <button class="lang-btn" data-lang="zh-HK">繁</button>
+    </div>
+
+    <h1 data-i18n="title">Circular Motion Laboratory</h1>
+
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="simCanvas"></canvas>
+
+            <div class="btn-group">
+                <button id="helpBtn" class="ctrl-btn btn-help" data-i18n="help">Help</button>
+                <button id="toggleBtn" class="ctrl-btn btn-pause" data-i18n="pause">Pause</button>
+            </div>
+
+            <div id="dragHint" class="hint-text" data-i18n="dragHint">Drag object to change radius and position</div>
+
+            <div class="legend">
+                <div class="legend-item" id="legend-main">
+                    <div class="color-box" style="background:#007bff"></div> <span id="label-main"
+                        data-i18n="legendMain">Object 1 (Main)</span>
+                </div>
+                <div class="legend-item" id="legend-ref" style="display:none; color:#888;">
+                    <div class="color-box" style="background:#999"></div> <span data-i18n="legendRef">Original Object
+                        (Reference)</span>
+                </div>
+                <div class="legend-item" id="legend-obj2" style="display:none">
+                    <div class="color-box" style="background:#dc3545"></div> <span data-i18n="legendObj2">Object 2
+                        (m₂)</span>
+                </div>
+                <hr style="width:100%; border:0; border-top:1px solid #ddd; margin:4px 0;">
+                <div class="legend-item">
+                    <div class="color-box" style="background:#28a745"></div> <span data-i18n="legendVelocity">Linear
+                        Velocity (v)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background:#fd7e14"></div> <span data-i18n="legendForce">Centripetal
+                        Force (F)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background:rgba(100,100,100,0.5); border:1px solid #333;"></div> <span
+                        data-i18n="legendOmega">Angular Velocity (ω)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-container">
+
+            <div class="section">
+                <div class="section-title" data-i18n="displayMode">Display Mode</div>
+                <div class="mode-select">
+                    <label class="radio-label"><input type="radio" name="mode" value="single" checked> <span
+                            data-i18n="modeSingle">Single Object Experiment</span></label>
+                    <label class="radio-label"><input type="radio" name="mode" value="compare"> <span
+                            data-i18n="modeCompare">Two Object Comparison</span></label>
+                </div>
+            </div>
+
+            <div class="section" id="scenario-section">
+                <div class="section-title scenario-title">
+                    <span data-i18n="experimentScenario">Experiment Scenario (Variable Lock)</span>
+                    <span id="exp-badge" class="exp-badge" data-i18n="experimenting">Experimenting</span>
+                </div>
+                <select id="scenarioSelect">
+                    <option value="custom" data-i18n="scenarioCustom">Custom (Free Adjustment / End Experiment)</option>
+                    <option value="fix_F_m" data-i18n="scenarioFixFM">1. Fix F, m (Adjust r ↔ v)</option>
+                    <option value="fix_r_m" data-i18n="scenarioFixRM">2. Fix r, m (Adjust F ↔ v)</option>
+                    <option value="fix_m_w" data-i18n="scenarioFixMW">3. Fix m, ω (Adjust F ↔ r)</option>
+                    <option value="fix_m_r" data-i18n="scenarioFixMR">4. Fix m, r (Adjust ω ↔ F)</option>
+                </select>
+                <div style="font-size:0.85rem; color:#666; margin-top:8px; line-height:1.4;" id="scenario-desc"
+                    data-i18n="scenarioDescDefault">
+                    Free adjustment of parameters. Select an experiment scenario above to start comparative experiment.
+                </div>
+            </div>
+
+            <div class="section" id="compare-section" style="display:none;">
+                <div class="section-title" data-i18n="compareCondition">Comparison Condition (Two Objects)</div>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="constraint" value="none" checked> <span
+                            data-i18n="constraintNone">None (Free Adjustment)</span></label>
+                    <label class="radio-label"><input type="radio" name="constraint" value="omega"> <span
+                            data-i18n="constraintOmega">Same Angular Velocity (ω₁ = ω₂)</span></label>
+                    <label class="radio-label"><input type="radio" name="constraint" value="mass"> <span
+                            data-i18n="constraintMass">Same Mass (m₁ = m₂)</span></label>
+                    <label class="radio-label"><input type="radio" name="constraint" value="radius"> <span
+                            data-i18n="constraintRadius">Same Radius (r₁ = r₂)</span></label>
+                    <label class="radio-label"><input type="radio" name="constraint" value="velocity"> <span
+                            data-i18n="constraintVelocity">Same Linear Velocity (v₁ = v₂)</span></label>
+                    <label class="radio-label"><input type="radio" name="constraint" value="force"> <span
+                            data-i18n="constraintForce">Same Centripetal Force (F₁ = F₂)</span></label>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title obj1-title">
+                    <span id="ctrl-panel-title" data-i18n="mainObjectParams">Main Object Parameters</span>
+                </div>
+
+                <div class="control-group active-slider" id="force-control-group"
+                    style="display:none; background:#f0f7ff; padding:8px; border-radius:5px; border:1px solid #cce5ff;">
+                    <label style="color:#004085; font-weight:bold;"><span data-i18n="adjustForce">Adjust Centripetal
+                            Force (F)</span> <span id="val-f-input" class="value-display">-- N</span></label>
+                    <input type="range" id="input-f1-force" min="0.5" max="100" step="0.5" value="10">
+                </div>
+
+                <div class="control-group" id="grp-m1">
+                    <label><span data-i18n="mass">Mass (m)</span> <span id="val-m1" class="value-display">1.0
+                            kg</span></label>
+                    <input type="range" id="input-m1" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+                <div class="control-group" id="grp-r1">
+                    <label><span data-i18n="radius">Radius (r)</span> <span id="val-r1" class="value-display">120
+                            px</span></label>
+                    <input type="range" id="input-r1" min="50" max="300" step="1" value="120">
+                </div>
+                <div class="control-group" id="grp-w1">
+                    <label><span data-i18n="angularVelocity">Angular Velocity (ω)</span> <span id="val-w1"
+                            class="value-display">1.0 rad/s</span></label>
+                    <input type="range" id="input-w1" min="0.1" max="3.0" step="0.1" value="1.0">
+                </div>
+                <div class="data-readout">
+                    <span><span data-i18n="linearVelocity">Linear Velocity (v):</span> <b id="out-v1">0</b> m/s</span>
+                    <span><span data-i18n="centripetalForce">Centripetal Force (F):</span> <b id="out-f1">0</b> N</span>
+                </div>
+            </div>
+
+            <div class="section" id="obj2-controls" style="display:none">
+                <div class="section-title obj2-title" data-i18n="object2Params">Object 2 Parameters</div>
+                <div class="control-group">
+                    <label><span data-i18n="mass">Mass (m)</span> <span id="val-m2" class="value-display">1.0
+                            kg</span></label>
+                    <input type="range" id="input-m2" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label><span data-i18n="radius">Radius (r)</span> <span id="val-r2" class="value-display">180
+                            px</span></label>
+                    <input type="range" id="input-r2" min="50" max="300" step="1" value="180">
+                </div>
+                <div class="control-group">
+                    <label><span data-i18n="angularVelocity">Angular Velocity (ω)</span> <span id="val-w2"
+                            class="value-display">1.0 rad/s</span></label>
+                    <input type="range" id="input-w2" min="0.1" max="3.0" step="0.1" value="1.0">
+                </div>
+                <div class="data-readout">
+                    <span><span data-i18n="linearVelocity">Linear Velocity (v):</span> <b id="out-v2">0</b> m/s</span>
+                    <span><span data-i18n="centripetalForce">Centripetal Force (F):</span> <b id="out-f2">0</b> N</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 data-i18n="helpTitle">Simulator Instructions</h2>
+            <p><strong data-i18n="helpSubtitle">Experiment Mode Operation Guide:</strong></p>
+            <ul id="helpList">
+                <li data-i18n="helpItem1">Gray track is the reference group (original data), blue is the experiment
+                    group (current data).</li>
+                <li data-i18n="helpItem2"><strong>Reference Display:</strong> During experiment, gray track also shows
+                    velocity, centripetal force, and angular velocity values for easy comparison.</li>
+                <li data-i18n="helpItem3"><strong>Fix F, m:</strong> Adjusting radius (r) changes velocity; adjusting
+                    velocity (ω) changes radius.</li>
+                <li data-i18n="helpItem4"><strong>Fix r, m:</strong> Use centripetal force slider (F) to change
+                    velocity; adjusting velocity (ω) changes centripetal force.</li>
+                <li data-i18n="helpItem5"><strong>Fix m, ω:</strong> Use centripetal force slider (F) to change radius;
+                    adjusting radius (r) changes centripetal force.</li>
+                <li data-i18n="helpItem6"><strong>Fix m, r:</strong> Use centripetal force slider (F) to change
+                    velocity; adjusting velocity (ω) changes centripetal force.</li>
+            </ul>
+            <button id="closeHelpBtn" class="modal-btn" data-i18n="startExperiment">Start Experiment</button>
+        </div>
+    </div>
+
+    <script>
+        // Translations
+        const translations = {
+            "en-US": {
+                title: "Circular Motion Laboratory",
+                help: "Help",
+                pause: "Pause",
+                resume: "Resume",
+                dragHint: "Drag object to change radius and position",
+                legendMain: "Object 1 (Main)",
+                legendRef: "Original Object (Reference)",
+                legendObj2: "Object 2 (m₂)",
+                legendVelocity: "Linear Velocity (v)",
+                legendForce: "Centripetal Force (F)",
+                legendOmega: "Angular Velocity (ω)",
+                displayMode: "Display Mode",
+                modeSingle: "Single Object Experiment",
+                modeCompare: "Two Object Comparison",
+                experimentScenario: "Experiment Scenario (Variable Lock)",
+                experimenting: "Experimenting",
+                scenarioCustom: "Custom (Free Adjustment / End Experiment)",
+                scenarioFixFM: "1. Fix F, m (Adjust r ↔ v)",
+                scenarioFixRM: "2. Fix r, m (Adjust F ↔ v)",
+                scenarioFixMW: "3. Fix m, ω (Adjust F ↔ r)",
+                scenarioFixMR: "4. Fix m, r (Adjust ω ↔ F)",
+                scenarioDescDefault: "Free adjustment of parameters. Select an experiment scenario above to start comparative experiment.",
+                scenarioDescFixFM: "Fix F, m. Adjust radius (r) to change angular velocity (ω); adjust angular velocity (ω) to change radius (r).",
+                scenarioDescFixRM: "Fix r, m. Use 'centripetal force slider' to change angular velocity (ω); adjust angular velocity (ω) to change centripetal force.",
+                scenarioDescFixMW: "Fix m, ω. Use 'centripetal force slider' to change radius (r); adjust radius (r) to change centripetal force.",
+                scenarioDescFixMR: "Fix m, r. Use 'centripetal force slider' to change angular velocity (ω); adjust angular velocity (ω) to change centripetal force.",
+                compareCondition: "Comparison Condition (Two Objects)",
+                constraintNone: "None (Free Adjustment)",
+                constraintOmega: "Same Angular Velocity (ω₁ = ω₂)",
+                constraintMass: "Same Mass (m₁ = m₂)",
+                constraintRadius: "Same Radius (r₁ = r₂)",
+                constraintVelocity: "Same Linear Velocity (v₁ = v₂)",
+                constraintForce: "Same Centripetal Force (F₁ = F₂)",
+                mainObjectParams: "Main Object Parameters",
+                adjustForce: "Adjust Centripetal Force (F)",
+                mass: "Mass (m)",
+                radius: "Radius (r)",
+                angularVelocity: "Angular Velocity (ω)",
+                linearVelocity: "Linear Velocity (v):",
+                centripetalForce: "Centripetal Force (F):",
+                object2Params: "Object 2 Parameters",
+                helpTitle: "Simulator Instructions",
+                helpSubtitle: "Experiment Mode Operation Guide:",
+                helpItem1: "Gray track is the reference group (original data), blue is the experiment group (current data).",
+                helpItem2: "Reference Display: During experiment, gray track also shows velocity, centripetal force, and angular velocity values for easy comparison.",
+                helpItem3: "Fix F, m: Adjusting radius (r) changes velocity; adjusting velocity (ω) changes radius.",
+                helpItem4: "Fix r, m: Use centripetal force slider (F) to change velocity; adjusting velocity (ω) changes centripetal force.",
+                helpItem5: "Fix m, ω: Use centripetal force slider (F) to change radius; adjusting radius (r) changes centripetal force.",
+                helpItem6: "Fix m, r: Use centripetal force slider (F) to change velocity; adjusting velocity (ω) changes centripetal force.",
+                startExperiment: "Start Experiment",
+                labelMainExperiment: "New Object (Experiment Group)"
+            },
+            "zh-HK": {
+                title: "圓周運動實驗室",
+                help: "說明",
+                pause: "暫停",
+                resume: "繼續",
+                dragHint: "拖動物體以改變半徑與位置",
+                legendMain: "物體 1 (主控)",
+                legendRef: "原有物件 (對照組)",
+                legendObj2: "物體 2 (m₂)",
+                legendVelocity: "線速度 (v)",
+                legendForce: "向心力 (F)",
+                legendOmega: "角速率 (ω)",
+                displayMode: "顯示模式",
+                modeSingle: "單一物體實驗",
+                modeCompare: "雙物體比較",
+                experimentScenario: "實驗場景 (變數鎖定)",
+                experimenting: "實驗中",
+                scenarioCustom: "自定義 (自由調整 / 結束實驗)",
+                scenarioFixFM: "1. 固定 F, m (調整 r ↔ v)",
+                scenarioFixRM: "2. 固定 r, m (調整 F ↔ v)",
+                scenarioFixMW: "3. 固定 m, ω (調整 F ↔ r)",
+                scenarioFixMR: "4. 固定 m, r (調整 ω ↔ F)",
+                scenarioDescDefault: "自由調整參數。選擇上方實驗場景以開始對照實驗。",
+                scenarioDescFixFM: "固定 F, m。調整 半徑(r) 改變 角速率(ω)；調整 角速率(ω) 改變 半徑(r)。",
+                scenarioDescFixRM: "固定 r, m。使用「向心力滑桿」改變 角速率(ω)；調整 角速率(ω) 改變向心力。",
+                scenarioDescFixMW: "固定 m, ω。使用「向心力滑桿」改變 半徑(r)；調整 半徑(r) 改變向心力。",
+                scenarioDescFixMR: "固定 m, r。使用「向心力滑桿」改變 角速率(ω)；調整 角速率(ω) 改變向心力。",
+                compareCondition: "比較條件 (雙物體)",
+                constraintNone: "無 (自由調整)",
+                constraintOmega: "同角速率 (ω₁ = ω₂)",
+                constraintMass: "同質量 (m₁ = m₂)",
+                constraintRadius: "同半徑 (r₁ = r₂)",
+                constraintVelocity: "同線速率 (v₁ = v₂)",
+                constraintForce: "同向心力 (F₁ = F₂)",
+                mainObjectParams: "主控物體參數",
+                adjustForce: "調整 向心力 (F)",
+                mass: "質量 (m)",
+                radius: "半徑 (r)",
+                angularVelocity: "角速率 (ω)",
+                linearVelocity: "線速率 (v):",
+                centripetalForce: "向心力 (F):",
+                object2Params: "物體 2 參數",
+                helpTitle: "模擬器使用說明",
+                helpSubtitle: "實驗模式操作指南：",
+                helpItem1: "灰色軌道為對照組（原始數據），藍色為實驗組（當前數據）。",
+                helpItem2: "對照組顯示：實驗進行中，灰色軌道也會顯示速度、向心力與角速率的數值，方便您進行前後比較。",
+                helpItem3: "固定 F, m：調整半徑(r)會改變速度；調整速度(ω)會改變半徑。",
+                helpItem4: "固定 r, m：使用向心力滑桿(F)改變速度；調整速度(ω)改變向心力。",
+                helpItem5: "固定 m, ω：使用向心力滑桿(F)改變半徑；調整半徑(r)改變向心力。",
+                helpItem6: "固定 m, r：使用向心力滑桿(F)改變速度；調整速度(ω)改變向心力。",
+                startExperiment: "開始實驗",
+                labelMainExperiment: "新物件 (實驗組)"
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        // Physics State - MUST be declared before language initialization
+        const state = {
+            paused: false,
+            dragging: null,
+            mode: 'single',
+            constraint: 'none',
+            scenario: 'custom',
+            isExperimentActive: false,
+
+            lockedF: 0,
+
+            obj1: { m: 1.0, r: 120, w: 1.0, theta: 0 },
+            objExp: { m: 1.0, r: 120, w: 1.0, theta: 0 },
+            obj2: { m: 1.0, r: 180, w: 1.0, theta: 0 }
+        };
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang === 'zh-HK' ? 'zh-Hant' : 'en';
+            document.title = t('title');
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (el.tagName === 'INPUT' && el.type !== 'radio') {
+                    el.placeholder = t(key);
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+
+            // Update language selector buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            // Update scenario description
+            updateScenarioDescription();
+
+            // Update pause/resume button
+            const toggleBtn = document.getElementById('toggleBtn');
+            if (state.paused) {
+                toggleBtn.textContent = t('resume');
+            } else {
+                toggleBtn.textContent = t('pause');
+            }
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+        }
+
+        function updateScenarioDescription() {
+            const scenarioDesc = document.getElementById('scenario-desc');
+            const scenario = state.scenario;
+
+            const descMap = {
+                'custom': 'scenarioDescDefault',
+                'fix_F_m': 'scenarioDescFixFM',
+                'fix_r_m': 'scenarioDescFixRM',
+                'fix_m_w': 'scenarioDescFixMW',
+                'fix_m_r': 'scenarioDescFixMR'
+            };
+
+            scenarioDesc.textContent = t(descMap[scenario] || 'scenarioDescDefault');
+        }
+
+        // Language selector event listeners
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                changeLanguage(btn.dataset.lang);
+            });
+        });
+
+        // Initialize language from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        if (langParam && translations[langParam]) {
+            changeLanguage(langParam);
+        } else {
+            changeLanguage('en-US');
+        }
+
+        // DOM Elements
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const dragHint = document.getElementById('dragHint');
+
+        const scenarioSelect = document.getElementById('scenarioSelect');
+        const scenarioDesc = document.getElementById('scenario-desc');
+        const forceControlGroup = document.getElementById('force-control-group');
+        const inputForce = document.getElementById('input-f1-force');
+        const grpM1 = document.getElementById('grp-m1');
+        const grpR1 = document.getElementById('grp-r1');
+        const grpW1 = document.getElementById('grp-w1');
+        const legendRef = document.getElementById('legend-ref');
+        const labelMain = document.getElementById('label-main');
+        const expBadge = document.getElementById('exp-badge');
+
+        let cx, cy;
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+            cx = canvas.width / 2;
+            cy = canvas.height / 2;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        setTimeout(resizeCanvas, 100);
+
+        function calcPhysics(obj) {
+            const r_meters = obj.r / 60;
+            const v = r_meters * obj.w;
+            const f = obj.m * r_meters * Math.pow(obj.w, 2);
+            return { v, f };
+        }
+
+        function getActiveObject() {
+            return state.isExperimentActive ? state.objExp : state.obj1;
+        }
+
+        function updateSliderUIValues(obj) {
+            document.getElementById('input-m1').value = obj.m;
+            document.getElementById('val-m1').innerText = obj.m.toFixed(1) + " kg";
+            document.getElementById('input-r1').value = obj.r;
+            document.getElementById('val-r1').innerText = Math.round(obj.r) + " px";
+            document.getElementById('input-w1').value = obj.w;
+            document.getElementById('val-w1').innerText = obj.w.toFixed(1) + " rad/s";
+
+            const phys = calcPhysics(obj);
+            inputForce.value = phys.f;
+            document.getElementById('val-f-input').innerText = phys.f.toFixed(1) + " N";
+        }
+
+        function updateScenarioUI() {
+            grpM1.classList.remove('active-slider');
+            grpR1.classList.remove('active-slider');
+            grpW1.classList.remove('active-slider');
+            forceControlGroup.style.display = 'none';
+
+            document.getElementById('input-m1').disabled = false;
+            document.getElementById('input-r1').disabled = false;
+            document.getElementById('input-w1').disabled = false;
+
+            if (state.scenario === 'custom') {
+                if (state.isExperimentActive) {
+                    state.isExperimentActive = false;
+                    updateSliderUIValues(state.obj1);
+                    legendRef.style.display = 'none';
+                    labelMain.innerText = t('legendMain');
+                    expBadge.style.display = 'none';
+                }
+                updateScenarioDescription();
+                return;
+            }
+
+            if (!state.isExperimentActive) {
+                state.objExp = { ...state.obj1 };
+                state.isExperimentActive = true;
+                legendRef.style.display = 'flex';
+                labelMain.innerText = t('labelMainExperiment');
+                expBadge.style.display = 'inline-block';
+            }
+
+            const activeObj = state.objExp;
+            const phys = calcPhysics(activeObj);
+            state.lockedF = phys.f;
+
+            switch (state.scenario) {
+                case 'fix_F_m':
+                    document.getElementById('input-m1').disabled = true;
+                    grpR1.classList.add('active-slider');
+                    grpW1.classList.add('active-slider');
+                    break;
+
+                case 'fix_r_m':
+                    document.getElementById('input-m1').disabled = true;
+                    document.getElementById('input-r1').disabled = true;
+                    forceControlGroup.style.display = 'block';
+                    grpW1.classList.add('active-slider');
+                    break;
+
+                case 'fix_m_w':
+                    document.getElementById('input-m1').disabled = true;
+                    document.getElementById('input-w1').disabled = true;
+                    forceControlGroup.style.display = 'block';
+                    grpR1.classList.add('active-slider');
+                    break;
+
+                case 'fix_m_r':
+                    document.getElementById('input-m1').disabled = true;
+                    document.getElementById('input-r1').disabled = true;
+                    forceControlGroup.style.display = 'block';
+                    grpW1.classList.add('active-slider');
+                    break;
+            }
+            updateScenarioDescription();
+            inputForce.value = phys.f;
+            document.getElementById('val-f-input').innerText = phys.f.toFixed(1) + " N";
+        }
+
+        scenarioSelect.addEventListener('change', (e) => {
+            state.scenario = e.target.value;
+            updateScenarioUI();
+        });
+
+        // Force Slider
+        inputForce.addEventListener('input', (e) => {
+            if (!state.isExperimentActive) return;
+            const newF = parseFloat(e.target.value);
+            document.getElementById('val-f-input').innerText = newF.toFixed(1) + " N";
+            const obj = state.objExp;
+
+            if (state.scenario === 'fix_r_m' || state.scenario === 'fix_m_r') {
+                const r_m = obj.r / 60;
+                const val = newF / (obj.m * r_m);
+                if (val >= 0) {
+                    obj.w = Math.min(Math.sqrt(val), 5.0);
+                    updateInputSlider('w1', obj.w);
+                }
+            }
+            else if (state.scenario === 'fix_m_w') {
+                if (obj.w > 0) {
+                    const r_m = newF / (obj.m * Math.pow(obj.w, 2));
+                    let r_px = r_m * 60;
+                    r_px = Math.max(50, Math.min(300, r_px));
+                    obj.r = r_px;
+                    updateInputSlider('r1', obj.r);
+                }
+            }
+        });
+
+        // Radius Slider
+        document.getElementById('input-r1').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            const obj = getActiveObject();
+            obj.r = val;
+            document.getElementById('val-r1').innerText = Math.round(val) + " px";
+
+            if (state.isExperimentActive) {
+                if (state.scenario === 'fix_F_m') {
+                    const r_m = val / 60;
+                    const res = state.lockedF / (obj.m * r_m);
+                    if (res >= 0) {
+                        obj.w = Math.sqrt(res);
+                        updateInputSlider('w1', obj.w);
+                    }
+                }
+                else if (state.scenario === 'fix_m_w') {
+                    const p = calcPhysics(obj);
+                    inputForce.value = p.f;
+                    document.getElementById('val-f-input').innerText = p.f.toFixed(1) + " N";
+                }
+            }
+            if (state.mode === 'compare') applyCompareConstraints('obj1');
+        });
+
+        // Omega Slider
+        document.getElementById('input-w1').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            const obj = getActiveObject();
+            obj.w = val;
+            document.getElementById('val-w1').innerText = val.toFixed(1) + " rad/s";
+
+            if (state.isExperimentActive) {
+                if (state.scenario === 'fix_F_m') {
+                    if (val > 0) {
+                        const r_m = state.lockedF / (obj.m * Math.pow(val, 2));
+                        obj.r = Math.max(50, Math.min(300, r_m * 60));
+                        updateInputSlider('r1', obj.r);
+                    }
+                }
+                else if (state.scenario === 'fix_r_m' || state.scenario === 'fix_m_r') {
+                    const p = calcPhysics(obj);
+                    inputForce.value = p.f;
+                    document.getElementById('val-f-input').innerText = p.f.toFixed(1) + " N";
+                }
+            }
+            if (state.mode === 'compare') applyCompareConstraints('obj1');
+        });
+
+        document.getElementById('input-m1').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            const obj = getActiveObject();
+            obj.m = val;
+            document.getElementById('val-m1').innerText = val.toFixed(1) + " kg";
+            if (state.mode === 'compare') applyCompareConstraints('obj1');
+        });
+
+        // Comparison & Misc
+        function applyCompareConstraints(source) {
+            if (state.mode !== 'compare') return;
+            const p1 = state.obj1;
+            const p2 = state.obj2;
+            if (state.constraint === 'radius') {
+                if (source === 'obj1') { p2.r = p1.r; updateInputSlider('r2', p2.r); }
+                else if (source === 'obj2') { p1.r = p2.r; updateInputSlider('r1', p1.r); }
+            }
+            const r1_m = p1.r / 60;
+            const f1 = p1.m * r1_m * Math.pow(p1.w, 2);
+            switch (state.constraint) {
+                case 'omega': p2.w = p1.w; updateInputSlider('w2', p2.w); break;
+                case 'mass': p2.m = p1.m; updateInputSlider('m2', p2.m); break;
+                case 'velocity':
+                    if (p2.r > 0) {
+                        const v1 = r1_m * p1.w;
+                        const r2_m = p2.r / 60;
+                        const targetW = v1 / r2_m;
+                        p2.w = Math.min(targetW, 3.0);
+                        updateInputSlider('w2', p2.w);
+                    }
+                    break;
+                case 'force':
+                    if (p2.m > 0 && p2.r > 0) {
+                        const r2_m = p2.r / 60;
+                        const val = f1 / (p2.m * r2_m);
+                        if (val >= 0) {
+                            p2.w = Math.min(Math.sqrt(val), 5.0);
+                            updateInputSlider('w2', p2.w);
+                        }
+                    }
+                    break;
+            }
+        }
+
+        function updateInputSlider(id, val) {
+            const input = document.getElementById('input-' + id);
+            if (input) {
+                input.value = val;
+                const display = document.getElementById('val-' + id);
+                let unit = '';
+                if (id.includes('m')) unit = ' kg';
+                if (id.includes('r')) unit = ' px';
+                if (id.includes('w')) unit = ' rad/s';
+                const displayVal = id.includes('r') ? Math.round(val) : val.toFixed(2);
+                display.innerText = displayVal + unit;
+            }
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            state.paused = !state.paused;
+            if (state.paused) {
+                toggleBtn.innerText = t('resume');
+                toggleBtn.classList.add('paused');
+                dragHint.style.display = 'block';
+            }
+            else {
+                toggleBtn.innerText = t('pause');
+                toggleBtn.classList.remove('paused');
+                dragHint.style.display = 'none';
+                state.dragging = null;
+            }
+        });
+
+        const helpModal = document.getElementById('helpModal');
+        const helpBtn = document.getElementById('helpBtn');
+        const closeModal = document.querySelector('.close-modal');
+        const closeHelpBtn = document.getElementById('closeHelpBtn');
+        function openHelp() {
+            state.paused = true;
+            helpModal.style.display = "flex";
+            toggleBtn.innerText = t('resume');
+            toggleBtn.classList.add('paused');
+            dragHint.style.display = 'none';
+        }
+        function closeHelp() {
+            helpModal.style.display = "none";
+            state.paused = false;
+            toggleBtn.innerText = t('pause');
+            toggleBtn.classList.remove('paused');
+        }
+        helpBtn.addEventListener('click', openHelp);
+        closeModal.addEventListener('click', closeHelp);
+        closeHelpBtn.addEventListener('click', closeHelp);
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
+        function getObjectPos(obj) {
+            return { x: cx + obj.r * Math.cos(obj.theta), y: cy + obj.r * Math.sin(obj.theta) };
+        }
+        canvas.addEventListener('mousedown', (e) => {
+            if (!state.paused) return;
+            const m = getMousePos(e);
+            const active = getActiveObject();
+            const pos1 = getObjectPos(active);
+            if (Math.hypot(m.x - pos1.x, m.y - pos1.y) < 20) { state.dragging = 'active'; return; }
+            if (state.mode === 'compare') {
+                const pos2 = getObjectPos(state.obj2);
+                if (Math.hypot(m.x - pos2.x, m.y - pos2.y) < 20) { state.dragging = 'obj2'; return; }
+            }
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            const m = getMousePos(e);
+            let hovering = false;
+            if (state.paused) {
+                const active = getActiveObject();
+                const pos1 = getObjectPos(active);
+                if (Math.hypot(m.x - pos1.x, m.y - pos1.y) < 20) hovering = true;
+                if (state.mode === 'compare') {
+                    const pos2 = getObjectPos(state.obj2);
+                    if (Math.hypot(m.x - pos2.x, m.y - pos2.y) < 20) hovering = true;
+                }
+            }
+            canvas.style.cursor = (state.dragging || hovering) ? 'pointer' : 'default';
+
+            if (!state.dragging) return;
+
+            const dx = m.x - cx;
+            const dy = m.y - cy;
+            let newR = Math.hypot(dx, dy);
+            let newTheta = Math.atan2(dy, dx);
+            newR = Math.max(50, Math.min(300, newR));
+
+            if (state.dragging === 'active') {
+                const targetObj = getActiveObject();
+                targetObj.r = newR;
+                targetObj.theta = newTheta;
+                updateInputSlider('r1', newR);
+
+                if (state.isExperimentActive) {
+                    if (state.scenario === 'fix_F_m') {
+                        const r_m = newR / 60;
+                        const res = state.lockedF / (targetObj.m * r_m);
+                        if (res >= 0) { targetObj.w = Math.sqrt(res); updateInputSlider('w1', targetObj.w); }
+                    } else if (state.scenario === 'fix_m_w') {
+                        const p = calcPhysics(targetObj);
+                        inputForce.value = p.f;
+                        document.getElementById('val-f-input').innerText = p.f.toFixed(1) + " N";
+                    }
+                }
+                applyCompareConstraints('obj1');
+            } else if (state.dragging === 'obj2') {
+                state.obj2.r = newR;
+                state.obj2.theta = newTheta;
+                updateInputSlider('r2', newR);
+                applyCompareConstraints('obj2');
+            }
+        });
+        window.addEventListener('mouseup', () => { state.dragging = null; });
+
+        // Drawing
+        function drawArrow(ctx, fromX, fromY, toX, toY, color, width = 3) {
+            const headlen = 12;
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY);
+            ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fillStyle = color; ctx.fill();
+        }
+
+        function drawCurvedArrow(ctx, cx, cy, radius, startAngle, endAngle, color) {
+            ctx.beginPath(); ctx.arc(cx, cy, radius, startAngle, endAngle);
+            ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+            const headLen = 8; const angle = endAngle;
+            const arrowX = cx + radius * Math.cos(angle);
+            const arrowY = cy + radius * Math.sin(angle);
+            const tangent = angle + Math.PI / 2;
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - headLen * Math.cos(tangent - Math.PI / 6), arrowY - headLen * Math.sin(tangent - Math.PI / 6));
+            ctx.lineTo(arrowX - headLen * Math.cos(tangent + Math.PI / 6), arrowY - headLen * Math.sin(tangent + Math.PI / 6));
+            ctx.fillStyle = color; ctx.fill();
+        }
+
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function drawObject(ctx, centerX, centerY, obj, color, isGhost = false) {
+            const r = obj.r;
+            const x = centerX + r * Math.cos(obj.theta);
+            const y = centerY + r * Math.sin(obj.theta);
+            const phys = calcPhysics(obj);
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgb(8,8,8)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.lineWidth = 1;
+
+            ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.lineTo(x, y);
+            ctx.strokeStyle = isGhost ? '#ccc' : '#aaa';
+            ctx.stroke();
+
+            const vScale = 15; const vLen = phys.v * vScale;
+            const vx = x + vLen * Math.cos(obj.theta + Math.PI / 2);
+            const vy = y + vLen * Math.sin(obj.theta + Math.PI / 2);
+            drawArrow(ctx, x, y, vx, vy, '#28a745', isGhost ? 1 : 3);
+
+            // Text for V
+            ctx.fillStyle = isGhost ? '#888' : '#333';
+            ctx.font = '12px Arial';
+            ctx.fillText(phys.v.toFixed(1) + " m/s", x + 10, y - 10);
+
+            const fScale = 30; const fLen = phys.f * fScale;
+            const visualFLen = Math.min(fLen, 280);
+            const fx = x + visualFLen * Math.cos(obj.theta + Math.PI);
+            const fy = y + visualFLen * Math.sin(obj.theta + Math.PI);
+            drawArrow(ctx, x, y, fx, fy, '#fd7e14', isGhost ? 2 : 4);
+
+            // Text for F
+            const fTextColor = isGhost ? '#888' : '#d35400';
+            ctx.fillStyle = fTextColor;
+            ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+            const fTextOffset = 25;
+            const fTextX = fx + fTextOffset * Math.cos(obj.theta + Math.PI);
+            const fTextY = fy + fTextOffset * Math.sin(obj.theta + Math.PI);
+            if (!isGhost) ctx.fillStyle = 'rgba(255,255,255,0.8)'; else ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillRect(fTextX - 25, fTextY - 10, 50, 14);
+            ctx.fillStyle = fTextColor;
+            ctx.fillText(phys.f.toFixed(1) + " N", fTextX, fTextY); ctx.textAlign = 'left';
+
+            ctx.beginPath(); ctx.arc(x, y, 8 + obj.m * 3, 0, 2 * Math.PI);
+            ctx.fillStyle = color; ctx.fill();
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+
+            // Omega Wedge
+            const wedgeColor = isGhost ? '#999' : color;
+            const centerArcRadius = 50;
+            ctx.beginPath(); ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, centerArcRadius, obj.theta, obj.theta + obj.w, false); ctx.closePath();
+            ctx.fillStyle = hexToRgba(wedgeColor, 0.2); ctx.fill(); ctx.strokeStyle = wedgeColor; ctx.lineWidth = 1; ctx.stroke();
+            drawCurvedArrow(ctx, centerX, centerY, centerArcRadius, obj.theta, obj.theta + obj.w, wedgeColor);
+
+            const midAngle = obj.theta + obj.w / 2;
+            const textDist = centerArcRadius * 0.6;
+            const wTextX = centerX + textDist * Math.cos(midAngle);
+            const wTextY = centerY + textDist * Math.sin(midAngle);
+            ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(wTextX - 15, wTextY - 8, 30, 16);
+            ctx.fillStyle = wedgeColor; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText("ω=" + obj.w.toFixed(1), wTextX, wTextY); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        }
+
+        function updateDisplayValues() {
+            const active = getActiveObject();
+            const p1 = calcPhysics(active);
+            document.getElementById('out-v1').innerText = p1.v.toFixed(2);
+            document.getElementById('out-f1').innerText = p1.f.toFixed(2);
+            if (state.mode === 'compare') {
+                const p2 = calcPhysics(state.obj2);
+                document.getElementById('out-v2').innerText = p2.v.toFixed(2);
+                document.getElementById('out-f2').innerText = p2.f.toFixed(2);
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!state.paused) {
+                state.obj1.theta += state.obj1.w * 0.05;
+                if (state.isExperimentActive) state.objExp.theta += state.objExp.w * 0.05;
+                if (state.mode === 'compare') state.obj2.theta += state.obj2.w * 0.05;
+            }
+
+            if (state.isExperimentActive && state.mode === 'single') {
+                drawObject(ctx, cx, cy, state.obj1, '#999', true);
+                drawObject(ctx, cx, cy, state.objExp, '#007bff');
+            } else {
+                if (state.mode === 'compare') drawObject(ctx, cx, cy, state.obj2, '#dc3545');
+                drawObject(ctx, cx, cy, state.obj1, '#007bff');
+            }
+
+            ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fillStyle = '#333'; ctx.fill();
+            updateDisplayValues();
+            requestAnimationFrame(animate);
+        }
+
+        ['m', 'r', 'w'].forEach(p => {
+            document.getElementById('input-' + p + '2').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state.obj2[p] = val;
+                let disp = val.toFixed(1); if (p === 'r') disp = Math.round(val);
+                let unit = p === 'm' ? ' kg' : (p === 'r' ? ' px' : ' rad/s');
+                document.getElementById('val-' + p + '2').innerText = disp + unit;
+            });
+        });
+
+        document.querySelectorAll('input[name="mode"]').forEach(r => {
+            r.addEventListener('change', (e) => {
+                state.mode = e.target.value;
+                const compareSec = document.getElementById('compare-section');
+                const scenarioSec = document.getElementById('scenario-section');
+                const obj2Controls = document.getElementById('obj2-controls');
+                const legendObj2 = document.getElementById('legend-obj2');
+                if (state.mode === 'compare') {
+                    compareSec.style.display = 'block'; obj2Controls.style.display = 'block'; legendObj2.style.display = 'flex'; scenarioSec.style.display = 'none';
+                    state.scenario = 'custom'; state.isExperimentActive = false; scenarioSelect.value = 'custom'; updateScenarioUI(); applyCompareConstraints('obj1');
+                } else {
+                    compareSec.style.display = 'none'; obj2Controls.style.display = 'none'; legendObj2.style.display = 'none'; scenarioSec.style.display = 'block';
+                }
+                resizeCanvas();
+            });
+        });
+
+        document.querySelectorAll('input[name="constraint"]').forEach(r => {
+            r.addEventListener('change', (e) => {
+                state.constraint = e.target.value;
+                ['input-m2', 'input-r2', 'input-w2'].forEach(id => document.getElementById(id).disabled = false);
+                applyCompareConstraints('obj1');
+                if (state.constraint === 'mass') document.getElementById('input-m2').disabled = true;
+                if (state.constraint === 'radius') document.getElementById('input-r2').disabled = true;
+                if (state.constraint === 'omega') document.getElementById('input-w2').disabled = true;
+                if (state.constraint === 'velocity') document.getElementById('input-w2').disabled = true;
+                if (state.constraint === 'force') document.getElementById('input-w2').disabled = true;
+            });
+        });
+
+        animate();
+    </script>
+</body>
+
+</html>

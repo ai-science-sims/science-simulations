@@ -394,5 +394,49 @@
         "screenshotUrl": "screenshots/moment.png",
         "createdAt": "2025-11-29",
         "updatedAt": "2025-11-29"
+    },
+    {
+        "id": "circular-motion",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Circular Motion Laboratory",
+            "zh-HK": "圓周運動實驗室"
+        },
+        "description": {
+            "en-US": "Explore circular motion physics with interactive experiments on centripetal force, angular velocity, and radius relationships.",
+            "zh-HK": "探索圓周運動物理，透過互動實驗研究向心力、角速率與半徑的關係。"
+        },
+        "contributors": [
+            "Yiu Fai Ma"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/circular-motion.html",
+        "screenshotUrl": "screenshots/circular-motion.png",
+        "createdAt": "2025-12-08",
+        "updatedAt": "2025-12-08"
+    },
+    {
+        "id": "coefficient-of-friction",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Physics Lab: Complete Friction Analysis",
+            "zh-HK": "物理實驗室：完整摩擦力分析"
+        },
+        "description": {
+            "en-US": "Comprehensive friction simulation with equilibrium analysis, torque shift visualization, and interactive challenge mode for exploring static and kinetic friction coefficients.",
+            "zh-HK": "全面的摩擦力模擬，包含平衡分析、力矩偏移視覺化，以及互動挑戰模式來探索靜摩擦係數和動摩擦係數。"
+        },
+        "contributors": [
+            "CH Chan"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/coefficient-of-friction.html",
+        "screenshotUrl": "screenshots/coefficient-of-friction.png",
+        "createdAt": "2025-12-08",
+        "updatedAt": "2025-12-08"
     }
 ]

@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Lab: Complete Friction Analysis</title>
+    <style>
+        :root {
+            --primary: #2980b9;
+            --accent: #c0392b;
+            --success: #27ae60;
+            --text: #2c3e50;
+            --bg: #ecf0f1;
+            --panel: #ffffff;
+            --quiz-bg: #fffbf0;
+            --quiz-border: #f39c12;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 16px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 25px;
+            max-width: 1400px;
+            width: 100%;
+            background: var(--panel);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Controls Panel */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .panel-group {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 18px;
+            background: #fdfdfd;
+        }
+
+        label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .val-disp {
+            float: right;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            height: 15px;
+        }
+
+        input[type=number] {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        input[type=checkbox] {
+            width: auto;
+            margin-right: 10px;
+            cursor: pointer;
+            transform: scale(1.2);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1.05rem;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        /* QUIZ SPECIFIC STYLES */
+        .challenge-box {
+            border: 3px solid var(--quiz-border);
+            background: var(--quiz-bg);
+            padding: 18px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .challenge-active .challenge-box {
+            display: block;
+        }
+
+        .challenge-active .standard-controls {
+            display: none;
+        }
+
+        .quiz-toggle-btn {
+            background: #8e44ad;
+            margin-bottom: 10px;
+        }
+
+        .quiz-toggle-btn:hover {
+            background: #9b59b6;
+        }
+
+        .feedback-area {
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            min-height: 40px;
+            text-align: center;
+        }
+
+        /* Canvas Area */
+        .sim-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        canvas {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        .st-static {
+            background: #ffeaa7;
+            color: #d35400;
+            border: 3px solid #fdcb6e;
+        }
+
+        .st-sliding {
+            background: #81ecec;
+            color: #00b894;
+            border: 3px solid #00cec9;
+        }
+
+        .diagram-legend {
+            font-size: 1rem;
+            margin-top: 5px;
+            color: #444;
+            font-weight: 500;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            transition: opacity 0.3s;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Readout Bar */
+        .readout-bar {
+            display: flex;
+            gap: 15px;
+            justify-content: space-around;
+            background: #dfe6e9;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            flex-wrap: wrap;
+        }
+
+        .readout-item {
+            text-align: center;
+        }
+
+        .readout-val {
+            font-size: 1.2rem;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* Investigation Section */
+        .investigation-section {
+            grid-column: 1 / -1;
+            margin-top: 20px;
+            border-top: 3px solid #eee;
+            padding-top: 20px;
+        }
+
+        .inv-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th,
+        td {
+            text-align: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #f1f2f6;
+        }
+
+        .data-panel {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        /* Language Selector */
+        .language-selector {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            display: flex;
+            gap: 8px;
+            z-index: 30;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+
+        .lang-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="language-selector">
+        <button class="lang-btn" data-lang="en-US">EN</button>
+        <button class="lang-btn" data-lang="zh-HK">繁</button>
+    </div>
+
+    <h1 data-i18n="title">Physics Lab: Complete Friction Analysis</h1>
+    <div class="subtitle" data-i18n="subtitle">Equilibrium, Torque Shift, and Coefficients · Lab & Challenge Modes</div>
+
+    <div class="main-layout" id="main-layout">
+        <div class="controls">
+
+            <button class="quiz-toggle-btn" onclick="toggleMode()">
+                <span id="btn-text" data-i18n="switchToChallenge">Switch to Challenge Mode</span>
+            </button>
+
+            <div class="challenge-box">
+                <h3 data-i18n="mysteryMaterial">🧪 Mystery Material</h3>
+                <p style="font-size:0.95rem; color:#444; margin-bottom:15px;" data-i18n="mysteryDesc">
+                    Find the hidden coefficients. (Simulated random material)
+                </p>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                    <div><label data-i18n="calcMuS">Calc μ<sub>s</sub>:</label><input type="number" id="ans-mus"
+                            step="0.01"></div>
+                    <div><label data-i18n="calcMuK">Calc μ<sub>k</sub>:</label><input type="number" id="ans-muk"
+                            step="0.01"></div>
+                </div>
+
+                <button onclick="checkAnswer()" style="background:var(--success);" data-i18n="checkAnswers">Check
+                    Answers</button>
+                <div id="quiz-feedback" class="feedback-area" data-i18n="readyToTest">Ready to test.</div>
+                <button onclick="newMystery()" style="background:#f39c12; margin-top:10px;" data-i18n="newMystery">New
+                    Mystery Material</button>
+            </div>
+
+            <div class="panel-group standard-controls">
+                <label><span data-i18n="staticMu">Static (μ<sub>s</sub>):</span> <span id="disp-mus"
+                        class="val-disp">0.50</span></label>
+                <input type="range" id="sl-mus" min="0.1" max="1.5" step="0.05" value="0.5">
+
+                <label><span data-i18n="kineticMu">Kinetic (μ<sub>k</sub>):</span> <span id="disp-muk"
+                        class="val-disp">0.30</span></label>
+                <input type="range" id="sl-muk" min="0.1" max="1.5" step="0.05" value="0.3">
+            </div>
+
+            <div class="panel-group">
+                <label><span data-i18n="inclineAngle">Incline Angle (θ):</span> <span id="disp-angle"
+                        class="val-disp">0°</span></label>
+                <input type="range" id="sl-angle" min="0" max="45" step="0.1" value="0">
+                <p style="font-size:0.9rem; color:#666; margin-top:5px;" data-i18n="useArrowKeys">(Use Up/Down Arrow
+                    Keys)</p>
+
+                <label style="margin-top:10px;"><span data-i18n="mass">Mass (m):</span> <span id="disp-mass"
+                        class="val-disp">5.0 kg</span></label>
+                <input type="range" id="sl-mass" min="1" max="20" step="0.5" value="5">
+            </div>
+
+            <div class="panel-group">
+                <label><span data-i18n="appliedForce">F<sub>app</sub>:</span> <span id="disp-fapp" class="val-disp">0
+                        N</span></label>
+                <input type="range" id="sl-force" min="0" max="300" step="1" value="0">
+                <p style="font-size:0.9rem; color:#666; margin-top:5px;" data-i18n="useLeftRight">(Use Left/Right Arrow
+                    Keys)</p>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" id="chk-vectors" checked> <span data-i18n="showVectors">Show Force
+                        Vectors</span>
+                </label>
+            </div>
+
+            <button class="reset" onclick="resetSim()" data-i18n="resetPosition">Reset Position</button>
+        </div>
+
+        <div class="sim-container">
+            <div id="status" class="status-badge st-static" data-i18n="stationary">STATIONARY</div>
+
+            <canvas id="mainCanvas" width="900" height="500"></canvas>
+
+            <div class="readout-bar">
+                <div class="readout-item">
+                    <div style="color:#8e44ad" data-i18n="normalForce">Normal (N)</div>
+                    <span id="read-norm" class="readout-val">0.0</span>
+                </div>
+                <div class="readout-item">
+                    <div style="color:#2c3e50" data-i18n="gravityParallel">Grav<sub>||</sub> (N)</div>
+                    <span id="read-gpar" class="readout-val">0.0</span>
+                </div>
+                <div class="readout-item">
+                    <div style="color:#e74c3c" data-i18n="friction">Frict (N)</div>
+                    <span id="read-frict" class="readout-val">0.0</span>
+                </div>
+                <div class="readout-item">
+                    <div style="color:#27ae60" data-i18n="applied">App (N)</div>
+                    <span id="read-app" class="readout-val">0.0</span>
+                </div>
+                <div class="readout-item">
+                    <div style="color:#333" data-i18n="acceleration">Accel (m/s²)</div>
+                    <span id="read-acc" class="readout-val">0.00</span>
+                </div>
+            </div>
+
+            <div class="diagram-legend" id="legend-box">
+                <span class="legend-item"><span class="dot" style="background:#8e44ad"></span> <span
+                        data-i18n="normalShifted">Normal (Shifted)</span></span>
+                <span class="legend-item"><span class="dot" style="background:#7f8c8d"></span> <span
+                        data-i18n="weightCoM">Weight (CoM)</span></span>
+                <span class="legend-item"><span class="dot" style="background:#e74c3c"></span> <span
+                        data-i18n="frictionLegend">Friction</span></span>
+                <span class="legend-item"><span class="dot" style="background:#27ae60"></span> <span
+                        data-i18n="appliedLegend">Applied</span></span>
+                <span class="legend-item" style="border-left:2px solid #ccc; padding-left:15px; margin-left:5px;">
+                    <span data-i18n="shiftDistance">Shift distance (x):</span> <span id="read-shift"
+                        style="font-weight:bold; margin-left:5px; color:#c0392b;">0.00</span> m
+                </span>
+            </div>
+
+            <h3 style="margin:0; margin-top:10px;" data-i18n="realTimeData">Real-Time Data: Force vs. Time</h3>
+            <canvas id="rtGraphCanvas" width="900" height="150"></canvas>
+        </div>
+
+        <div class="investigation-section">
+            <h2 style="margin-bottom:10px;" data-i18n="labInvestigation">Lab Investigation: Max Static Friction vs
+                Normal Force</h2>
+            <p style="font-size:1rem; margin-top:0;" data-i18n="labInstructions">Vary the Mass or Angle, then click
+                "Record Data Point" just before it slides.</p>
+
+            <div class="inv-layout">
+                <div>
+                    <canvas id="labGraphCanvas" width="450" height="300"></canvas>
+                </div>
+                <div class="data-panel">
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <button onclick="recordData()" style="background:#27ae60;" data-i18n="recordData">Record Data
+                            Point</button>
+                        <button onclick="clearData()" style="background:#e74c3c; width:auto;"
+                            data-i18n="clear">Clear</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="angle">Angle</th>
+                                <th data-i18n="massKg">Mass (kg)</th>
+                                <th data-i18n="normalN">Normal (N)</th>
+                                <th data-i18n="maxStatic">Max Static (N)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lab-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Translations
+        const translations = {
+            "en-US": {
+                title: "Physics Lab: Complete Friction Analysis",
+                subtitle: "Equilibrium, Torque Shift, and Coefficients · Lab & Challenge Modes",
+                switchToChallenge: "Switch to Challenge Mode",
+                exitChallenge: "Exit Challenge Mode",
+                mysteryMaterial: "🧪 Mystery Material",
+                mysteryDesc: "Find the hidden coefficients. (Simulated random material)",
+                calcMuS: "Calc μ<sub>s</sub>:",
+                calcMuK: "Calc μ<sub>k</sub>:",
+                checkAnswers: "Check Answers",
+                readyToTest: "Ready to test.",
+                newMystery: "New Mystery Material",
+                staticMu: "Static (μ<sub>s</sub>):",
+                kineticMu: "Kinetic (μ<sub>k</sub>):",
+                inclineAngle: "Incline Angle (θ):",
+                useArrowKeys: "(Use Up/Down Arrow Keys)",
+                mass: "Mass (m):",
+                appliedForce: "F<sub>app</sub>:",
+                useLeftRight: "(Use Left/Right Arrow Keys)",
+                showVectors: "Show Force Vectors",
+                resetPosition: "Reset Position",
+                stationary: "STATIONARY",
+                sliding: "SLIDING",
+                normalForce: "Normal (N)",
+                gravityParallel: "Grav<sub>||</sub> (N)",
+                friction: "Frict (N)",
+                applied: "App (N)",
+                acceleration: "Accel (m/s²)",
+                normalShifted: "Normal (Shifted)",
+                weightCoM: "Weight (CoM)",
+                frictionLegend: "Friction",
+                appliedLegend: "Applied",
+                shiftDistance: "Shift distance (x):",
+                realTimeData: "Real-Time Data: Force vs. Time",
+                labInvestigation: "Lab Investigation: Max Static Friction vs Normal Force",
+                labInstructions: "Vary the Mass or Angle, then click \"Record Data Point\" just before it slides.",
+                recordData: "Record Data Point",
+                clear: "Clear",
+                angle: "Angle",
+                massKg: "Mass (kg)",
+                normalN: "Normal (N)",
+                maxStatic: "Max Static (N)",
+                enterBothValues: "Enter both values.",
+                incorrect: "Incorrect. Try again.",
+                mysteryLoaded: "Mystery Material Loaded.",
+                graphLegend: "Green: Applied | Red: Friction",
+                normalForceLabel: "Normal Force (N)",
+                maxStaticLabel: "Max Static Friction (N)"
+            },
+            "zh-HK": {
+                title: "物理實驗室：完整摩擦力分析",
+                subtitle: "平衡、力矩轉移與摩擦係數 · 實驗與挑戰模式",
+                switchToChallenge: "切換至挑戰模式",
+                exitChallenge: "退出挑戰模式",
+                mysteryMaterial: "🧪 神秘材料",
+                mysteryDesc: "找出隱藏的摩擦係數。（模擬隨機材料）",
+                calcMuS: "計算 μ<sub>s</sub>：",
+                calcMuK: "計算 μ<sub>k</sub>：",
+                checkAnswers: "檢查答案",
+                readyToTest: "準備測試。",
+                newMystery: "新神秘材料",
+                staticMu: "靜摩擦係數 (μ<sub>s</sub>)：",
+                kineticMu: "動摩擦係數 (μ<sub>k</sub>)：",
+                inclineAngle: "斜面角度 (θ)：",
+                useArrowKeys: "（使用上/下方向鍵）",
+                mass: "質量 (m)：",
+                appliedForce: "施加力 (F<sub>app</sub>)：",
+                useLeftRight: "（使用左/右方向鍵）",
+                showVectors: "顯示力向量",
+                resetPosition: "重設位置",
+                stationary: "靜止",
+                sliding: "滑動中",
+                normalForce: "法向力 (N)",
+                gravityParallel: "重力平行分量 (N)",
+                friction: "摩擦力 (N)",
+                applied: "施加力 (N)",
+                acceleration: "加速度 (m/s²)",
+                normalShifted: "法向力（偏移）",
+                weightCoM: "重量（質心）",
+                frictionLegend: "摩擦力",
+                appliedLegend: "施加力",
+                shiftDistance: "偏移距離 (x)：",
+                realTimeData: "即時數據：力與時間",
+                labInvestigation: "實驗研究：最大靜摩擦力與法向力",
+                labInstructions: "改變質量或角度，然後在物體即將滑動前點擊「記錄數據點」。",
+                recordData: "記錄數據點",
+                clear: "清除",
+                angle: "角度",
+                massKg: "質量 (kg)",
+                normalN: "法向力 (N)",
+                maxStatic: "最大靜摩擦力 (N)",
+                enterBothValues: "請輸入兩個數值。",
+                incorrect: "不正確。請再試一次。",
+                mysteryLoaded: "神秘材料已載入。",
+                graphLegend: "綠色：施加力 | 紅色：摩擦力",
+                normalForceLabel: "法向力 (N)",
+                maxStaticLabel: "最大靜摩擦力 (N)"
+            }
+        };
+
+        let currentLang = 'en-US';
+
+        // Physics State - MUST be declared before language initialization
+        const g = 9.81;
+        const pxPerMeter = 100;
+        const blockHeightMeters = 1.0;
+
+        let state = {
+            angle: 0, mass: 5.0, mu_s: 0.5, mu_k: 0.3, f_app: 0,
+            x: 100, v: 0, accel: 0, isSliding: false,
+            f_norm: 0, f_frict: 0, shift: 0, f_gravity_par: 0,
+            history: [], labData: [],
+            challengeMode: false,
+            showVectors: true,
+            time: 0
+        };
+
+        // DOM ELEMENTS - MUST be declared before language initialization
+        const els = {
+            layout: document.getElementById('main-layout'),
+            angle: document.getElementById('sl-angle'),
+            mass: document.getElementById('sl-mass'),
+            mus: document.getElementById('sl-mus'),
+            muk: document.getElementById('sl-muk'),
+            force: document.getElementById('sl-force'),
+            chkVectors: document.getElementById('chk-vectors'),
+            legendBox: document.getElementById('legend-box'),
+
+            dispAngle: document.getElementById('disp-angle'),
+            dispMass: document.getElementById('disp-mass'),
+            dispMus: document.getElementById('disp-mus'),
+            dispMuk: document.getElementById('disp-muk'),
+            dispFapp: document.getElementById('disp-fapp'),
+
+            status: document.getElementById('status'),
+            btnText: document.getElementById('btn-text'),
+            feedback: document.getElementById('quiz-feedback'),
+            ansMus: document.getElementById('ans-mus'),
+            ansMuk: document.getElementById('ans-muk'),
+
+            readNorm: document.getElementById('read-norm'),
+            readGpar: document.getElementById('read-gpar'),
+            readApp: document.getElementById('read-app'),
+            readFrict: document.getElementById('read-frict'),
+            readAcc: document.getElementById('read-acc'),
+            readShift: document.getElementById('read-shift'),
+
+            labBody: document.getElementById('lab-body')
+        };
+
+        const cvs = document.getElementById('mainCanvas');
+        const ctx = cvs.getContext('2d');
+        const rtGraph = document.getElementById('rtGraphCanvas').getContext('2d');
+        const labGraph = document.getElementById('labGraphCanvas').getContext('2d');
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang === 'zh-HK' ? 'zh-Hant' : 'en';
+            document.title = t('title');
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const translation = t(key);
+
+                if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+                    el.placeholder = translation;
+                } else {
+                    el.innerHTML = translation;
+                }
+            });
+
+            // Update language selector buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            // Update dynamic status text
+            if (state.isSliding) {
+                els.status.textContent = t('sliding');
+            } else {
+                els.status.textContent = t('stationary');
+            }
+
+            // Update challenge mode button
+            if (state.challengeMode) {
+                els.btnText.textContent = t('exitChallenge');
+            } else {
+                els.btnText.textContent = t('switchToChallenge');
+            }
+
+            // Redraw graphs with updated labels
+            drawLabGraph();
+            drawRealTimeGraph();
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.history.pushState({}, '', url);
+        }
+
+        // Language selector event listeners
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                changeLanguage(btn.dataset.lang);
+            });
+        });
+
+        // Initialize language from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        if (langParam && translations[langParam]) {
+            changeLanguage(langParam);
+        } else {
+            changeLanguage('en-US');
+        }
+
+        function init() {
+            updateReadouts();
+            drawLabGraph();
+            requestAnimationFrame(loop);
+        }
+
+        // EVENTS
+        els.angle.addEventListener('input', e => { state.angle = parseFloat(e.target.value); resetSim(false); updateReadouts(); });
+        els.mass.addEventListener('input', e => { state.mass = parseFloat(e.target.value); updateReadouts(); });
+        els.mus.addEventListener('input', e => {
+            if (state.challengeMode) return;
+            state.mu_s = parseFloat(e.target.value);
+            if (state.mu_k > state.mu_s) { state.mu_k = state.mu_s; els.muk.value = state.mu_s; }
+            updateReadouts();
+        });
+        els.muk.addEventListener('input', e => {
+            if (state.challengeMode) return;
+            state.mu_k = parseFloat(e.target.value);
+            if (state.mu_k > state.mu_s) { state.mu_s = state.mu_k; els.mus.value = state.mu_k; }
+            updateReadouts();
+        });
+        els.force.addEventListener('input', e => { state.f_app = parseFloat(e.target.value); updateReadouts(); });
+
+        // Toggle Vectors
+        els.chkVectors.addEventListener('change', e => {
+            state.showVectors = e.target.checked;
+            els.legendBox.style.opacity = state.showVectors ? "1.0" : "0.3";
+        });
+
+        // Keyboard Logic
+        document.addEventListener('keydown', e => {
+            // Force Control (Left/Right)
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                state.f_app = Math.min(300, state.f_app + 1);
+                els.force.value = state.f_app;
+                updateReadouts();
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                state.f_app = Math.max(0, state.f_app - 1);
+                els.force.value = state.f_app;
+                updateReadouts();
+            }
+
+            // Angle Control (Up/Down)
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                state.angle = Math.min(45, state.angle + 0.5);
+                els.angle.value = state.angle;
+                resetSim(false);
+                updateReadouts();
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                state.angle = Math.max(0, state.angle - 0.5);
+                els.angle.value = state.angle;
+                resetSim(false);
+                updateReadouts();
+            }
+        });
+
+        // CHALLENGE MODE
+        function toggleMode() {
+            state.challengeMode = !state.challengeMode;
+            if (state.challengeMode) {
+                els.layout.classList.add('challenge-active');
+                els.btnText.innerText = t('exitChallenge');
+                newMystery();
+            } else {
+                els.layout.classList.remove('challenge-active');
+                els.btnText.innerText = t('switchToChallenge');
+                state.mu_s = parseFloat(els.mus.value);
+                state.mu_k = parseFloat(els.muk.value);
+            }
+            resetSim();
+        }
+
+        function newMystery() {
+            state.mu_s = Math.round((0.2 + Math.random() * 0.8) * 100) / 100;
+            state.mu_k = Math.round((0.1 + Math.random() * (state.mu_s - 0.15)) * 100) / 100;
+            els.ansMus.value = ""; els.ansMuk.value = "";
+            els.feedback.innerText = t('mysteryLoaded');
+            els.feedback.style.color = "#333";
+            resetSim();
+        }
+
+        function checkAnswer() {
+            const uS = parseFloat(els.ansMus.value);
+            const uK = parseFloat(els.ansMuk.value);
+            if (isNaN(uS) || isNaN(uK)) { els.feedback.innerText = t('enterBothValues'); return; }
+            const tol = 0.05;
+            if (Math.abs(uS - state.mu_s) <= tol && Math.abs(uK - state.mu_k) <= tol) {
+                els.feedback.innerHTML = `CORRECT! μ<sub>s</sub>=${state.mu_s}, μ<sub>k</sub>=${state.mu_k}`;
+                els.feedback.style.color = "var(--success)";
+            } else {
+                els.feedback.innerText = t('incorrect');
+                els.feedback.style.color = "#c0392b";
+            }
+        }
+
+        // LAB DATA
+        function recordData() {
+            const N = state.f_norm;
+            const fsMax = state.mu_s * N;
+            state.labData.push({ n: N, fs: fsMax });
+
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${state.angle.toFixed(1)}°</td><td>${state.mass}</td><td>${N.toFixed(1)}</td><td>${fsMax.toFixed(1)}</td>`;
+            els.labBody.appendChild(row);
+            drawLabGraph();
+        }
+
+        function clearData() {
+            state.labData = [];
+            els.labBody.innerHTML = '';
+            drawLabGraph();
+        }
+
+        function resetSim(hard = true) {
+            state.v = 0; state.x = 100; state.isSliding = false; state.accel = 0;
+            state.history = []; state.time = 0;
+        }
+
+        function updateReadouts() {
+            els.dispAngle.innerText = state.angle.toFixed(1) + "°";
+            els.dispMass.innerText = state.mass.toFixed(1) + " kg";
+            if (!state.challengeMode) {
+                els.dispMus.innerText = state.mu_s.toFixed(2);
+                els.dispMuk.innerText = state.mu_k.toFixed(2);
+            }
+            els.dispFapp.innerText = state.f_app.toFixed(0) + " N";
+        }
+
+        // PHYSICS ENGINE
+        function loop() {
+            // 1. Basic Forces
+            const rad = state.angle * Math.PI / 180;
+            const N = state.mass * g * Math.cos(rad);
+            state.f_norm = N;
+
+            const F_gravity_par = -(state.mass * g * Math.sin(rad));
+            state.f_gravity_par = F_gravity_par;
+
+            const F_drive = state.f_app + F_gravity_par;
+
+            const max_static = state.mu_s * N;
+            const kinetic_mag = state.mu_k * N;
+
+            // 2. Motion Logic
+            if (!state.isSliding) {
+                if (Math.abs(F_drive) <= max_static) {
+                    state.v = 0; state.accel = 0;
+                    state.f_frict = -F_drive;
+                    els.status.className = "status-badge st-static";
+                    els.status.innerText = t('stationary');
+                } else {
+                    state.isSliding = true;
+                }
+            }
+
+            if (state.isSliding) {
+                els.status.className = "status-badge st-sliding";
+                els.status.innerText = t('sliding');
+                const dir = state.v !== 0 ? Math.sign(state.v) : Math.sign(F_drive);
+                state.f_frict = -dir * kinetic_mag;
+
+                const f_net = F_drive + state.f_frict;
+                state.accel = f_net / state.mass;
+                const dt = 1 / 60;
+                state.v += state.accel * dt;
+                state.x += state.v * dt * pxPerMeter;
+
+                if (state.v !== 0 && Math.sign(state.v) !== Math.sign(state.v - state.accel * dt)) {
+                    if (Math.abs(F_drive) <= max_static) { state.v = 0; state.isSliding = false; }
+                }
+            }
+
+            if (state.x > 900) state.x = -50;
+            if (state.x < -100) state.x = 900;
+
+            // 3. TORQUE CALCULATION (Visual Shift)
+            const h = blockHeightMeters;
+            if (N > 0.1) {
+                state.shift = -(state.f_frict * (h / 2)) / N;
+            } else {
+                state.shift = 0;
+            }
+
+            // 4. Update Graphs
+            state.time += 1 / 60;
+            if (state.history.length > 300) state.history.shift();
+            state.history.push({ t: state.time, f_app: Math.abs(state.f_app), f_frict: Math.abs(state.f_frict) });
+
+            // 5. Update DOM
+            els.readNorm.innerText = N.toFixed(1);
+            els.readGpar.innerText = Math.abs(F_gravity_par).toFixed(1);
+            els.readApp.innerText = state.f_app.toFixed(1);
+            els.readFrict.innerText = Math.abs(state.f_frict).toFixed(1);
+            els.readAcc.innerText = state.accel.toFixed(2);
+            els.readShift.innerText = state.shift.toFixed(3);
+
+            drawScene();
+            drawRealTimeGraph();
+            requestAnimationFrame(loop);
+        }
+
+        // RENDERING
+        function drawScene() {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            const cx = 50, cy = 400;
+            const rad = state.angle * Math.PI / 180;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-rad);
+
+            // Ground
+            ctx.fillStyle = "#bdc3c7"; ctx.fillRect(0, 0, 1000, 12);
+
+            // Block Geometry
+            const size = 50 + state.mass * 4;
+            const bx = state.x;
+            const by = -size;
+            const half = size / 2;
+
+            ctx.fillStyle = "#3498db"; ctx.fillRect(bx, by, size, size);
+            ctx.strokeStyle = "#2980b9"; ctx.lineWidth = 3; ctx.strokeRect(bx, by, size, size);
+
+            // Mass Label
+            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 16px sans-serif";
+            ctx.fillText(state.mass + "kg", bx + half, by + half + 6);
+
+            // VECTORS
+            if (state.showVectors) {
+                const scale = 2.0;
+
+                // 1. Weight (CoM)
+                ctx.save();
+                ctx.translate(bx + half, by + half);
+                const mg = state.mass * g;
+                drawArrow(ctx, 0, 0, mg * scale, Math.PI / 2 + rad, "#7f8c8d", "mg");
+
+                // Applied Force (Center)
+                if (state.f_app > 0) drawArrow(ctx, 0, 0, state.f_app * scale, 0, "#27ae60", "App");
+                ctx.restore();
+
+                // 2. Contact Forces (Bottom Surface)
+                const shiftPx = state.shift * pxPerMeter;
+                const clampedShift = Math.max(-half, Math.min(half, shiftPx));
+
+                ctx.save();
+                ctx.translate(bx + half, 0);
+                ctx.translate(clampedShift, 0);
+
+                // Normal Force
+                drawArrow(ctx, 0, 0, -state.f_norm * scale, Math.PI / 2, "#8e44ad", "N");
+
+                // Friction
+                if (Math.abs(state.f_frict) > 0.1) {
+                    drawArrow(ctx, 0, 0, state.f_frict * scale, 0, "#e74c3c", "f");
+                }
+
+                // Reaction Dot
+                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fillStyle = "#2c3e50"; ctx.fill();
+
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            // Angle Arc
+            ctx.save(); ctx.translate(cx, cy);
+            ctx.beginPath(); ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.arc(0, 0, 80, -rad, 0); ctx.stroke();
+            ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#333";
+            ctx.fillText(state.angle.toFixed(1) + "°", 90, -10);
+            ctx.restore();
+        }
+
+        function drawArrow(ctx, x, y, mag, angleOffset, color, label) {
+            if (Math.abs(mag) < 1) return;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angleOffset);
+            let len = Math.abs(mag);
+            const drawLen = (mag >= 0) ? len : -len;
+
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 5;
+            ctx.moveTo(0, 0); ctx.lineTo(drawLen, 0); ctx.stroke();
+
+            const head = 12;
+            ctx.beginPath(); ctx.moveTo(drawLen, 0);
+            ctx.lineTo(drawLen - Math.sign(drawLen) * head, -8);
+            ctx.lineTo(drawLen - Math.sign(drawLen) * head, 8); ctx.fill();
+
+            ctx.fillStyle = "black"; ctx.font = "bold 16px sans-serif";
+            ctx.fillText(label, drawLen + (Math.sign(drawLen) * 10), -12);
+            ctx.restore();
+        }
+
+        function drawRealTimeGraph() {
+            rtGraph.clearRect(0, 0, 900, 150);
+            const w = 900, h = 150;
+            rtGraph.strokeStyle = "#ccc"; rtGraph.strokeRect(0, 0, w, h);
+
+            if (state.history.length < 2) return;
+            const maxF = 350;
+
+            // Applied
+            rtGraph.beginPath(); rtGraph.strokeStyle = "#27ae60"; rtGraph.lineWidth = 2;
+            state.history.forEach((pt, i) => {
+                const x = (i / 300) * w;
+                const y = h - (pt.f_app / maxF) * h;
+                if (i === 0) rtGraph.moveTo(x, y); else rtGraph.lineTo(x, y);
+            });
+            rtGraph.stroke();
+
+            // Friction
+            rtGraph.beginPath(); rtGraph.strokeStyle = "#e74c3c"; rtGraph.lineWidth = 2;
+            state.history.forEach((pt, i) => {
+                const x = (i / 300) * w;
+                const y = h - (pt.f_frict / maxF) * h;
+                if (i === 0) rtGraph.moveTo(x, y); else rtGraph.lineTo(x, y);
+            });
+            rtGraph.stroke();
+
+            rtGraph.fillStyle = "#666"; rtGraph.font = "12px sans-serif";
+            rtGraph.fillText(t('graphLegend'), 10, 20);
+        }
+
+        function drawLabGraph() {
+            labGraph.clearRect(0, 0, 450, 300);
+            const w = 450, h = 300, pad = 40;
+
+            // Axes
+            labGraph.strokeStyle = "#333"; labGraph.lineWidth = 2;
+            labGraph.beginPath(); labGraph.moveTo(pad, 10); labGraph.lineTo(pad, h - pad); labGraph.lineTo(w - 10, h - pad); labGraph.stroke();
+
+            labGraph.font = "12px sans-serif"; labGraph.fillStyle = "#333"; labGraph.textAlign = "center";
+            labGraph.fillText(t('normalForceLabel'), w / 2, h - 10);
+            labGraph.save(); labGraph.translate(15, h / 2); labGraph.rotate(-Math.PI / 2);
+            labGraph.fillText(t('maxStaticLabel'), 0, 0); labGraph.restore();
+
+            if (state.labData.length === 0) return;
+            const maxVal = 250;
+            state.labData.forEach(p => {
+                const x = pad + (p.n / maxVal) * (w - pad - 10);
+                const y = (h - pad) - (p.fs / maxVal) * (h - pad - 10);
+                labGraph.beginPath(); labGraph.fillStyle = "#e74c3c"; labGraph.arc(x, y, 5, 0, Math.PI * 2); labGraph.fill();
+            });
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
