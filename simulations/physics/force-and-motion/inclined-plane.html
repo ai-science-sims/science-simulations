@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="x-poe-datastore-behavior" content="local_only">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inclined Plane Simulation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 { color: #333; margin-bottom: 5px; }
+        p.subtitle { color: #666; margin-top: 0; font-size: 0.9em; }
+
+        .lang-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .lang-toggle button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f1f5f9;
+            color: #334155;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 10px;
+        }
+
+        .lang-toggle button.active {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        .main-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+            gap: 20px;
+        }
+
+        /* Canvas Cards */
+        .canvas-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #eef;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas { display: block; max-width: 100%; }
+
+        #simCanvas { cursor: pointer; touch-action: none; background-color: #eef; }
+        #graphCanvas { background-color: #fff; border-left: 2px solid #333; }
+
+        /* Overlay Hints/Buttons */
+        .overlay-hint {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            pointer-events: none;
+            border: 1px solid #ccc;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .zoom-btn {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zoom-btn:hover { background: #f0f0f0; }
+
+        /* Controls Section */
+        .controls {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label { font-weight: 600; color: #555; font-size: 0.9em; }
+        input[type="range"] { width: 100%; }
+        .value-display { float: right; color: #007bff; }
+
+        .friction-readout {
+            margin-top: 2px;
+            font-size: 0.85em;
+            color: #555;
+            background: #f8f9fa;
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+
+        .btn-row {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        button.action-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+            color: white;
+            min-width: 120px;
+        }
+
+        .btn-play { background-color: #28a745; }
+        .btn-play:hover { background-color: #218838; }
+        .btn-reset { background-color: #dc3545; }
+        .btn-reset:hover { background-color: #c82333; }
+        .btn-toggle { background-color: #6c757d; }
+        .btn-toggle:hover { background-color: #5a6268; }
+
+        /* Graph Container Visibility */
+        #graphContainer {
+            display: none;
+            margin-top: 0;
+        }
+        #graphContainer.visible {
+            display: flex;
+        }
+
+        @media (max-width: 600px) {
+            .main-container { padding-top: 36px; }
+            .lang-toggle { top: 12px; right: 12px; }
+        }
+    </style>
+    <script src="https://puc.poecdn.net/authenticated_preview_page/syncedState.3f7572448765332f3047.js"></script>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="lang-toggle" aria-label="Language selector">
+            <button type="button" class="lang-btn" data-lang="en-US">EN</button>
+            <button type="button" class="lang-btn" data-lang="zh-HK">繁</button>
+        </div>
+
+        <h1 data-i18n="title">Inclined Plane Simulation</h1>
+
+        <!-- Simulation View -->
+        <div class="canvas-card">
+            <div class="canvas-wrapper">
+                <canvas id="simCanvas" width="800" height="450"></canvas>
+                <div class="overlay-hint" data-i18n="hint">Click block to show weight components</div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
+                    <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">-</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <label>
+                    <span data-i18n="angleLabel">Inclination Angle</span>:
+                    <span id="angleVal" class="value-display">30°</span>
+                </label>
+                <input type="range" id="angleSlider" min="0" max="60" value="30">
+
+                <label>
+                    <span data-i18n="v0Label">Initial Velocity (v₀)</span>:
+                    <span id="v0Val" class="value-display">0 m/s</span>
+                </label>
+                <input type="range" id="v0Slider" min="-20" max="20" step="1" value="0">
+                <small style="color:#888; font-size:0.8em;" data-i18n="v0Hint">Take downward along the plane as positive</small>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span data-i18n="massLabel">Mass (kg)</span>:
+                    <span id="massVal" class="value-display">5</span>
+                </label>
+                <input type="range" id="massSlider" min="1" max="50" value="5">
+
+                <label>
+                    <span data-i18n="muLabel">Friction Coeff (μ)</span>:
+                    <span id="muVal" class="value-display">0.3</span>
+                </label>
+                <input type="range" id="muSlider" min="0" max="1" step="0.05" value="0.3">
+
+                <div class="friction-readout">
+                    <span data-i18n="frictionLabel">Current Friction Force</span>:
+                    <span id="fMagVal" style="color: #d32f2f; font-weight: bold;">0.00 N</span>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="action-btn btn-play" id="playBtn">▶ Play</button>
+                <button class="action-btn btn-reset" id="resetBtn">↺ Reset</button>
+                <button class="action-btn btn-toggle" id="toggleGraphBtn">Show Graph</button>
+            </div>
+        </div>
+
+        <!-- Graph View (Below Controls) -->
+        <div class="canvas-card" id="graphContainer">
+            <h3 data-i18n="graphTitle">Velocity vs. Time</h3>
+            <div class="canvas-wrapper" style="background: white;">
+                <canvas id="graphCanvas" width="600" height="300"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    const translations = {
+        "en-US": {
+            title: "Inclined Plane Simulation",
+            subtitle: "Nathan Chan 2025",
+            hint: "Click block to show weight components",
+            angleLabel: "Inclination Angle",
+            v0Label: "Initial Velocity (v₀)",
+            v0Hint: "Take downward along the plane as positive",
+            massLabel: "Mass (kg)",
+            muLabel: "Friction Coeff (μ)",
+            frictionLabel: "Current Friction Force",
+            play: "Play",
+            pause: "Pause",
+            reset: "Reset",
+            showGraph: "Show Graph",
+            hideGraph: "Hide Graph",
+            graphTitle: "Velocity vs. Time",
+            timeAxis: "Time (s)",
+            velocityAxis: "Velocity (m/s)"
+        },
+        "zh-HK": {
+            title: "斜面運動模擬",
+            subtitle: "Nathan Chan 2025",
+            hint: "點擊木塊顯示重力分解",
+            angleLabel: "斜面角度",
+            v0Label: "初速度 (v₀)",
+            v0Hint: "以沿斜面向下為正方向",
+            massLabel: "質量 (kg)",
+            muLabel: "摩擦係數 (μ)",
+            frictionLabel: "當前摩擦力",
+            play: "播放",
+            pause: "暫停",
+            reset: "重設",
+            showGraph: "顯示圖表",
+            hideGraph: "隱藏圖表",
+            graphTitle: "速度—時間圖",
+            timeAxis: "時間 (s)",
+            velocityAxis: "速度 (m/s)"
+        }
+    };
+
+    const supportedLanguages = Object.keys(translations);
+    let currentLang = "en-US";
+
+    function t(key) {
+        return translations[currentLang][key] || key;
+    }
+
+    function applyTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            el.textContent = t(key);
+        });
+        document.title = t('title');
+    }
+
+    function setActiveLanguageButton(lang) {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            const isActive = btn.dataset.lang === lang;
+            btn.classList.toggle('active', isActive);
+        });
+    }
+
+    function updatePlayButton() {
+        ui.playBtn.textContent = state.isRunning ? `⏸ ${t('pause')}` : `▶ ${t('play')}`;
+    }
+
+    function updateGraphToggleButton() {
+        const isVisible = ui.graphContainer.classList.contains('visible');
+        ui.toggleGraphBtn.textContent = isVisible ? t('hideGraph') : t('showGraph');
+    }
+
+    function changeLanguage(lang, shouldPush = true) {
+        currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+        document.documentElement.lang = currentLang;
+        applyTranslations();
+        setActiveLanguageButton(currentLang);
+        updatePlayButton();
+        updateGraphToggleButton();
+        if (shouldPush) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('lang', currentLang);
+            window.history.pushState({}, '', url);
+        }
+    }
+
+    function getInitialLanguage() {
+        const params = new URLSearchParams(window.location.search);
+        const lang = params.get('lang');
+        return supportedLanguages.includes(lang) ? lang : "en-US";
+    }
+
+    // --- Physics Constants ---
+    const GRAVITY = 9.81;
+    const BASE_PIXELS_PER_METER = 20;
+    const RAMP_START_OFFSET = 300;
+
+    // --- Canvas Setup ---
+    const simCanvas = document.getElementById('simCanvas');
+    const ctx = simCanvas.getContext('2d');
+
+    const graphCanvas = document.getElementById('graphCanvas');
+    const gCtx = graphCanvas.getContext('2d');
+
+    // --- State ---
+    let state = {
+        angle: 30 * (Math.PI / 180),
+        mass: 5,
+        mu: 0.3,
+        v0: 0,
+
+        blockDist: 0,
+        velocity: 0,
+        time: 0,
+        currentFrictionMag: 0,
+
+        isRunning: false,
+        showComponents: true,
+        zoom: 1.0,
+        history: []
+    };
+
+    // --- UI Elements ---
+    const ui = {
+        angleSlider: document.getElementById('angleSlider'),
+        angleVal: document.getElementById('angleVal'),
+        massSlider: document.getElementById('massSlider'),
+        massVal: document.getElementById('massVal'),
+        muSlider: document.getElementById('muSlider'),
+        muVal: document.getElementById('muVal'),
+        v0Slider: document.getElementById('v0Slider'),
+        v0Val: document.getElementById('v0Val'),
+        fMagVal: document.getElementById('fMagVal'),
+        playBtn: document.getElementById('playBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+        toggleGraphBtn: document.getElementById('toggleGraphBtn'),
+        graphContainer: document.getElementById('graphContainer'),
+        zoomIn: document.getElementById('zoomIn'),
+        zoomOut: document.getElementById('zoomOut')
+    };
+
+    // --- Physics Engine ---
+    function getForces() {
+        const W = state.mass * GRAVITY;
+        const R = W * Math.cos(state.angle);
+        const F_gravity_parallel = W * Math.sin(state.angle);
+        const f_max = state.mu * R;
+        return { W, R, F_gravity_parallel, f_max };
+    }
+
+    function updatePhysics(dt) {
+        const forces = getForces();
+        let netForce = 0;
+        let frictionVal = 0;
+
+        const vThreshold = 0.01;
+
+        if (state.isRunning) {
+            if (state.velocity > vThreshold) {
+                frictionVal = forces.f_max;
+                netForce = forces.F_gravity_parallel - forces.f_max;
+            }
+            else if (state.velocity < -vThreshold) {
+                frictionVal = forces.f_max;
+                netForce = forces.F_gravity_parallel + forces.f_max;
+            }
+            else {
+                if (forces.F_gravity_parallel > forces.f_max) {
+                    frictionVal = forces.f_max;
+                    netForce = forces.F_gravity_parallel - forces.f_max;
+                } else {
+                    frictionVal = forces.F_gravity_parallel;
+                    netForce = 0;
+                    state.velocity = 0;
+                }
+            }
+
+            const acceleration = netForce / state.mass;
+            state.velocity += acceleration * dt;
+            state.blockDist += state.velocity * dt;
+            state.time += dt;
+
+            const maxDistMeters = RAMP_START_OFFSET / BASE_PIXELS_PER_METER;
+
+            if (state.blockDist >= maxDistMeters) {
+                state.blockDist = maxDistMeters;
+                state.velocity = 0;
+                state.isRunning = false;
+                updatePlayButton();
+                frictionVal = 0;
+            }
+
+            state.history.push({ t: state.time, v: state.velocity });
+        } else {
+            if (Math.abs(state.velocity) > vThreshold) {
+                frictionVal = forces.f_max;
+            } else {
+                frictionVal = Math.min(forces.F_gravity_parallel, forces.f_max);
+            }
+        }
+
+        state.currentFrictionMag = frictionVal;
+        ui.fMagVal.textContent = frictionVal.toFixed(2) + " N";
+    }
+
+    // --- Drawing Helpers ---
+    function drawArrow(ctx, x1, y1, x2, y2, color, label, isDashed = false) {
+        const headLen = 10;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+
+        ctx.beginPath();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = color;
+        if (isDashed) ctx.setLineDash([5, 3]);
+        else ctx.setLineDash([]);
+
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.fill();
+
+        if (label) {
+            ctx.font = 'bold 14px "Segoe UI", Arial';
+            ctx.fillStyle = color;
+            const labelDist = 15;
+            const labelX = x2 + labelDist * Math.cos(angle);
+            const labelY = y2 + labelDist * Math.sin(angle);
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, labelX, labelY);
+        }
+    }
+
+    function drawAngleArc(ctx, x, y, radius, startAngle, endAngle, label) {
+        ctx.beginPath();
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 2;
+        ctx.arc(x, y, radius, startAngle, endAngle, startAngle > endAngle);
+        ctx.stroke();
+
+        if (label) {
+            const midAngle = (startAngle + endAngle) / 2;
+            const textX = x + (radius + 25) * Math.cos(midAngle);
+            const textY = y + (radius + 25) * Math.sin(midAngle);
+            ctx.font = "bold 14px Arial";
+            ctx.fillStyle = "#333";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, textX, textY);
+        }
+    }
+
+    // --- Main Simulation Draw ---
+    function drawSim() {
+        ctx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+
+        const forces = getForces();
+        const w = simCanvas.width;
+        const h = simCanvas.height;
+
+        const pivotX = 100;
+        const pivotY = 350;
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#888";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(0, pivotY);
+        ctx.lineTo(w, pivotY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.save();
+
+        ctx.translate(pivotX, pivotY);
+        ctx.scale(state.zoom, state.zoom);
+        ctx.rotate(-state.angle);
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 4;
+        ctx.moveTo(-500, 0);
+        ctx.lineTo(2000, 0);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#ccc";
+        ctx.lineWidth = 1;
+        for(let i = -500; i < 2000; i += 40) {
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i - 10, 10);
+        }
+        ctx.stroke();
+
+        const blockW = 80;
+        const blockH = 50;
+        const halfH = blockH / 2;
+
+        const currentPos = RAMP_START_OFFSET - (state.blockDist * BASE_PIXELS_PER_METER);
+
+        ctx.translate(currentPos, -blockH);
+        ctx.translate(0, blockH / 2);
+
+        ctx.fillStyle = "#ffcc80";
+        ctx.strokeStyle = "#e65100";
+        ctx.lineWidth = 3;
+        ctx.fillRect(-blockW/2, -halfH, blockW, blockH);
+        ctx.strokeRect(-blockW/2, -halfH, blockW, blockH);
+
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI*2);
+        ctx.fill();
+
+        const scale = 3.0;
+        const vThreshold = 0.01;
+
+        const rLen = forces.R * scale;
+        drawArrow(ctx, 0, halfH, 0, halfH - rLen, "blue", "N", false);
+
+        let fLen = state.currentFrictionMag * scale;
+
+        if (fLen > 0.5) {
+            if (state.velocity > vThreshold) {
+                drawArrow(ctx, 0, halfH, fLen, halfH, "green", "f", false);
+            }
+            else if (state.velocity < -vThreshold) {
+                drawArrow(ctx, 0, halfH, -fLen, halfH, "green", "f", false);
+            }
+            else {
+                drawArrow(ctx, 0, halfH, fLen, halfH, "green", "f", false);
+            }
+        }
+
+        ctx.save();
+        ctx.rotate(state.angle);
+        const wLen = forces.W * scale;
+        drawArrow(ctx, 0, 0, 0, wLen, "red", "mg", false);
+        ctx.restore();
+
+        if (state.showComponents) {
+            const angleDeg = Math.round(state.angle * 180 / Math.PI);
+            const angleDegStr = angleDeg + "°";
+
+            const compPerpLen = forces.R * scale;
+            const compParaLen = forces.F_gravity_parallel * scale;
+
+            drawArrow(ctx, 0, 0, 0, compPerpLen, "#aa0000", "", true);
+            drawArrow(ctx, 0, 0, -compParaLen, 0, "#aa0000", "", true);
+
+            ctx.font = "12px Arial";
+            ctx.fillStyle = "#aa0000";
+            ctx.textAlign = "left";
+            ctx.fillText("mg cos " + angleDegStr, 5, compPerpLen + 15);
+
+            ctx.textAlign = "center";
+            ctx.fillText("mg sin " + angleDegStr, -compParaLen / 2, -15);
+
+            const rArc = 40;
+            ctx.beginPath();
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 1;
+            ctx.arc(0, 0, rArc, Math.PI/2, Math.PI/2 + state.angle);
+            ctx.stroke();
+
+            const midAngle1 = Math.PI/2 + state.angle/2;
+            const labelX = rArc * 1.3 * Math.cos(midAngle1);
+            const labelY = rArc * 1.3 * Math.sin(midAngle1);
+
+            ctx.fillStyle = "#333";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(angleDegStr, labelX, labelY);
+        }
+
+        ctx.restore();
+
+        const angleDegStr = Math.round(state.angle * 180 / Math.PI) + "°";
+        drawAngleArc(ctx, pivotX, pivotY, 50, 0, -state.angle, angleDegStr);
+    }
+
+    // --- Graph Drawing ---
+    function drawGraph() {
+        const w = graphCanvas.width;
+        const h = graphCanvas.height;
+        gCtx.clearRect(0, 0, w, h);
+
+        const padLeft = 40;
+        const padBottom = 30;
+        const padTop = 20;
+        const graphW = w - padLeft - 10;
+        const graphH = h - padBottom - padTop;
+
+        let maxT = 10;
+        if (state.history.length > 0) {
+            maxT = Math.max(10, state.history[state.history.length-1].t);
+        }
+
+        let minV = -10;
+        let maxV = 10;
+
+        if (state.history.length > 0) {
+            const vVals = state.history.map(p => p.v);
+            minV = Math.min(-10, ...vVals);
+            maxV = Math.max(10, ...vVals);
+        }
+
+        const rangeV = maxV - minV;
+        minV -= rangeV * 0.1;
+        maxV += rangeV * 0.1;
+
+        const zeroY = padTop + (maxV / (maxV - minV)) * graphH;
+
+        gCtx.strokeStyle = "#eee";
+        gCtx.lineWidth = 1;
+
+        gCtx.beginPath(); gCtx.moveTo(padLeft, zeroY); gCtx.lineTo(w, zeroY); gCtx.stroke();
+        gCtx.beginPath(); gCtx.moveTo(padLeft, 0); gCtx.lineTo(padLeft, h); gCtx.stroke();
+
+        gCtx.fillStyle = "#555";
+        gCtx.font = "12px Arial";
+        gCtx.textAlign = "center";
+        gCtx.fillText(t('timeAxis'), w/2, h - 5);
+
+        gCtx.save();
+        gCtx.translate(15, h/2);
+        gCtx.rotate(-Math.PI/2);
+        gCtx.fillText(t('velocityAxis'), 0, 0);
+        gCtx.restore();
+
+        if (state.history.length === 0) return;
+
+        gCtx.beginPath();
+        gCtx.strokeStyle = "#007bff";
+        gCtx.lineWidth = 2;
+
+        state.history.forEach((pt, index) => {
+            const x = padLeft + (pt.t / maxT) * graphW;
+            const normalizedV = (pt.v - minV) / (maxV - minV);
+            const y = (padTop + graphH) - (normalizedV * graphH);
+
+            if (index === 0) gCtx.moveTo(x, y);
+            else gCtx.lineTo(x, y);
+        });
+        gCtx.stroke();
+
+        const lastPt = state.history[state.history.length-1];
+        const lastX = padLeft + (lastPt.t / maxT) * graphW;
+        const lastNormV = (lastPt.v - minV) / (maxV - minV);
+        const lastY = (padTop + graphH) - (lastNormV * graphH);
+
+        gCtx.fillStyle = "#007bff";
+        gCtx.beginPath();
+        gCtx.arc(lastX, lastY, 4, 0, Math.PI*2);
+        gCtx.fill();
+
+        gCtx.fillStyle = "#333";
+        gCtx.textAlign = "right";
+        gCtx.fillText(maxV.toFixed(1), padLeft - 5, padTop + 5);
+        gCtx.fillText(minV.toFixed(1), padLeft - 5, h - padBottom);
+        gCtx.fillText("0", padLeft - 5, zeroY + 4);
+
+        gCtx.textAlign = "center";
+        gCtx.fillText(maxT.toFixed(1), w - 20, h - 5);
+    }
+
+    // --- Loop ---
+    let lastTime = 0;
+    function loop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        const dt = (timestamp - lastTime) / 1000;
+        lastTime = timestamp;
+
+        updatePhysics(Math.min(dt, 0.05));
+        drawSim();
+        if (ui.graphContainer.style.display !== 'none') {
+            drawGraph();
+        }
+        requestAnimationFrame(loop);
+    }
+
+    // --- Events ---
+    function updateAngle(val) {
+        state.angle = parseFloat(val) * (Math.PI / 180);
+        ui.angleVal.textContent = val + "°";
+    }
+
+    ui.angleSlider.addEventListener('input', (e) => updateAngle(e.target.value));
+
+    ui.massSlider.addEventListener('input', (e) => {
+        state.mass = parseInt(e.target.value, 10);
+        ui.massVal.textContent = state.mass;
+    });
+
+    ui.muSlider.addEventListener('input', (e) => {
+        state.mu = parseFloat(e.target.value);
+        ui.muVal.textContent = state.mu;
+    });
+
+    ui.v0Slider.addEventListener('input', (e) => {
+        state.v0 = parseFloat(e.target.value);
+        ui.v0Val.textContent = state.v0 + " m/s";
+        if (!state.isRunning && state.time === 0) {
+            state.velocity = state.v0;
+        }
+    });
+
+    ui.playBtn.addEventListener('click', () => {
+        state.isRunning = !state.isRunning;
+        updatePlayButton();
+    });
+
+    ui.resetBtn.addEventListener('click', () => {
+        state.blockDist = 0;
+        state.velocity = state.v0;
+        state.time = 0;
+        state.history = [];
+        state.isRunning = false;
+        updatePlayButton();
+        state.history.push({ t: 0, v: state.v0 });
+    });
+
+    ui.toggleGraphBtn.addEventListener('click', () => {
+        const isVisible = ui.graphContainer.classList.contains('visible');
+        if (isVisible) {
+            ui.graphContainer.classList.remove('visible');
+            ui.graphContainer.style.display = 'none';
+        } else {
+            ui.graphContainer.classList.add('visible');
+            ui.graphContainer.style.display = 'flex';
+        }
+        updateGraphToggleButton();
+    });
+
+    ui.zoomIn.addEventListener('click', () => {
+        state.zoom = Math.min(state.zoom + 0.2, 3.0);
+    });
+
+    ui.zoomOut.addEventListener('click', () => {
+        state.zoom = Math.max(state.zoom - 0.2, 0.4);
+    });
+
+    simCanvas.addEventListener('mousedown', () => {
+        state.showComponents = !state.showComponents;
+    });
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+    });
+    window.addEventListener('popstate', () => {
+        changeLanguage(getInitialLanguage(), false);
+    });
+
+    changeLanguage(getInitialLanguage());
+    state.velocity = state.v0;
+    updatePlayButton();
+    updateGraphToggleButton();
+    requestAnimationFrame(loop);
+
+</script>
+
+</body>
+</html>

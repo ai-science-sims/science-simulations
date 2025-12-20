@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="x-poe-datastore-behavior" content="local_only">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bicycle Propulsion Sequence</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 95%;
+            max-width: 900px;
+            text-align: center;
+            position: relative;
+        }
+
+        h1 { color: #2c3e50; margin: 0 0 5px; }
+        .desc { color: #666; font-size: 0.9rem; margin: 0 0 25px; max-width: 750px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+        .lang-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .lang-toggle button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f1f5f9;
+            color: #334155;
+            cursor: pointer;
+        }
+
+        .lang-toggle button.active {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        .desc-line {
+            margin: 2px 0;
+        }
+        .kw-torque { color: #e74c3c; font-weight: bold; }
+        .kw-backwards { color: #f1c40f; font-weight: bold; text-shadow: 0 0 1px #999; }
+        .kw-forwards { color: #27ae60; font-weight: bold; }
+        .kw-resistance { color: #3498db; font-weight: bold; }
+
+        /* --- Animation Stage --- */
+        .stage {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 75%, #555 75%, #333 100%);
+            overflow: hidden;
+            border-radius: 8px;
+            border: 2px solid #ccc;
+        }
+
+        .pause-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: rgba(255,255,255,0.9);
+            color: #1f2937;
+            font-size: 0.8rem;
+            cursor: pointer;
+            z-index: 20;
+        }
+
+        .stage.paused .road-marks,
+        .stage.paused .tire,
+        .stage.paused .gear,
+        .stage.paused .animated-force {
+            animation-play-state: paused;
+        }
+
+        .road-marks {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 200%;
+            height: 10px;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 100px, #fff 100px, #fff 180px);
+            animation: moveRoad 1.5s linear infinite;
+        }
+
+        /* --- Bicycle Container --- */
+        .bicycle {
+            position: absolute;
+            bottom: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            height: 200px;
+        }
+
+        /* --- The Frame (SVG) --- */
+        .bike-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .frame-lines {
+            fill: none;
+            stroke: #34495e;
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .seat { fill: #222; }
+        .handlebar { fill: none; stroke: #222; stroke-width: 8; stroke-linecap: round; }
+
+        /* --- Wheels --- */
+        .wheel-group {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            z-index: 2;
+        }
+
+        .rear-wheel-pos { bottom: 0; left: 0; }
+        .front-wheel-pos { bottom: 0; right: 0; }
+
+        .tire {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid #333;
+            box-sizing: border-box;
+            position: relative;
+            background: rgba(255,255,255,0.2);
+            animation: spin 1.5s linear infinite;
+        }
+
+        .spoke {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 95%;
+            height: 2px;
+            background: #888;
+            transform-origin: center;
+        }
+        .spoke:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg); }
+        .spoke:nth-child(2) { transform: translate(-50%, -50%) rotate(45deg); }
+        .spoke:nth-child(3) { transform: translate(-50%, -50%) rotate(90deg); }
+        .spoke:nth-child(4) { transform: translate(-50%, -50%) rotate(135deg); }
+
+        .hub {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            border: 4px solid #555;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        /* --- Pedals --- */
+        .pedal-group {
+            position: absolute;
+            bottom: 30px;
+            left: 170px;
+            width: 60px;
+            height: 60px;
+            z-index: 6;
+        }
+        .gear {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 5px solid #7f8c8d;
+            background: rgba(50,50,50,0.8);
+            position: relative;
+            animation: spin 1.5s linear infinite;
+        }
+        .gear::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 12px; height: 12px;
+            background: #bdc3c7;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        .pedal-arm {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 80px;
+            background: #2c3e50;
+            transform: translate(-50%, -50%);
+            border-radius: 3px;
+        }
+        .pedal-foot {
+            position: absolute;
+            width: 24px;
+            height: 12px;
+            background: #111;
+            border-radius: 4px;
+        }
+        .p-top { top: 0; left: -9px; }
+        .p-bot { bottom: 0; left: -9px; }
+
+        .chain-svg {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 4;
+            pointer-events: none;
+        }
+        .chain-path {
+            fill: none;
+            stroke: #555;
+            stroke-width: 3;
+            stroke-dasharray: 5,3;
+        }
+
+        /* --- FORCES --- */
+        .force-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .animated-force {
+            opacity: 0;
+            animation-duration: 8s;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+
+        /* 1. Torque Arrow (Red) */
+        .torque-wrapper-rear {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            transform: translate(-50%, -50%);
+            animation-name: seq-torque-rear;
+        }
+
+        .torque-wrapper-front {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100px;
+            height: 100px;
+            transform: translate(-50%, -50%);
+            animation-name: seq-front-system;
+        }
+
+        .torque-svg { width: 100%; height: 100%; overflow: visible; }
+        .torque-path {
+            fill: none;
+            stroke: #e74c3c;
+            stroke-width: 6;
+            stroke-linecap: round;
+        }
+        .torque-head { fill: #e74c3c; }
+
+        .label-torque {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 0 #fff;
+            white-space: nowrap;
+        }
+
+        /* 2. Action Arrow (Yellow) */
+        .action-arrow {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            width: 100px;
+            height: 8px;
+            background: #f1c40f;
+            transform: translateX(-100%);
+            transform-origin: right center;
+            animation-name: seq-action;
+        }
+        .action-arrow::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: -6px;
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #f1c40f transparent transparent;
+        }
+        .label-action {
+            position: absolute;
+            bottom: -30px;
+            right: 0;
+            color: #d4ac0d;
+            font-size: 12px;
+            white-space: nowrap;
+            font-weight: bold;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* 3. Rear Friction Arrow (Green) */
+        .friction-arrow-rear {
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 120px;
+            height: 8px;
+            background: #27ae60;
+            transform-origin: left center;
+            animation-name: seq-friction-rear;
+        }
+        .friction-arrow-rear::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: -6px;
+            border-width: 10px 0 10px 15px;
+            border-style: solid;
+            border-color: transparent transparent transparent #27ae60;
+        }
+        .label-friction-rear {
+            position: absolute;
+            bottom: 15px;
+            left: 10px;
+            color: #27ae60;
+            font-weight: 900;
+            font-size: 14px;
+            white-space: nowrap;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        /* 4. Front Friction Arrow (Blue) */
+        .friction-arrow-front {
+            position: absolute;
+            bottom: -5px;
+            right: 50%;
+            width: 100px;
+            height: 8px;
+            background: #3498db;
+            transform-origin: right center;
+            animation-name: seq-front-system;
+        }
+        .friction-arrow-front::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: -6px;
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #3498db transparent transparent;
+        }
+        .label-friction-front {
+            position: absolute;
+            bottom: 15px;
+            right: 0;
+            color: #3498db;
+            font-weight: 900;
+            font-size: 12px;
+            white-space: nowrap;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        @keyframes seq-torque-rear {
+            0%, 10% { opacity: 0; }
+            15%, 90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes seq-action {
+            0%, 20% { opacity: 0; }
+            25%, 90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes seq-friction-rear {
+            0%, 35% { opacity: 0; }
+            40%, 90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes seq-front-system {
+            0%, 55% { opacity: 0; }
+            60%, 90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Animations */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes moveRoad {
+            from { transform: translateX(0); }
+            to { transform: translateX(-100px); }
+        }
+
+        @media (max-width: 600px) {
+            .bicycle { transform: translateX(-50%) scale(0.6); bottom: 60px; }
+            .stage { height: 250px; }
+            .container { padding-top: 48px; }
+            .lang-toggle { top: 12px; right: 12px; }
+        }
+    </style>
+    <script src="https://puc.poecdn.net/authenticated_preview_page/syncedState.3f7572448765332f3047.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="lang-toggle" aria-label="Language selector">
+            <button type="button" class="lang-btn" data-lang="en-US">EN</button>
+            <button type="button" class="lang-btn" data-lang="zh-HK">繁</button>
+        </div>
+        <h1 data-i18n="title">Bicycle Propulsion Sequence</h1>
+        <div class="desc">
+            <div class="desc-line">
+                <span>1.</span>
+                <span class="kw-torque" data-i18n="torque">Torque</span>
+                <span data-i18n="desc1Rest">rotates rear wheel.</span>
+            </div>
+            <div class="desc-line">
+                <span>2.</span>
+                <span data-i18n="desc2Start">Rear wheel pushes ground</span>
+                <span class="kw-backwards" data-i18n="backwards">Backwards</span>
+                <span data-i18n="desc2End">.</span>
+            </div>
+            <div class="desc-line">
+                <span>3.</span>
+                <span data-i18n="desc3Start">Ground pushes bike</span>
+                <span class="kw-forwards" data-i18n="forwards">Forwards</span>
+                <span data-i18n="desc3End">(Rear Friction).</span>
+            </div>
+            <div class="desc-line">
+                <span>4.</span>
+                <span data-i18n="laterTag">(Later)</span>
+                <span data-i18n="desc4Start">Front wheel hits ground, creating</span>
+                <span class="kw-resistance" data-i18n="resistance">Resistance</span>
+                <span data-i18n="desc4Mid">which causes front</span>
+                <span class="kw-torque" data-i18n="torque">Torque</span>
+                <span data-i18n="desc4End">.</span>
+            </div>
+        </div>
+
+        <div class="stage">
+            <button type="button" class="pause-btn" id="pauseBtn" data-i18n="pause">Pause</button>
+            <div class="road-marks"></div>
+
+            <div class="bicycle">
+
+                <svg class="bike-frame" viewBox="0 0 500 200">
+                    <path class="frame-lines" d="
+                        M 60 140 L 200 140 L 160 40 L 60 140
+                        M 160 40 L 380 40 L 200 140
+                        M 380 40 L 430 140
+                        M 160 40 L 150 20
+                    "></path>
+                    <path class="handlebar" d="M 370 40 L 380 20 L 410 20"></path>
+                    <path class="seat" d="M 130 20 L 180 20 L 170 30 L 140 30 Z"></path>
+                    <path class="chain-path" d="M 60 140 L 200 140"></path>
+                </svg>
+
+                <!-- Rear Wheel Group -->
+                <div class="wheel-group rear-wheel-pos">
+                    <div class="tire">
+                        <div class="spoke"></div>
+                        <div class="spoke"></div>
+                        <div class="spoke"></div>
+                        <div class="spoke"></div>
+                    </div>
+                    <div class="hub"></div>
+
+                    <div class="force-container">
+                        <!-- 1. Torque -->
+                        <div class="torque-wrapper-rear animated-force">
+                            <svg class="torque-svg" viewBox="0 0 100 100">
+                                <path class="torque-path" d="M 20 50 A 30 30 0 0 1 80 50"></path>
+                                <polygon class="torque-head" points="80,65 72,48 88,48"></polygon>
+                            </svg>
+                            <span class="label-torque" data-i18n="torque">Torque</span>
+                        </div>
+
+                        <!-- 2. Action -->
+                        <div class="action-arrow animated-force">
+                            <span class="label-action" data-i18n="forceOnGround">Force on Ground</span>
+                        </div>
+
+                        <!-- 3. Friction (Rear - Green) -->
+                        <div class="friction-arrow-rear animated-force">
+                            <span class="label-friction-rear" data-i18n="staticFriction">Static Friction</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pedal-group">
+                    <div class="gear">
+                        <div class="pedal-arm">
+                            <div class="pedal-foot p-top"></div>
+                            <div class="pedal-foot p-bot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Front Wheel Group -->
+                <div class="wheel-group front-wheel-pos">
+                    <div class="tire">
+                        <div class="spoke"></div>
+                        <div class="spoke"></div>
+                        <div class="spoke"></div>
+                        <div class="spoke"></div>
+                    </div>
+                    <div class="hub"></div>
+
+                    <div class="force-container">
+                        <!-- 4. Front Friction (Blue) -->
+                        <div class="friction-arrow-front animated-force">
+                            <span class="label-friction-front" data-i18n="rollingFriction">Rolling Friction</span>
+                        </div>
+
+                        <!-- 5. Front Torque -->
+                        <div class="torque-wrapper-front animated-force">
+                            <svg class="torque-svg" viewBox="0 0 100 100">
+                                <path class="torque-path" d="M 20 50 A 30 30 0 0 1 80 50"></path>
+                                <polygon class="torque-head" points="80,65 72,48 88,48"></polygon>
+                            </svg>
+                            <span class="label-torque" data-i18n="torque">Torque</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            "en-US": {
+                title: "Bicycle Propulsion Sequence",
+                torque: "Torque",
+                backwards: "Backwards",
+                forwards: "Forwards",
+                resistance: "Resistance",
+                forceOnGround: "Force on Ground",
+                staticFriction: "Static Friction",
+                rollingFriction: "Rolling Friction",
+                pause: "Pause",
+                resume: "Resume",
+                desc1Rest: "rotates rear wheel.",
+                desc2Start: "Rear wheel pushes ground",
+                desc2End: ".",
+                desc3Start: "Ground pushes bike",
+                desc3End: "(Rear Friction).",
+                laterTag: "(Later)",
+                desc4Start: "Front wheel hits ground, creating",
+                desc4Mid: "which causes front",
+                desc4End: "."
+            },
+            "zh-HK": {
+                title: "單車推進序列",
+                torque: "扭矩",
+                backwards: "向後",
+                forwards: "向前",
+                resistance: "阻力",
+                forceOnGround: "對地面的作用力",
+                staticFriction: "靜摩擦",
+                rollingFriction: "滾動摩擦",
+                pause: "暫停",
+                resume: "繼續",
+                desc1Rest: "令後輪旋轉。",
+                desc2Start: "後輪",
+                desc2End: "推地面。",
+                desc3Start: "地面",
+                desc3End: "推單車（後輪靜摩擦）。",
+                laterTag: "（稍後）",
+                desc4Start: "前輪與地面接觸產生",
+                desc4Mid: "引致前輪",
+                desc4End: "。"
+            }
+        };
+
+        const supportedLanguages = Object.keys(translations);
+        let currentLang = "en-US";
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key);
+            });
+            document.title = t('title');
+        }
+
+        function setActiveLanguageButton(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const isActive = btn.dataset.lang === lang;
+                btn.classList.toggle('active', isActive);
+            });
+        }
+
+        function changeLanguage(lang, shouldPush = true) {
+            currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+            document.documentElement.lang = currentLang;
+            applyTranslations();
+            setActiveLanguageButton(currentLang);
+            if (shouldPush) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('lang', currentLang);
+                window.history.pushState({}, '', url);
+            }
+        }
+
+        function getInitialLanguage() {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get('lang');
+            return supportedLanguages.includes(lang) ? lang : "en-US";
+        }
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+        });
+        window.addEventListener('popstate', () => {
+            changeLanguage(getInitialLanguage(), false);
+        });
+
+        const stage = document.querySelector('.stage');
+        const pauseBtn = document.getElementById('pauseBtn');
+        let isPaused = false;
+
+        function updatePauseButton() {
+            pauseBtn.textContent = isPaused ? t('resume') : t('pause');
+        }
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            stage.classList.toggle('paused', isPaused);
+            updatePauseButton();
+        });
+
+        changeLanguage(getInitialLanguage());
+        updatePauseButton();
+    </script>
+
+</body>
+</html>

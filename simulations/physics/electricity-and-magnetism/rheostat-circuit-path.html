@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rheostat Circuit Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .cursor-grab { cursor: grab; }
+        .cursor-grabbing { cursor: grabbing; }
+        .cursor-pointer { cursor: pointer; }
+        /* Prevent selection and native zooming */
+        .no-select { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { touch-action: none; overflow: hidden; background-color: #0f172a; }
+
+        .bulb-glow { transition: opacity 0.1s, filter 0.1s; }
+        .switch-arm { transform-origin: 0 0; transition: transform 0.3s ease-in-out; }
+
+        /* Label Styles */
+        .label-text {
+            font-family: monospace;
+            font-weight: 900;
+            font-size: 20px;
+            fill: #94a3b8;
+            pointer-events: none;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen flex flex-col no-select">
+
+    <!-- Header -->
+    <header class="p-2 md:p-4 bg-slate-800 shadow-md border-b border-slate-700 z-10 shrink-0">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <!-- Top Row -->
+            <div class="flex items-center justify-between gap-2 w-full md:w-auto">
+                <div class="mr-2">
+                    <h1 class="text-sm md:text-xl font-bold text-blue-400 leading-tight" data-i18n="headerTitle">Rheostat Path</h1>
+                    <p class="text-[10px] md:text-xs text-slate-400 hidden md:block" data-i18n="headerSubtitle">Pinch to Zoom • Drag controls</p>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <!-- Position Slider (New) -->
+                    <div class="flex items-center gap-1 bg-slate-700/50 rounded px-2 py-1">
+                        <span class="text-[10px] text-slate-400 uppercase" data-i18n="contactLabel">Contact</span>
+                        <input type="range" id="pos-slider" min="0" max="100" step="0.1" value="50" class="w-24 h-4 bg-slate-500 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <button id="btn-toggle-rheostat" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 border border-indigo-500 rounded text-xs text-white transition-colors shadow-lg whitespace-nowrap active:bg-indigo-700">
+                        Switch to Rotary
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="w-full md:w-auto flex items-center justify-between gap-2">
+                <div class="grid grid-cols-4 gap-2 md:flex md:gap-6 text-xs md:text-sm text-center md:text-right bg-slate-900/50 p-1 rounded md:bg-transparent md:p-0 w-full">
+                    <div class="flex flex-col md:block">
+                        <span class="text-slate-500 uppercase tracking-wider text-[10px]" data-i18n="stateLabel">State</span>
+                        <span id="display-state" class="text-red-400 font-bold block">OFF</span>
+                    </div>
+                    <div class="flex flex-col md:block border-l border-slate-700 md:border-0 pl-1 md:pl-0">
+                        <span class="text-slate-500 uppercase tracking-wider text-[10px]" data-i18n="lengthLabel">Length</span>
+                        <span id="display-length" class="text-blue-300 font-mono block">0 cm</span>
+                    </div>
+                    <div class="flex flex-col md:block border-l border-slate-700 md:border-0 pl-1 md:pl-0">
+                        <span class="text-slate-500 uppercase tracking-wider text-[10px]" data-i18n="currentLabel">Current</span>
+                        <span id="display-current" class="text-yellow-400 font-mono block">0.00 A</span>
+                    </div>
+                    <div class="flex flex-col md:block border-l border-slate-700 md:border-0 pl-1 md:pl-0">
+                        <span class="text-slate-500 uppercase tracking-wider text-[10px]" data-i18n="resistanceLabel">Resistance</span>
+                        <span id="display-resistance" class="text-green-400 font-mono block">0.0 &Omega;</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-xs shrink-0">
+                    <button type="button" class="lang-btn px-2 py-1 rounded border border-slate-600 text-slate-300 hover:bg-slate-700" data-lang="en-US">EN</button>
+                    <button type="button" class="lang-btn px-2 py-1 rounded border border-slate-600 text-slate-300 hover:bg-slate-700" data-lang="zh-HK">繁</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Canvas Area -->
+    <main class="flex-grow relative flex items-center justify-center bg-slate-900 overflow-hidden" id="container">
+        
+        <!-- SVG container - Removed CSS transition to fix drag lag -->
+        <svg id="circuit-svg" viewBox="0 0 950 600" class="w-full h-full max-w-6xl max-h-[90vh] select-none origin-top-left">
+            <defs>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="20" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <!-- Group for Pan/Zoom Transform -->
+            <g id="viewport">
+
+                <!-- 1. BATTERY -->
+                <g id="battery-group" transform="translate(80, 280) scale(1.2)" class="cursor-pointer group">
+                    <rect x="-50" y="-60" width="100" height="150" fill="transparent" /> 
+                    <line x1="0" y1="-50" x2="0" y2="-20" stroke="#cbd5e1" stroke-width="4" />
+                    <line x1="0" y1="20" x2="0" y2="50" stroke="#cbd5e1" stroke-width="4" />
+                    <line id="batt-plate-top" x1="-25" y1="-20" x2="25" y2="-20" stroke="#cbd5e1" stroke-width="5" />
+                    <line id="batt-plate-bot" x1="-12" y1="20" x2="12" y2="20" stroke="#cbd5e1" stroke-width="5" />
+                    <text id="batt-sign-top" x="-45" y="-12" fill="#ef4444" font-size="24" font-weight="bold">+</text>
+                    <text id="batt-sign-bot" x="-45" y="32" fill="#3b82f6" font-size="24" font-weight="bold">-</text>
+                    <text x="0" y="75" text-anchor="middle" font-size="12" fill="#94a3b8" font-weight="bold" data-i18n="batteryClickLine1">Click cell to</text>
+                    <text x="0" y="88" text-anchor="middle" font-size="12" fill="#94a3b8" font-weight="bold" data-i18n="batteryClickLine2">flip polarity</text>
+                </g>
+
+                <!-- 2. LOAD -->
+                <g id="load-group" transform="translate(470, 480) scale(1.3)" class="cursor-pointer">
+                    <rect x="-50" y="-60" width="100" height="130" fill="transparent" /> 
+                    <text x="0" y="-55" text-anchor="middle" font-size="10" fill="#cbd5e1" font-weight="bold" data-i18n="loadClick">Click me!</text>
+                    <rect x="-20" y="25" width="40" height="25" fill="#475569" rx="3" />
+                    <path d="M -20 50 L -20 60 L 20 60 L 20 50" fill="#475569" />
+                    
+                    <g id="visual-bulb">
+                        <circle cx="0" cy="0" r="40" fill="#1e293b" stroke="#475569" stroke-width="2" />
+                        <path d="M -12 25 L -8 0 L 8 0 L 12 25" fill="none" stroke="#64748b" stroke-width="2" />
+                        <path d="M -8 0 Q 0 -15 8 0" fill="none" stroke="#94a3b8" stroke-width="2" />
+                        <circle id="bulb-light" cx="0" cy="0" r="40" fill="#fbbf24" opacity="0.1" class="bulb-glow" />
+                    </g>
+
+                    <g id="visual-fan" class="hidden">
+                        <circle cx="0" cy="0" r="42" stroke="#475569" stroke-width="2" fill="#0f172a" fill-opacity="0.8"/>
+                        <circle cx="0" cy="0" r="5" fill="#cbd5e1"/>
+                        <g id="fan-blades">
+                            <path d="M 0 0 C 15 -30, 35 -30, 0 -40 C -35 -30, -15 -30, 0 0" fill="#38bdf8" opacity="0.8"/>
+                            <path d="M 0 0 C 15 -30, 35 -30, 0 -40 C -35 -30, -15 -30, 0 0" fill="#38bdf8" opacity="0.8" transform="rotate(120)"/>
+                            <path d="M 0 0 C 15 -30, 35 -30, 0 -40 C -35 -30, -15 -30, 0 0" fill="#38bdf8" opacity="0.8" transform="rotate(240)"/>
+                        </g>
+                    </g>
+                </g>
+
+                <!-- 3. RHEOSTAT -->
+                <g id="rheostat-container" transform="translate(120, 50)">
+                    <!-- Linear -->
+                    <g id="rheostat-linear">
+                        <rect x="-10" y="0" width="620" height="120" rx="10" fill="#0f172a" stroke="#1e293b" stroke-width="2" />
+                        <rect x="10" y="20" width="580" height="80" rx="40" fill="#1e293b" /> 
+                        <line x1="0" y1="-20" x2="600" y2="-20" stroke="#64748b" stroke-width="8" stroke-linecap="round" />
+                        <line x1="0" y1="-20" x2="600" y2="-20" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
+                        
+                        <circle cx="0" cy="60" r="6" fill="#94a3b8" stroke="#000" stroke-width="2"/>
+                        <circle cx="600" cy="60" r="6" fill="#94a3b8" stroke="#000" stroke-width="2"/>
+                        <circle cx="0" cy="-20" r="6" fill="#94a3b8" stroke="#000" stroke-width="2"/>
+                        <circle cx="600" cy="-20" r="6" fill="#94a3b8" stroke="#000" stroke-width="2"/>
+                        
+                        <text x="-40" y="100" class="label-text">A</text>
+                        <text x="630" y="100" class="label-text">B</text>
+                        <text x="-40" y="-30" class="label-text">C</text>
+                        <text x="630" y="-30" class="label-text">D</text>
+
+                        <path id="lin-coil-full" d="" fill="none" stroke="#334155" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+                        <path id="lin-coil-active" d="" fill="none" stroke="#d97706" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+
+                        <g id="lin-slider" class="cursor-grab" transform="translate(300, 0)">
+                            <rect x="-50" y="-60" width="100" height="150" fill="transparent" />
+                            <path d="M 0 -20 L 0 60" stroke="#cbd5e1" stroke-width="6" />
+                            <rect x="-8" y="50" width="16" height="20" rx="2" fill="#b91c1c" />
+                            <rect x="-15" y="-40" width="30" height="35" rx="4" fill="#2563eb" stroke="#60a5fa" stroke-width="2" />
+                            <line x1="-5" y1="-35" x2="-5" y2="-15" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+                        </g>
+                    </g>
+
+                    <!-- Rotary -->
+                    <g id="rheostat-rotary" class="hidden" transform="translate(300, 150)">
+                        <circle cx="0" cy="0" r="130" fill="#0f172a" stroke="#1e293b" stroke-width="2" />
+                        <circle cx="0" cy="0" r="100" fill="#1e293b" />
+                        
+                        <g transform="rotate(135) translate(115, 0)"> <circle r="8" fill="#94a3b8" stroke="#000" stroke-width="2"/> </g>
+                        <text x="-160" y="80" class="label-text">A</text>
+
+                        <g transform="rotate(45) translate(115, 0)"> <circle r="8" fill="#94a3b8" stroke="#000" stroke-width="2"/> </g>
+                        <text x="160" y="80" class="label-text">C</text>
+                        
+                        <circle cx="0" cy="0" r="15" fill="#94a3b8" stroke="#000" stroke-width="2"/>
+                        <text x="0" y="75" text-anchor="middle" class="label-text">B</text>
+
+                        <path id="rot-coil-full" d="" fill="none" stroke="#334155" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                        <path id="rot-coil-active" d="" fill="none" stroke="#d97706" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+
+                        <g id="rot-knob" class="cursor-grab">
+                            <circle cx="0" cy="0" r="90" fill="transparent" />
+                            <path d="M 0 0 L 100 0" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round" />
+                            <circle cx="100" cy="0" r="14" fill="#b91c1c" /> 
+                            <circle cx="0" cy="0" r="40" fill="#2563eb" stroke="#60a5fa" stroke-width="3" />
+                            <line x1="0" y1="0" x2="30" y2="0" stroke="rgba(255,255,255,0.3)" stroke-width="3" />
+                        </g>
+                    </g>
+                </g>
+
+                <!-- 4. SWITCH -->
+                <g id="switch-group" transform="translate(200, 500)" class="cursor-pointer">
+                    <rect x="-30" y="-30" width="100" height="80" fill="transparent" />
+                    <circle cx="-20" cy="0" r="6" fill="#94a3b8" />
+                    <circle cx="50" cy="0" r="6" fill="#94a3b8" />
+                    <g id="switch-arm" class="switch-arm" transform="rotate(-30, -20, 0)">
+                        <rect x="-20" y="-4" width="80" height="8" fill="#cbd5e1" rx="2" />
+                        <circle cx="50" cy="0" r="8" fill="#ef4444" />
+                    </g>
+                    <text x="15" y="30" text-anchor="middle" fill="#94a3b8" font-size="12" data-i18n="switchLabel">SWITCH</text>
+                </g>
+
+                <!-- Wiring -->
+                <g stroke="#475569" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M 180 500 L 80 500 L 80 330" />
+                    <path d="M 470 535 L 470 550 L 250 550 L 250 500" />
+                </g>
+
+                <path id="wire-in" d="" stroke="#475569" stroke-width="4" fill="none" stroke-linecap="round" />
+                <path id="wire-out" d="" stroke="#475569" stroke-width="4" fill="none" stroke-linecap="round" />
+
+                <!-- Animation Flow -->
+                <g id="flow-group" stroke="#ef4444" stroke-width="5" fill="none" stroke-dasharray="12 20" stroke-linecap="round" opacity="0.9">
+                    <path id="anim-switch-batt" d="M 180 500 L 80 500 L 80 330" />
+                    <path id="anim-bulb-switch" d="M 470 535 L 470 550 L 250 550 L 250 500" />
+                    <path id="anim-wire-in" d="" />
+                    <path id="anim-internal" d="" transform="translate(120, 50)" />
+                    <path id="anim-wire-out" d="" />
+                </g>
+
+                <!-- Nodes -->
+                <g id="node-in" class="cursor-grab" transform="translate(120, 110)">
+                    <circle r="30" fill="transparent" />
+                    <circle id="circle-node-in" r="12" fill="#ef4444" stroke="#fff" stroke-width="2" />
+                    <text id="text-node-in" y="4" text-anchor="middle" fill="white" font-size="10" font-weight="bold">IN</text>
+                </g>
+
+                <g id="node-out" class="cursor-grab" transform="translate(120, 30)">
+                    <circle r="30" fill="transparent" />
+                    <circle id="circle-node-out" r="12" fill="#3b82f6" stroke="#fff" stroke-width="2" />
+                    <text id="text-node-out" y="4" text-anchor="middle" fill="white" font-size="10" font-weight="bold">OUT</text>
+                </g>
+            </g>
+        </svg>
+
+        <div id="tooltip" class="absolute bottom-4 left-4 bg-slate-800 border border-slate-700 text-slate-300 text-sm px-3 py-2 rounded shadow-lg pointer-events-none opacity-80 hidden md:block" data-i18n="tooltip">
+            Drag terminals IN/OUT. Click battery/bulb to toggle.
+        </div>
+    </main>
+
+    <script>
+        const translations = {
+            "en-US": {
+                title: "Rheostat Circuit Simulator",
+                headerTitle: "Rheostat Path",
+                headerSubtitle: "Pinch to Zoom • Drag controls",
+                contactLabel: "Contact",
+                switchToRotary: "Switch to Rotary",
+                switchToLinear: "Switch to Linear",
+                stateLabel: "State",
+                lengthLabel: "Length",
+                currentLabel: "Current",
+                resistanceLabel: "Resistance",
+                batteryClickLine1: "Click cell to",
+                batteryClickLine2: "flip polarity",
+                loadClick: "Click me!",
+                switchLabel: "SWITCH",
+                tooltip: "Drag terminals IN/OUT. Click battery/bulb to toggle.",
+                stateOff: "OFF",
+                stateOn: "ON",
+                stateOpen: "OPEN",
+                nodeIn: "IN",
+                nodeOut: "OUT",
+                unitCm: "cm",
+                unitA: "A",
+                unitOhm: "Ω",
+                infiniteSymbol: "∞"
+            },
+            "zh-HK": {
+                title: "滑動變阻器電路模擬器",
+                headerTitle: "滑動變阻器路徑",
+                headerSubtitle: "雙指縮放 • 拖動控制",
+                contactLabel: "觸點",
+                switchToRotary: "切換至旋轉式",
+                switchToLinear: "切換至直線式",
+                stateLabel: "狀態",
+                lengthLabel: "長度",
+                currentLabel: "電流",
+                resistanceLabel: "電阻",
+                batteryClickLine1: "按下電池",
+                batteryClickLine2: "反轉極性",
+                loadClick: "按我切換",
+                switchLabel: "開關",
+                tooltip: "拖動端子 IN/OUT。按電池或燈泡切換。",
+                stateOff: "關閉",
+                stateOn: "開啟",
+                stateOpen: "開路",
+                nodeIn: "入",
+                nodeOut: "出",
+                unitCm: "厘米",
+                unitA: "安培",
+                unitOhm: "Ω",
+                infiniteSymbol: "∞"
+            }
+        };
+
+        const supportedLanguages = Object.keys(translations);
+        let currentLang = "en-US";
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function setActiveLanguageButton(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const isActive = btn.dataset.lang === lang;
+                btn.classList.toggle('bg-blue-600', isActive);
+                btn.classList.toggle('border-blue-500', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('bg-slate-700', !isActive);
+                btn.classList.toggle('text-slate-300', !isActive);
+            });
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key);
+            });
+            document.title = t('title');
+        }
+
+        function formatLength(value) {
+            if (typeof value !== 'number') return `0.0 ${t('unitCm')}`;
+            return `${value.toFixed(1)} ${t('unitCm')}`;
+        }
+
+        function formatResistance(value) {
+            if (value === Infinity) return t('infiniteSymbol');
+            if (typeof value !== 'number') return value;
+            return `${value.toFixed(1)} ${t('unitOhm')}`;
+        }
+
+        function formatCurrent(value) {
+            if (typeof value !== 'number') return value;
+            return `${value.toFixed(2)} ${t('unitA')}`;
+        }
+
+        function applyPolarityLabels() {
+            const isStandard = polarity === 1;
+            textNodeIn.textContent = isStandard ? t('nodeIn') : t('nodeOut');
+            textNodeOut.textContent = isStandard ? t('nodeOut') : t('nodeIn');
+        }
+
+        function changeLanguage(lang, shouldPush = true) {
+            currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+            document.documentElement.lang = currentLang;
+            applyTranslations();
+            setActiveLanguageButton(currentLang);
+            applyPolarityLabels();
+            updateGeometry();
+            updatePhysics();
+            if (shouldPush) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('lang', currentLang);
+                window.history.pushState({}, '', url);
+            }
+        }
+
+        function getInitialLanguage() {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get('lang');
+            return supportedLanguages.includes(lang) ? lang : "en-US";
+        }
+
+        const VOLTAGE = 12; 
+        const LOAD_RESISTANCE = 5; 
+        const RHEOSTAT_MAX_RESISTANCE = 20; 
+        const LINEAR_WIDTH = 600;
+        const RHEOSTAT_PHYSICAL_LENGTH_CM = 50; 
+        const COLOR_RED = "#ef4444";
+        const COLOR_BLUE = "#3b82f6";
+        const G_OFF_X = 120;
+        const G_OFF_Y = 50;
+
+        const svg = document.getElementById('circuit-svg');
+        const viewport = document.getElementById('viewport'); 
+        const sliderGroup = document.getElementById('lin-slider');
+        const knobGroup = document.getElementById('rot-knob');
+        const switchGroup = document.getElementById('switch-group');
+        const switchArm = document.getElementById('switch-arm');
+        const batteryGroup = document.getElementById('battery-group');
+        const loadGroup = document.getElementById('load-group');
+        const btnToggleRheostat = document.getElementById('btn-toggle-rheostat');
+        const posSlider = document.getElementById('pos-slider');
+
+        const groupLinear = document.getElementById('rheostat-linear');
+        const groupRotary = document.getElementById('rheostat-rotary');
+        const linCoilFull = document.getElementById('lin-coil-full');
+        const linCoilActive = document.getElementById('lin-coil-active');
+        const rotCoilFull = document.getElementById('rot-coil-full');
+        const rotCoilActive = document.getElementById('rot-coil-active');
+        const visualBulb = document.getElementById('visual-bulb');
+        const visualFan = document.getElementById('visual-fan');
+        const bulbLight = document.getElementById('bulb-light');
+        const fanBlades = document.getElementById('fan-blades');
+        const displayCurrent = document.getElementById('display-current');
+        const displayResistance = document.getElementById('display-resistance');
+        const displayLength = document.getElementById('display-length');
+        const displayState = document.getElementById('display-state');
+        const battPlateTop = document.getElementById('batt-plate-top');
+        const battPlateBot = document.getElementById('batt-plate-bot');
+        const battSignTop = document.getElementById('batt-sign-top');
+        const battSignBot = document.getElementById('batt-sign-bot');
+        const wireIn = document.getElementById('wire-in');
+        const wireOut = document.getElementById('wire-out');
+        const nodeIn = document.getElementById('node-in');
+        const nodeOut = document.getElementById('node-out');
+        const circleNodeIn = document.getElementById('circle-node-in');
+        const circleNodeOut = document.getElementById('circle-node-out');
+        const textNodeIn = document.getElementById('text-node-in');
+        const textNodeOut = document.getElementById('text-node-out');
+        const animWireIn = document.getElementById('anim-wire-in');
+        const animWireOut = document.getElementById('anim-wire-out');
+        const animInternal = document.getElementById('anim-internal');
+        const flowGroup = document.getElementById('flow-group');
+        const allAnimPaths = flowGroup.querySelectorAll('path');
+
+        let mode = 'LINEAR'; 
+        let loadType = 'BULB'; 
+        let sliderX = 300; 
+        let knobAngle = 0; 
+        let isSwitchClosed = false; 
+        let polarity = 1; 
+        let animationOffset = 0;
+        let animationSpeed = 0;
+        let fanRotation = 0;
+        
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let startPanX = 0;
+        let startPanY = 0;
+        let initialDistance = 0;
+        let initialScale = 1;
+        let initialPanX = 0;
+        let initialPanY = 0;
+        let pinchCenterX = 0;
+        let pinchCenterY = 0;
+        
+        let connIn = 'C'; 
+        let connOut = 'B'; 
+        
+        let dragTarget = null;
+        let dragType = null;
+        let dragOffsetX = 0;
+        let dragOffsetAngle = 0;
+        let dragNodeOffsetX = 0;
+        let dragNodeOffsetY = 0;
+
+        const TERMS_LINEAR = { 'A': {x:0, y:60}, 'B': {x:600, y:60}, 'C': {x:0, y:-20}, 'D': {x:600, y:-20} };
+        const ROT_CENTER_X = 300;
+        const ROT_CENTER_Y = 150;
+        const ROT_RADIUS = 115; 
+        const ax = ROT_CENTER_X + ROT_RADIUS * Math.cos(2.356);
+        const ay = ROT_CENTER_Y + ROT_RADIUS * Math.sin(2.356);
+        const bx = ROT_CENTER_X + ROT_RADIUS * Math.cos(0.785);
+        const by = ROT_CENTER_Y + ROT_RADIUS * Math.sin(0.785);
+        const TERMS_ROTARY = { 'A': {x:ax, y:ay}, 'C': {x:bx, y:by}, 'B': {x:ROT_CENTER_X, y:ROT_CENTER_Y} };
+
+        function getActiveTerminals() { return mode === 'LINEAR' ? TERMS_LINEAR : TERMS_ROTARY; }
+
+        function updateTransform() {
+            viewport.setAttribute('transform', `translate(${panX}, ${panY}) scale(${scale})`);
+        }
+
+        posSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (mode === 'LINEAR') sliderX = (val/100) * LINEAR_WIDTH;
+            else knobAngle = (val/100) * 270 - 135;
+            updateGeometry();
+        });
+
+        function updateSliderFromState() {
+            let val = 0;
+            if (mode === 'LINEAR') val = (sliderX / LINEAR_WIDTH) * 100;
+            else val = ((knobAngle + 135) / 270) * 100;
+            posSlider.value = val;
+        }
+
+        // Get SVG Point relative to the VIEWPORT (Inside the zoom)
+        function getSVGPoint(event) {
+            const pt = svg.createSVGPoint();
+            if (event.touches && event.touches.length > 0) {
+                pt.x = event.touches[0].clientX;
+                pt.y = event.touches[0].clientY;
+            } else if (event.changedTouches && event.changedTouches.length > 0) {
+                pt.x = event.changedTouches[0].clientX;
+                pt.y = event.changedTouches[0].clientY;
+            } else {
+                pt.x = event.clientX;
+                pt.y = event.clientY;
+            }
+            return pt.matrixTransform(viewport.getScreenCTM().inverse());
+        }
+
+        svg.addEventListener('mousedown', onPanStart);
+        svg.addEventListener('touchstart', onPanStart, { passive: false });
+
+        function onPanStart(e) {
+            if (dragTarget) return;
+
+            // Pinch
+            if (e.touches && e.touches.length === 2) {
+                isPanning = false;
+                const p1 = e.touches[0];
+                const p2 = e.touches[1];
+                const dx = p1.clientX - p2.clientX;
+                const dy = p1.clientY - p2.clientY;
+                initialDistance = Math.sqrt(dx * dx + dy * dy);
+                initialScale = scale;
+                initialPanX = panX;
+                initialPanY = panY;
+                
+                // Calculate center point of pinch in screen coords
+                pinchCenterX = (p1.clientX + p2.clientX) / 2;
+                pinchCenterY = (p1.clientY + p2.clientY) / 2;
+                
+                e.preventDefault();
+                return;
+            }
+
+            // Pan
+            isPanning = true;
+            startPanX = e.touches ? e.touches[0].clientX : e.clientX;
+            startPanY = e.touches ? e.touches[0].clientY : e.clientY;
+        }
+
+        function generateHelixPath(w, h, turns, r1, r2) {
+            if (isNaN(r1) || isNaN(r2)) return "";
+            let d = ""; const r = h/2; const overlap=8;
+            const sA = r1*turns*2*Math.PI; const eA = r2*turns*2*Math.PI;
+            const steps = Math.ceil(Math.abs((eA-sA)/0.15)) || 1;
+            if (steps>10000) return "";
+            let first=true;
+            for(let i=0; i<=steps; i++){
+                const t = i/steps; const cT = sA + t*(eA-sA);
+                const prog = cT/(turns*2*Math.PI);
+                const bx = (turns*2*Math.PI===0)?0:prog*w;
+                const x = bx - overlap*Math.cos(cT);
+                const y = 60 + r*Math.sin(cT);
+                if(isNaN(x) || isNaN(y)) continue;
+                if(first){d+=`M ${x.toFixed(2)} ${y.toFixed(2)} `;first=false;}else{d+=`L ${x.toFixed(2)} ${y.toFixed(2)} `;}
+            }
+            return d;
+        }
+
+        function generateToroidalCoil(cx, cy, radius, sA, eA) {
+            if (isNaN(sA) || isNaN(eA)) return "";
+            let d = ""; const coilR=15; const tot = eA-sA;
+            const steps = Math.abs(Math.ceil(tot/0.01)) || 1;
+            if(steps>20000) return "";
+            let first=true;
+            for(let i=0; i<=steps; i++){
+                const t=i/steps; const a = sA + t*tot;
+                const rv = radius + coilR*Math.sin(a*40);
+                const x = cx + rv*Math.cos(a);
+                const y = cy + rv*Math.sin(a);
+                if(isNaN(x) || isNaN(y)) continue;
+                if(first){d+=`M ${x.toFixed(2)} ${y.toFixed(2)} `;first=false;}else{d+=`L ${x.toFixed(2)} ${y.toFixed(2)} `;}
+            }
+            return d;
+        }
+
+        linCoilFull.setAttribute('d', generateHelixPath(LINEAR_WIDTH, 50, 50, 0, 1));
+        rotCoilFull.setAttribute('d', generateToroidalCoil(0, 0, 100, 2.356, 7.068));
+
+        function updatePhysics() {
+            if (!isSwitchClosed) {
+                setCircuitState(0, Infinity, 0, "stateOff", "text-red-400");
+                linCoilActive.style.opacity = 0; rotCoilActive.style.opacity = 0;
+                return;
+            }
+            linCoilActive.style.opacity = 0.6; rotCoilActive.style.opacity = 0.6;
+
+            let ratio = 0;
+            if (mode === 'LINEAR') ratio = sliderX / LINEAR_WIDTH;
+            else { ratio = (knobAngle + 135) / 270; if(ratio<0)ratio=0;if(ratio>1)ratio=1; }
+
+            let rheostatR = 0; let activeLengthCm = 0;
+            const terms = getActiveTerminals();
+            if (!terms[connIn] || !terms[connOut]) { rheostatR = Infinity; } 
+            else {
+                const isWiper = t => (mode==='LINEAR' && (t==='C'||t==='D')) || (mode==='ROTARY' && t==='B');
+                const isStart = t => t==='A';
+                const isEnd = t => (mode==='LINEAR' && t==='B') || (mode==='ROTARY' && t==='C');
+                const inW=isWiper(connIn), outW=isWiper(connOut);
+                const inS=isStart(connIn), outS=isStart(connOut);
+                const inE=isEnd(connIn), outE=isEnd(connOut);
+
+                if(connIn===connOut || (inW && outW)) { rheostatR=0; }
+                else if((inS&&outW)||(inW&&outS)) { rheostatR = ratio*RHEOSTAT_MAX_RESISTANCE; activeLengthCm=ratio*RHEOSTAT_PHYSICAL_LENGTH_CM; }
+                else if((inE&&outW)||(inW&&outE)) { rheostatR = (1-ratio)*RHEOSTAT_MAX_RESISTANCE; activeLengthCm=(1-ratio)*RHEOSTAT_PHYSICAL_LENGTH_CM; }
+                else if((inS&&outE)||(inE&&outS)) { rheostatR = RHEOSTAT_MAX_RESISTANCE; activeLengthCm=RHEOSTAT_PHYSICAL_LENGTH_CM; }
+            }
+
+            if(rheostatR===Infinity) { setCircuitState(0, Infinity, 0, "stateOpen", "text-red-400"); return; }
+            const totalR = LOAD_RESISTANCE + rheostatR;
+            const current = VOLTAGE / totalR;
+            const maxCurrent = VOLTAGE / LOAD_RESISTANCE;
+            const currentRatio = current / maxCurrent;
+            setCircuitState(current, rheostatR, activeLengthCm, "stateOn", "text-green-400");
+            
+            if(loadType==='BULB') {
+                const b = 0.15 + (0.85*currentRatio);
+                bulbLight.style.opacity = b;
+                bulbLight.setAttribute('filter', 'url(#glow)');
+            }
+            animationSpeed = 1 + (currentRatio*5);
+            flowGroup.style.opacity = 1;
+        }
+
+        function setCircuitState(c, r, l, stateKey, cl) {
+            displayCurrent.textContent = formatCurrent(c);
+            displayResistance.textContent = formatResistance(r);
+            displayLength.textContent = formatLength(l);
+            displayState.textContent = stateKey ? t(stateKey) : '';
+            displayState.className = "font-bold " + cl;
+            if(c===0) { bulbLight.style.opacity=0; animationSpeed=0; flowGroup.style.opacity=0; }
+        }
+
+        function updateGeometry() {
+            if (mode === 'LINEAR') {
+                groupLinear.classList.remove('hidden'); groupRotary.classList.add('hidden');
+                btnToggleRheostat.textContent = t('switchToRotary');
+                sliderGroup.setAttribute('transform', `translate(${sliderX}, 0)`);
+            } else {
+                groupLinear.classList.add('hidden'); groupRotary.classList.remove('hidden');
+                btnToggleRheostat.textContent = t('switchToLinear');
+                knobGroup.setAttribute('transform', `rotate(${knobAngle - 90})`);
+            }
+            const terms = getActiveTerminals();
+            function updateWire(n, w, wa, c) {
+                if(terms[c]) {
+                    const t = terms[c]; const gx = G_OFF_X + t.x; const gy = G_OFF_Y + t.y;
+                    n.setAttribute('transform', `translate(${gx}, ${gy})`);
+                    if(n===nodeIn) {
+                        w.setAttribute('d', `M 80 220 Q ${80} ${gy+50} ${gx} ${gy}`);
+                        wa.setAttribute('d', `M 80 220 Q ${80} ${gy+50} ${gx} ${gy}`);
+                    }
+                    else {
+                        w.setAttribute('d', `M ${gx} ${gy} Q ${gx+50} 550 490 550`);
+                        wa.setAttribute('d', `M ${gx} ${gy} Q ${gx+50} 550 490 550`);
+                    }
+                    n.style.opacity=1; w.style.opacity=1; wa.style.opacity=1;
+                } else { n.style.opacity=0.3; w.style.opacity=0.3; wa.style.opacity=0; }
+            }
+            updateWire(nodeIn, wireIn, animWireIn, connIn);
+            updateWire(nodeOut, wireOut, animWireOut, connOut);
+            updateInternalPath();
+            updatePhysics();
+            
+            // Sync slider
+            if (!dragTarget || dragTarget.id !== 'pos-slider') updateSliderFromState();
+        }
+
+        function updateInternalPath() {
+            let pathD="", activeD="";
+            const isWiper = t => (mode==='LINEAR' && (t==='C'||t==='D')) || (mode==='ROTARY' && t==='B');
+            const isStart = t => t==='A';
+            const isEnd = t => (mode==='LINEAR' && t==='B') || (mode==='ROTARY' && t==='C');
+            const inW=isWiper(connIn), outW=isWiper(connOut);
+            const inS=isStart(connIn), outS=isStart(connOut);
+            const inE=isEnd(connIn), outE=isEnd(connOut);
+
+            if(mode==='LINEAR') {
+                const ratio = sliderX/LINEAR_WIDTH;
+                const wx = (connIn==='D'||connOut==='D') ? 600 : 0;
+                const rp = `M ${wx} -20 L ${sliderX} -20`;
+                
+                // Helper to remove initial M from generated path for concatenation
+                const append = (p) => p.replace(/^M [-\d\.]+ [-\d\.]+ /, "L ");
+
+                if(inS&&outW) { 
+                    activeD=generateHelixPath(LINEAR_WIDTH,50,50,0,ratio); 
+                    // Start -> Wiper: Coil -> SliderUp -> Rail
+                    pathD=generateHelixPath(LINEAR_WIDTH,50,50,0,ratio) + ` L ${sliderX} 60 L ${sliderX} -20 L ${wx} -20`; 
+                }
+                else if(inW&&outS) { 
+                    activeD=generateHelixPath(LINEAR_WIDTH,50,50,0,ratio); 
+                    // Wiper -> Start: Rail -> SliderDown -> Coil(Rev)
+                    // Note: generateHelixPath(0, ratio) is Left->Right. We want Right->Left for flow.
+                    // We simply draw the points in reverse. generateHelixPath(ratio, 0)
+                    pathD=`M ${wx} -20 L ${sliderX} -20 L ${sliderX} 60 ` + append(generateHelixPath(LINEAR_WIDTH,50,50,ratio,0)); 
+                }
+                else if(inE&&outW) { 
+                    activeD=generateHelixPath(LINEAR_WIDTH,50,50,ratio,1); 
+                    // End -> Wiper: Coil(Rev) -> SliderUp -> Rail
+                    pathD=generateHelixPath(LINEAR_WIDTH,50,50,1,ratio) + ` L ${sliderX} 60 L ${sliderX} -20 L ${wx} -20`; 
+                }
+                else if(inW&&outE) { 
+                    activeD=generateHelixPath(LINEAR_WIDTH,50,50,ratio,1); 
+                    // Wiper -> End: Rail -> SliderDown -> Coil
+                    pathD=`M ${wx} -20 L ${sliderX} -20 L ${sliderX} 60 ` + append(generateHelixPath(LINEAR_WIDTH,50,50,ratio,1)); 
+                }
+                else if(inS&&outE) { 
+                    activeD=generateHelixPath(LINEAR_WIDTH,50,50,0,1); 
+                    pathD=generateHelixPath(LINEAR_WIDTH,50,50,0,1); 
+                }
+                else if(inE&&outS) { 
+                    activeD=generateHelixPath(LINEAR_WIDTH,50,50,0,1); 
+                    pathD=generateHelixPath(LINEAR_WIDTH,50,50,1,0); 
+                }
+                else if(inW&&outW) { 
+                    const sx=(connIn==='D')?600:0; const ex=(connOut==='D')?600:0; 
+                    pathD=`M ${sx} -20 L ${ex} -20`; 
+                }
+                linCoilActive.setAttribute('d', activeD); animInternal.setAttribute('d', pathD);
+            } else {
+                const sR = 2.356; const eR = 7.068; const rng = eR-sR;
+                const rat = (knobAngle+135)/270; const cR = sR + rat*rng;
+                const wx = ROT_CENTER_X + 100*Math.cos(cR); const wy = ROT_CENTER_Y + 100*Math.sin(cR);
+                const wiperArm = `M ${ROT_CENTER_X} ${ROT_CENTER_Y} L ${wx} ${wy}`;
+                const wiperArmRev = ` L ${ROT_CENTER_X} ${ROT_CENTER_Y}`; // Append version
+                const append = (p) => p.replace(/^M [-\d\.]+ [-\d\.]+ /, "L ");
+
+                if(inS&&outW) { 
+                    activeD=generateToroidalCoil(0,0,100,sR,cR); 
+                    pathD=generateToroidalCoil(ROT_CENTER_X,ROT_CENTER_Y,100,sR,cR) + wiperArmRev; 
+                }
+                else if(inW&&outS) { 
+                    activeD=generateToroidalCoil(0,0,100,sR,cR); 
+                    pathD=wiperArm + append(generateToroidalCoil(ROT_CENTER_X,ROT_CENTER_Y,100,cR,sR)); 
+                }
+                else if(inE&&outW) { 
+                    activeD=generateToroidalCoil(0,0,100,cR,eR); 
+                    pathD=generateToroidalCoil(ROT_CENTER_X,ROT_CENTER_Y,100,eR,cR) + wiperArmRev; 
+                }
+                else if(inW&&outE) { 
+                    activeD=generateToroidalCoil(0,0,100,cR,eR); 
+                    pathD=wiperArm + append(generateToroidalCoil(ROT_CENTER_X,ROT_CENTER_Y,100,cR,eR)); 
+                }
+                else if(inS&&outE) { 
+                    activeD=generateToroidalCoil(0,0,100,sR,eR); 
+                    pathD=generateToroidalCoil(ROT_CENTER_X,ROT_CENTER_Y,100,sR,eR); 
+                }
+                else if(inE&&outS) { 
+                    activeD=generateToroidalCoil(0,0,100,sR,eR); 
+                    pathD=generateToroidalCoil(ROT_CENTER_X,ROT_CENTER_Y,100,eR,sR); 
+                }
+                rotCoilActive.setAttribute('d', activeD); animInternal.setAttribute('d', pathD);
+            }
+        }
+
+        function togglePolarity() {
+            polarity *= -1;
+            const setPol = (std) => {
+                const pt = std ? -25 : -12; const pb = std ? -12 : -25;
+                const st = std ? '+' : '-'; const sb = std ? '-' : '+';
+                const ct = std ? '#ef4444' : '#3b82f6'; const cb = std ? '#3b82f6' : '#ef4444';
+                battPlateTop.setAttribute('x1', pt); battPlateTop.setAttribute('x2', -pt);
+                battPlateBot.setAttribute('x1', pb); battPlateBot.setAttribute('x2', -pb);
+                battSignTop.textContent = st; battSignTop.setAttribute('fill', ct);
+                battSignBot.textContent = sb; battSignBot.setAttribute('fill', cb);
+                applyPolarityLabels();
+                circleNodeIn.setAttribute('fill', std ? COLOR_RED : COLOR_BLUE);
+                circleNodeOut.setAttribute('fill', std ? COLOR_BLUE : COLOR_RED);
+            };
+            setPol(polarity === 1);
+        }
+
+        function toggleRheostatMode() {
+            mode = (mode === 'LINEAR') ? 'ROTARY' : 'LINEAR';
+            const remap = (t) => {
+                if (mode === 'ROTARY') { if(t==='B')return'C'; if(t==='C'||t==='D')return'B'; return t; }
+                else { if(t==='C')return'B'; if(t==='B')return'C'; return t; }
+            };
+            connIn = remap(connIn); connOut = remap(connOut);
+            updateGeometry();
+        }
+        
+        function toggleLoad() {
+            if(loadType==='BULB') { loadType='FAN'; visualBulb.classList.add('hidden'); visualFan.classList.remove('hidden'); }
+            else { loadType='BULB'; visualBulb.classList.remove('hidden'); visualFan.classList.add('hidden'); }
+            updatePhysics();
+        }
+
+        function animate() {
+            if(isSwitchClosed) {
+                animationOffset -= (animationSpeed * polarity);
+                allAnimPaths.forEach(p => p.style.strokeDashoffset = animationOffset);
+                if(loadType==='FAN' && animationSpeed>0) {
+                    fanRotation += (animationSpeed*3);
+                    fanBlades.setAttribute('transform', `rotate(${fanRotation})`);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function onMouseDown(e, type) {
+            dragTarget = e.currentTarget; dragType = type;
+            dragTarget.classList.add('cursor-grabbing');
+            e.preventDefault(); e.stopPropagation();
+            
+            const loc = getSVGPoint(e);
+            if(type === 'LIN_SLIDER') { dragOffsetX = (loc.x - G_OFF_X) - sliderX; }
+            else if(type === 'ROT_KNOB') {
+                const cx = G_OFF_X + ROT_CENTER_X; const cy = G_OFF_Y + ROT_CENTER_Y;
+                const mouseAngle = Math.atan2(loc.y - cy, loc.x - cx) * (180/Math.PI);
+                dragOffsetAngle = (mouseAngle + 90) - knobAngle;
+                if(dragOffsetAngle > 180) dragOffsetAngle -= 360;
+                if(dragOffsetAngle < -180) dragOffsetAngle += 360;
+            } else if(type.startsWith('NODE')) {
+                const t = type==='NODE_IN' ? connIn : connOut;
+                const terms = getActiveTerminals();
+                const tx = G_OFF_X + terms[t].x; const ty = G_OFF_Y + terms[t].y;
+                dragNodeOffsetX = loc.x - tx; dragNodeOffsetY = loc.y - ty;
+            }
+        }
+
+        function onMouseUp() {
+            if(dragTarget) {
+                dragTarget.classList.remove('cursor-grabbing');
+                if(dragType === 'NODE_IN' || dragType === 'NODE_OUT') updateGeometry();
+            }
+            isPanning = false; dragTarget = null; dragType = null;
+        }
+
+        function onMouseMove(e) {
+            if(e.target.id === 'pos-slider') return;
+            if(e.type === 'mousemove') e.preventDefault();
+
+            // Pinch Zoom
+            if(e.touches && e.touches.length === 2 && !dragTarget) {
+                const p1 = e.touches[0];
+                const p2 = e.touches[1];
+                const dx = p1.clientX - p2.clientX;
+                const dy = p1.clientY - p2.clientY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if(initialDistance > 0) {
+                    const diff = dist / initialDistance;
+                    scale = Math.min(Math.max(initialScale * diff, 0.5), 3);
+                    
+                    const cx = (p1.clientX + p2.clientX) / 2;
+                    const cy = (p1.clientY + p2.clientY) / 2;
+                    
+                    panX = cx - (cx - panX) * (scale / initialScale);
+                    panY = cy - (cy - panY) * (scale / initialScale);
+                    
+                    updateTransform();
+                    
+                    initialDistance = dist;
+                    initialScale = scale;
+                }
+                return;
+            }
+
+            // Pan
+            if(isPanning) {
+                const cx = e.touches ? e.touches[0].clientX : e.clientX;
+                const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const m = svg.getScreenCTM(); 
+                const scaleX = m.a || 1; 
+                const scaleY = m.d || 1;
+
+                panX += (cx - startPanX) / scaleX;
+                panY += (cy - startPanY) / scaleY;
+                
+                startPanX = cx; startPanY = cy;
+                updateTransform();
+                return;
+            }
+
+            if(!dragTarget) return;
+            const loc = getSVGPoint(e);
+
+            if(dragType === 'LIN_SLIDER') {
+                let lx = (loc.x - G_OFF_X) - dragOffsetX;
+                if(lx < 0) lx = 0; if(lx > LINEAR_WIDTH) lx = LINEAR_WIDTH;
+                sliderX = lx; updateGeometry();
+            } else if(dragType === 'ROT_KNOB') {
+                const cx = G_OFF_X + ROT_CENTER_X; const cy = G_OFF_Y + ROT_CENTER_Y;
+                const ma = Math.atan2(loc.y - cy, loc.x - cx) * (180/Math.PI);
+                let ta = ma + 90 - dragOffsetAngle;
+                if(ta > 180) ta -= 360; if(ta < -180) ta += 360;
+                if(ta < -135) ta = -135; if(ta > 135) ta = 135;
+                knobAngle = ta; updateGeometry();
+            } else if(dragType.startsWith('NODE')) {
+                const vx = loc.x - dragNodeOffsetX; const vy = loc.y - dragNodeOffsetY;
+                dragTarget.setAttribute('transform', `translate(${vx}, ${vy})`);
+                if(dragType==='NODE_IN') {
+                    wireIn.setAttribute('d', `M 80 220 Q ${80} ${vy} ${vx} ${vy}`);
+                    animWireIn.setAttribute('d', `M 80 220 Q ${80} ${vy} ${vx} ${vy}`);
+                }
+                else {
+                    wireOut.setAttribute('d', `M ${vx} ${vy} Q ${vx} 550 490 550`);
+                    animWireOut.setAttribute('d', `M ${vx} ${vy} Q ${vx} 550 490 550`);
+                }
+                
+                const lx = vx - G_OFF_X; const ly = vy - G_OFF_Y;
+                let near = null; let minD = 80;
+                const terms = getActiveTerminals();
+                for(const [k, t] of Object.entries(terms)) {
+                    const d = Math.hypot(lx - t.x, ly - t.y);
+                    if(d < minD) { minD = d; near = k; }
+                }
+                if(near) {
+                    if(dragType==='NODE_IN') connIn = near; else connOut = near;
+                    updatePhysics();
+                }
+            }
+        }
+
+        sliderGroup.addEventListener('mousedown', e => onMouseDown(e, 'LIN_SLIDER'));
+        sliderGroup.addEventListener('touchstart', e => onMouseDown(e, 'LIN_SLIDER'));
+        knobGroup.addEventListener('mousedown', e => onMouseDown(e, 'ROT_KNOB'));
+        knobGroup.addEventListener('touchstart', e => onMouseDown(e, 'ROT_KNOB'));
+        nodeIn.addEventListener('mousedown', e => onMouseDown(e, 'NODE_IN'));
+        nodeIn.addEventListener('touchstart', e => onMouseDown(e, 'NODE_IN'));
+        nodeOut.addEventListener('mousedown', e => onMouseDown(e, 'NODE_OUT'));
+        nodeOut.addEventListener('touchstart', e => onMouseDown(e, 'NODE_OUT'));
+
+        window.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('touchend', onMouseUp);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('touchmove', onMouseMove, { passive: false });
+
+        switchGroup.addEventListener('click', () => { isSwitchClosed=!isSwitchClosed; switchArm.setAttribute('transform', isSwitchClosed?'rotate(0,-20,0)':'rotate(-30,-20,0)'); updatePhysics(); });
+        batteryGroup.addEventListener('click', () => { togglePolarity(); updatePhysics(); });
+        loadGroup.addEventListener('click', toggleLoad);
+        btnToggleRheostat.addEventListener('click', toggleRheostatMode);
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+        });
+        window.addEventListener('popstate', () => {
+            changeLanguage(getInitialLanguage(), false);
+        });
+
+        changeLanguage(getInitialLanguage());
+        animate();
+    </script>
+</body>
+</html>

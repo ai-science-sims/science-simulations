@@ -352,6 +352,28 @@
         "updatedAt": "2025-11-29"
     },
     {
+        "id": "sound-interference",
+        "category": {
+            "en-US": "Optics and Wave Motion",
+            "zh-HK": "光學與波動"
+        },
+        "title": {
+            "en-US": "Sound Interference Lab",
+            "zh-HK": "聲波干涉實驗室"
+        },
+        "description": {
+            "en-US": "Explore sound wave interference by moving a microphone or plotting intensity along a line.",
+            "zh-HK": "透過移動咪高峰或沿線繪製強度，探索聲波干涉現象。"
+        },
+        "contributors": [
+            "Yin Kwong Poon"
+        ],
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/sound-interference.html",
+        "screenshotUrl": "screenshots/sound-interference.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
+    },
+    {
         "id": "magnetic-field-3d",
         "category": {
             "en-US": "Electricity and Magnetism",
@@ -394,6 +416,138 @@
         "screenshotUrl": "screenshots/moment.png",
         "createdAt": "2025-11-29",
         "updatedAt": "2025-11-29"
+    },
+    {
+        "id": "vertical-motion-parachute",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Vertical Motion & Parachute Simulator",
+            "zh-HK": "垂直運動與降落傘模擬器"
+        },
+        "description": {
+            "en-US": "Simulate vertical motion with drag and deploy a parachute to see how forces and graphs change over time.",
+            "zh-HK": "模擬受阻力的垂直運動，並在開傘後觀察力與圖表的變化。"
+        },
+        "contributors": [
+            "Winky Yeung"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/vertical-motion-parachute.html",
+        "screenshotUrl": "screenshots/vertical-motion-parachute.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
+    },
+    {
+        "id": "friction-in-riding-bicycle",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Bicycle Propulsion Sequence",
+            "zh-HK": "單車推進序列"
+        },
+        "description": {
+            "en-US": "Animated sequence illustrating torque, action-reaction, and friction forces on a moving bicycle.",
+            "zh-HK": "動畫展示單車行進時的扭矩、作用與反作用，以及摩擦力。"
+        },
+        "contributors": [
+            "Yin Kwong Poon"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/friction-in-riding-bicycle.html",
+        "screenshotUrl": "screenshots/friction-in-riding-bicycle.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
+    },
+    {
+        "id": "projectile-sim",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Projectile Motion",
+            "zh-HK": "拋體運動"
+        },
+        "description": {
+            "en-US": "Explore projectile motion with adjustable launch parameters, air resistance, and real-time graphs.",
+            "zh-HK": "透過可調整的發射參數與空氣阻力，觀察拋體運動及即時圖表。"
+        },
+        "contributors": [
+            "Martin Kwok"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/projectile-sim.html",
+        "screenshotUrl": "screenshots/projectile-sim.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
+    },
+    {
+        "id": "inclined-plane",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Inclined Plane Simulation",
+            "zh-HK": "斜面運動模擬"
+        },
+        "description": {
+            "en-US": "Investigate forces and motion on an inclined plane with adjustable angle, mass, friction, and velocity.",
+            "zh-HK": "調整斜面角度、質量、摩擦與初速度，觀察斜面運動中的受力與速度。"
+        },
+        "contributors": [
+            "Nathan Chan"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/inclined-plane.html",
+        "screenshotUrl": "screenshots/inclined-plane.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
+    },
+    {
+        "id": "bouncing-ball-free-fall",
+        "category": {
+            "en-US": "Force and Motion",
+            "zh-HK": "力與運動"
+        },
+        "title": {
+            "en-US": "Bouncing Ball Free Fall",
+            "zh-HK": "彈跳球自由落體"
+        },
+        "description": {
+            "en-US": "Simulate free-fall motion with bounces, air resistance, and vector visualizations.",
+            "zh-HK": "模擬自由落體彈跳，並可切換空氣阻力與向量顯示。"
+        },
+        "contributors": [
+            "Lezhi Lo"
+        ],
+        "simulationUrl": "simulations/physics/force-and-motion/bouncing-ball-free-fall.html",
+        "screenshotUrl": "screenshots/bouncing-ball-free-fall.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
+    },
+    {
+        "id": "nuclear-chain-reaction",
+        "category": {
+            "en-US": "Radioactivity and Nuclear Energy",
+            "zh-HK": "放射性與核能"
+        },
+        "title": {
+            "en-US": "Nuclear Chain Reaction Simulator",
+            "zh-HK": "核子連鎖反應模擬器"
+        },
+        "description": {
+            "en-US": "Simulate nuclear fission chain reactions with moderators, control rods, and neutron leakage.",
+            "zh-HK": "模擬核裂變連鎖反應，包含減速劑、控制棒與中子洩漏。"
+        },
+        "contributors": [
+            "Yiu Fai Ma"
+        ],
+        "simulationUrl": "simulations/physics/radioactivity-and-nuclear-energy/nuclear-chain-reaction.html",
+        "screenshotUrl": "screenshots/nuclear-chain-reaction.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
     },
     {
         "id": "circular-motion",
@@ -460,6 +614,28 @@
         "screenshotUrl": "screenshots/electrostatic-induction.png",
         "createdAt": "2025-12-08",
         "updatedAt": "2025-12-08"
+    },
+    {
+        "id": "rheostat-circuit-path",
+        "category": {
+            "en-US": "Electricity and Magnetism",
+            "zh-HK": "電與磁"
+        },
+        "title": {
+            "en-US": "Rheostat Circuit Path",
+            "zh-HK": "滑動變阻器電路路徑"
+        },
+        "description": {
+            "en-US": "Explore how a rheostat changes resistance and current by moving the contact in linear or rotary modes.",
+            "zh-HK": "透過直線與旋轉模式移動觸點，探索滑動變阻器如何改變電阻與電流。"
+        },
+        "contributors": [
+            "Lezhi Lo"
+        ],
+        "simulationUrl": "simulations/physics/electricity-and-magnetism/rheostat-circuit-path.html",
+        "screenshotUrl": "screenshots/rheostat-circuit-path.png",
+        "createdAt": "2025-12-20",
+        "updatedAt": "2025-12-20"
     },
     {
         "id": "ideal-gas",

@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="x-poe-datastore-behavior" content="local_only">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Interference: Analysis &amp; Graph</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #2d2d2d;
+            --text-color: #f0f0f0;
+            --accent-color: #4CAF50;
+            --danger-color: #ff5252;
+            --graph-color: #FFC107;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            width: 100%;
+            padding: 15px;
+            padding-right: 80px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+        p { margin: 5px 0 0; color: #aaa; font-size: 0.9rem; }
+
+        .lang-toggle {
+            position: absolute;
+            top: 10px;
+            right: 52px;
+            display: flex;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .lang-toggle button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #4b5563;
+            background: #1f2937;
+            color: #e5e7eb;
+            cursor: pointer;
+        }
+
+        .lang-toggle button.active {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Canvas Area */
+        .vis-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 2;
+            min-width: 300px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border: 2px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: crosshair;
+            background: #000;
+            touch-action: none;
+        }
+
+        canvas { display: block; width: 100%; }
+
+        .overlay-msg {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Graph & Analysis Area */
+        .secondary-panel {
+            background: var(--panel-bg);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #ddd;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+
+        /* Calculation Display Styles */
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+        .calc-row { grid-column: span 2; display: flex; justify-content: space-between; }
+        .calc-val { color: var(--accent-color); }
+
+        .result-box {
+            grid-column: span 2;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* Controls Area */
+        .controls {
+            flex: 1;
+            min-width: 280px;
+            background-color: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: fit-content;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        label { font-weight: bold; display: flex; justify-content: space-between; }
+        .val-display { color: var(--accent-color); font-family: monospace; }
+
+        input[type="range"] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
+
+        button {
+            padding: 12px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #43a047; }
+        button.stop { background-color: var(--danger-color); }
+        button.stop:hover { background-color: #e04040; }
+
+        .mode-switch {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .radio-label {
+            font-weight: normal;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 18px 20px 1fr;
+            align-items: center;
+            column-gap: 8px;
+        }
+
+        .radio-label input {
+            margin: 0;
+            justify-self: center;
+        }
+
+        .mode-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .mode-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.2;
+        }
+
+        .viz-options {
+            display: flex;
+            gap: 14px;
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+
+        .viz-options .radio-label {
+            display: inline-flex;
+            grid-template-columns: none;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .hidden { display: none; }
+    </style>
+    <script src="https://puc.poecdn.net/authenticated_preview_page/syncedState.3f7572448765332f3047.js"></script>
+</head>
+<body>
+
+<header>
+    <h1 data-i18n="headerTitle">Sound Interference Lab</h1>
+    <p data-i18n="headerSubtitle">Analyze Path Difference or Intensity Distribution</p>
+    <div class="lang-toggle" aria-label="Language selector">
+        <button type="button" class="lang-btn" data-lang="en-US">EN</button>
+        <button type="button" class="lang-btn" data-lang="zh-HK">繁</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <div class="vis-column">
+        <!-- Main Simulation Canvas -->
+        <div class="canvas-wrapper">
+            <canvas id="simCanvas" width="600" height="400"></canvas>
+            <div class="overlay-msg" id="instruction-msg" data-i18n="overlayMic">Click anywhere to move Microphone 🎤</div>
+        </div>
+
+        <!-- Dynamic Panel: Switches between Graph and Math Analysis -->
+        <div class="secondary-panel">
+
+            <!-- Graph View (Line Mode) -->
+            <div id="view-graph" class="hidden">
+                <div class="panel-title" style="color: var(--graph-color);" data-i18n="graphTitle">Intensity Profile along Drawn Line</div>
+                <canvas id="graphCanvas" width="600" height="120"></canvas>
+            </div>
+
+            <!-- Math Analysis View (Mic Mode) -->
+            <div id="view-math">
+                <div class="panel-title" data-i18n="mathTitle">Path Difference Calculation</div>
+                <div class="calc-grid">
+                    <div><span data-i18n="distS1Label">Dist S1 to Mic (d₁):</span> <span id="val-d1" class="calc-val">0.00 m</span></div>
+                    <div><span data-i18n="distS2Label">Dist S2 to Mic (d₂):</span> <span id="val-d2" class="calc-val">0.00 m</span></div>
+
+                    <div class="calc-row">
+                        <span data-i18n="pathDiffLabel">Path Diff (Δx = |d₁ - d₂|):</span>
+                        <span id="val-pdiff" class="calc-val">0.00 m</span>
+                    </div>
+
+                    <div class="calc-row">
+                        <span data-i18n="wavelengthCalcLabel">Wavelength (λ):</span>
+                        <span id="val-calc-lambda" class="calc-val">1.00 m</span>
+                    </div>
+
+                    <div class="calc-row" style="border-top: 1px solid #444; padding-top:5px;">
+                        <span data-i18n="ratioLabel">Ratio (Δx / λ):</span>
+                        <span id="val-ratio" class="calc-val" style="color: #fff;">0.00</span>
+                    </div>
+
+                    <div id="interference-result" class="result-box">
+                        Constructive Interference
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="audio-toggle">Start Audio Generator 🔊</button>
+
+        <div class="control-group">
+            <label data-i18n="interactionModeLabel">Interaction Mode</label>
+            <div class="mode-switch">
+                <label class="radio-label">
+                    <input type="radio" name="inter-mode" value="mic" checked>
+                    <span class="mode-icon">🎤</span>
+                    <span class="mode-text">
+                        <b data-i18n="micModeLabel">Microphone Mode</b>
+                        <small style="color:#aaa;" data-i18n="micModeHint">Click to place mic, see math</small>
+                    </span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="inter-mode" value="line">
+                    <span class="mode-icon">📉</span>
+                    <span class="mode-text">
+                        <b data-i18n="graphModeLabel">Graph Mode</b>
+                        <small style="color:#aaa;" data-i18n="graphModeHint">Click &amp; drag to plot intensity</small>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span data-i18n="frequencyLabel">Frequency (f)</span>
+                <span id="val-freq" class="val-display">340 Hz</span>
+            </label>
+            <input type="range" id="input-freq" min="100" max="600" value="340" step="10">
+            <div style="font-size: 0.8rem; color: #888;">
+                <span data-i18n="wavelengthLabel">Wavelength (λ):</span>
+                <span id="val-lambda">1.00 m</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span data-i18n="separationLabel">Speaker Separation (d)</span>
+                <span id="val-sep" class="val-display">2.0 m</span>
+            </label>
+            <input type="range" id="input-sep" min="0.5" max="3.5" value="2.0" step="0.1">
+        </div>
+
+        <div class="control-group">
+            <label data-i18n="vizBackgroundLabel">Visualization Background</label>
+            <div class="viz-options">
+                <label class="radio-label"><input type="radio" name="viz-mode" value="waves" checked> <span data-i18n="wavesLabel">Waves</span></label>
+                <label class="radio-label"><input type="radio" name="viz-mode" value="intensity"> <span data-i18n="heatmapLabel">Heatmap</span></label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const translations = {
+        "en-US": {
+            title: "Sound Interference: Analysis & Graph",
+            headerTitle: "Sound Interference Lab",
+            headerSubtitle: "Analyze Path Difference or Intensity Distribution",
+            overlayMic: "Click anywhere to move Microphone 🎤",
+            overlayLine: "Click and drag to draw a line 📉",
+            graphTitle: "Intensity Profile along Drawn Line",
+            mathTitle: "Path Difference Calculation",
+            distS1Label: "Dist S1 to Mic (d₁):",
+            distS2Label: "Dist S2 to Mic (d₂):",
+            pathDiffLabel: "Path Diff (Δx = |d₁ - d₂|):",
+            wavelengthCalcLabel: "Wavelength (λ):",
+            ratioLabel: "Ratio (Δx / λ):",
+            interactionModeLabel: "Interaction Mode",
+            micModeLabel: "Microphone Mode",
+            micModeHint: "Click to place mic, see math",
+            graphModeLabel: "Graph Mode",
+            graphModeHint: "Click & drag to plot intensity",
+            frequencyLabel: "Frequency (f)",
+            wavelengthLabel: "Wavelength (λ):",
+            separationLabel: "Speaker Separation (d)",
+            vizBackgroundLabel: "Visualization Background",
+            wavesLabel: "Waves",
+            heatmapLabel: "Heatmap",
+            startAudio: "Start Audio Generator 🔊",
+            stopAudio: "Stop Audio Generator 🔇",
+            constructive: "CONSTRUCTIVE INTERFERENCE",
+            destructive: "DESTRUCTIVE INTERFERENCE",
+            intermediate: "Intermediate Intensity",
+            lineStart: "Start",
+            lineEnd: "End",
+            unitM: "m",
+            unitHz: "Hz"
+        },
+        "zh-HK": {
+            title: "聲波干涉：分析與圖表",
+            headerTitle: "聲波干涉實驗室",
+            headerSubtitle: "分析路徑差或強度分布",
+            overlayMic: "點擊任意位置移動咪高峰 🎤",
+            overlayLine: "點擊並拖曳繪出線段 📉",
+            graphTitle: "沿繪製線段的強度分布",
+            mathTitle: "路徑差計算",
+            distS1Label: "S1 至咪高峰距離 (d₁):",
+            distS2Label: "S2 至咪高峰距離 (d₂):",
+            pathDiffLabel: "路徑差 (Δx = |d₁ - d₂|):",
+            wavelengthCalcLabel: "波長 (λ):",
+            ratioLabel: "比值 (Δx / λ):",
+            interactionModeLabel: "互動模式",
+            micModeLabel: "咪高峰模式",
+            micModeHint: "點擊放置咪高峰，查看計算",
+            graphModeLabel: "圖表模式",
+            graphModeHint: "點擊並拖曳繪出強度",
+            frequencyLabel: "頻率 (f)",
+            wavelengthLabel: "波長 (λ):",
+            separationLabel: "揚聲器間距 (d)",
+            vizBackgroundLabel: "視覺化背景",
+            wavesLabel: "波紋",
+            heatmapLabel: "熱度圖",
+            startAudio: "啟動音頻產生器 🔊",
+            stopAudio: "停止音頻產生器 🔇",
+            constructive: "相長干涉",
+            destructive: "相消干涉",
+            intermediate: "中等強度",
+            lineStart: "起點",
+            lineEnd: "終點",
+            unitM: "m",
+            unitHz: "Hz"
+        }
+    };
+
+    const supportedLanguages = Object.keys(translations);
+    let currentLang = "en-US";
+
+    function t(key) {
+        return translations[currentLang][key] || key;
+    }
+
+    function applyTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            el.textContent = t(key);
+        });
+        document.title = t('title');
+    }
+
+    function setActiveLanguageButton(lang) {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            const isActive = btn.dataset.lang === lang;
+            btn.classList.toggle('active', isActive);
+        });
+    }
+
+    function updateAudioButton() {
+        btnAudio.textContent = isAudioOn ? t('stopAudio') : t('startAudio');
+    }
+
+    function updateOverlayText() {
+        msgOverlay.textContent = interactionMode === 'mic' ? t('overlayMic') : t('overlayLine');
+    }
+
+    function changeLanguage(lang, shouldPush = true) {
+        currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+        document.documentElement.lang = currentLang;
+        applyTranslations();
+        setActiveLanguageButton(currentLang);
+        updateAudioButton();
+        updateOverlayText();
+        updateMathAnalysis();
+        if (shouldPush) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('lang', currentLang);
+            window.history.pushState({}, '', url);
+        }
+    }
+
+    function getInitialLanguage() {
+        const params = new URLSearchParams(window.location.search);
+        const lang = params.get('lang');
+        return supportedLanguages.includes(lang) ? lang : "en-US";
+    }
+
+    // --- Physics Constants ---
+    const SPEED_OF_SOUND = 343; // m/s
+    const PIXELS_PER_METER = 80; // Scale: 80px = 1 meter
+
+    // Controls how fast intensity drops over distance.
+    // 0.15 is a gentle decay suitable for this canvas size.
+    const DISTANCE_DECAY_COEFF = 0.15;
+
+    // --- State ---
+    let freq = 340; // Hz
+    let separation = 2.0; // meters
+    let lambda = SPEED_OF_SOUND / freq; // meters
+    let time = 0;
+    let vizMode = 'waves';
+    let interactionMode = 'mic';
+
+    // Microphone Position
+    let listenerPos = { x: 300, y: 300 };
+
+    // Line Analysis State
+    let lineStart = { x: 100, y: 350 };
+    let lineEnd = { x: 500, y: 350 };
+    let isDragging = false;
+
+    // Audio Context
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+    let isAudioOn = false;
+
+    // --- DOM Elements ---
+    const simCanvas = document.getElementById('simCanvas');
+    const simCtx = simCanvas.getContext('2d');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphCtx = graphCanvas.getContext('2d');
+
+    const btnAudio = document.getElementById('audio-toggle');
+    const inputFreq = document.getElementById('input-freq');
+    const inputSep = document.getElementById('input-sep');
+    const valFreq = document.getElementById('val-freq');
+    const valSep = document.getElementById('val-sep');
+    const valLambda = document.getElementById('val-lambda');
+    const msgOverlay = document.getElementById('instruction-msg');
+
+    // Panels
+    const viewMath = document.getElementById('view-math');
+    const viewGraph = document.getElementById('view-graph');
+
+    // Math Display Elements
+    const elD1 = document.getElementById('val-d1');
+    const elD2 = document.getElementById('val-d2');
+    const elPDiff = document.getElementById('val-pdiff');
+    const elCalcLambda = document.getElementById('val-calc-lambda');
+    const elRatio = document.getElementById('val-ratio');
+    const elResult = document.getElementById('interference-result');
+
+    const radioInterMode = document.querySelectorAll('input[name="inter-mode"]');
+    const radioVizMode = document.querySelectorAll('input[name="viz-mode"]');
+
+    // --- Audio System ---
+    function initAudio() {
+        if (!audioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+        }
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = freq;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        isAudioOn = true;
+        btnAudio.classList.add('stop');
+        updateAudioButton();
+        updateAudio();
+    }
+
+    function stopAudio() {
+        if (oscillator) {
+            oscillator.stop();
+            oscillator.disconnect();
+            oscillator = null;
+        }
+        isAudioOn = false;
+        btnAudio.classList.remove('stop');
+        updateAudioButton();
+    }
+
+    function updateAudio() {
+        if (!isAudioOn || !oscillator) return;
+
+        oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+
+        const s1 = { x: simCanvas.width / 2 - (separation * PIXELS_PER_METER) / 2, y: 50 };
+        const s2 = { x: simCanvas.width / 2 + (separation * PIXELS_PER_METER) / 2, y: 50 };
+
+        const d1 = Math.hypot(listenerPos.x - s1.x, listenerPos.y - s1.y) / PIXELS_PER_METER;
+        const d2 = Math.hypot(listenerPos.x - s2.x, listenerPos.y - s2.y) / PIXELS_PER_METER;
+
+        const pathDiff = Math.abs(d1 - d2);
+        const k = (2 * Math.PI) / lambda;
+        const phaseDiff = k * pathDiff;
+
+        // Pure Interference Amplitude (0 to 1)
+        let interferenceAmp = Math.abs(Math.cos(phaseDiff / 2));
+
+        // Distance decay (Intensity decreases with distance)
+        const avgDist = (d1 + d2) / 2;
+        const decayFactor = 1 / (1 + DISTANCE_DECAY_COEFF * avgDist);
+
+        const finalVolume = interferenceAmp * decayFactor * 0.5;
+        gainNode.gain.setTargetAtTime(finalVolume, audioCtx.currentTime, 0.1);
+    }
+
+    // --- Visualization ---
+
+    function draw() {
+        simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+
+        const s1 = { x: simCanvas.width / 2 - (separation * PIXELS_PER_METER) / 2, y: 50 };
+        const s2 = { x: simCanvas.width / 2 + (separation * PIXELS_PER_METER) / 2, y: 50 };
+
+        // 1. Draw Physics Background
+        if (vizMode === 'intensity') {
+            drawIntensityMap(s1, s2);
+        } else {
+            drawWaves(s1, s2);
+        }
+
+        // 2. Draw Speakers
+        drawSpeaker(s1.x, s1.y, "S1");
+        drawSpeaker(s2.x, s2.y, "S2");
+
+        // 3. Draw Interaction Elements
+        if (interactionMode === 'mic') {
+            drawListener(s1, s2);
+            updateMathAnalysis(s1, s2);
+        } else {
+            drawLineTool();
+            drawGraph(s1, s2);
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    function drawSpeaker(x, y, label) {
+        simCtx.fillStyle = '#888';
+        simCtx.fillRect(x - 15, y - 15, 30, 30);
+        simCtx.fillStyle = '#000';
+        simCtx.beginPath();
+        simCtx.arc(x, y, 10, 0, Math.PI * 2);
+        simCtx.fill();
+        simCtx.fillStyle = '#fff';
+        simCtx.font = "12px Arial";
+        simCtx.fillText(label, x - 8, y - 20);
+    }
+
+    function drawListener(s1, s2) {
+        simCtx.save();
+        simCtx.translate(listenerPos.x, listenerPos.y);
+
+        const d1 = Math.hypot(listenerPos.x - s1.x, listenerPos.y - s1.y) / PIXELS_PER_METER;
+        const d2 = Math.hypot(listenerPos.x - s2.x, listenerPos.y - s2.y) / PIXELS_PER_METER;
+        const k = (2 * Math.PI) / lambda;
+
+        // Calculate Intensity with Decay
+        const avgDist = (d1 + d2) / 2;
+        const decay = 1 / (1 + DISTANCE_DECAY_COEFF * avgDist);
+        const interference = Math.pow(Math.cos(k * Math.abs(d1 - d2) / 2), 2);
+        const intensity = interference * decay;
+
+        // Visual pulse
+        // Radius and Opacity depend on intensity
+        simCtx.beginPath();
+        simCtx.arc(0, 0, 10 + intensity * 20, 0, Math.PI * 2);
+        simCtx.strokeStyle = `rgba(76, 175, 80, ${intensity})`;
+        simCtx.lineWidth = 3;
+        simCtx.stroke();
+
+        // Icon
+        simCtx.font = "30px Arial";
+        simCtx.textAlign = "center";
+        simCtx.textBaseline = "middle";
+        simCtx.fillText("🎤", 0, 0);
+
+        // Label coordinates
+        simCtx.fillStyle = "#fff";
+        simCtx.font = "10px monospace";
+        simCtx.fillText(`P`, 15, -15);
+
+        simCtx.restore();
+
+        // Draw lines from speakers to listener
+        simCtx.setLineDash([5, 5]);
+        simCtx.strokeStyle = "rgba(255,255,255,0.3)";
+        simCtx.lineWidth = 1;
+
+        simCtx.beginPath(); simCtx.moveTo(s1.x, s1.y); simCtx.lineTo(listenerPos.x, listenerPos.y); simCtx.stroke();
+        simCtx.beginPath(); simCtx.moveTo(s2.x, s2.y); simCtx.lineTo(listenerPos.x, listenerPos.y); simCtx.stroke();
+        simCtx.setLineDash([]);
+    }
+
+    function updateMathAnalysis(s1, s2) {
+        const source1 = s1 || { x: simCanvas.width / 2 - (separation * PIXELS_PER_METER) / 2, y: 50 };
+        const source2 = s2 || { x: simCanvas.width / 2 + (separation * PIXELS_PER_METER) / 2, y: 50 };
+        const d1 = Math.hypot(listenerPos.x - source1.x, listenerPos.y - source1.y) / PIXELS_PER_METER;
+        const d2 = Math.hypot(listenerPos.x - source2.x, listenerPos.y - source2.y) / PIXELS_PER_METER;
+        const pathDiff = Math.abs(d1 - d2);
+        const ratio = pathDiff / lambda;
+
+        elD1.textContent = `${d1.toFixed(2)} ${t('unitM')}`;
+        elD2.textContent = `${d2.toFixed(2)} ${t('unitM')}`;
+        elPDiff.textContent = `${pathDiff.toFixed(2)} ${t('unitM')}`;
+        elCalcLambda.textContent = `${lambda.toFixed(2)} ${t('unitM')}`;
+        elRatio.textContent = ratio.toFixed(2);
+
+        // Determine Interference Type
+        const remainder = ratio % 1;
+        let distFromInt = Math.abs(remainder - Math.round(remainder)); // 0 to 0.5
+
+        if (distFromInt < 0.15) {
+            elResult.textContent = t('constructive');
+            elResult.style.color = "#4CAF50";
+            elResult.style.border = "1px solid #4CAF50";
+        } else if (distFromInt > 0.35) {
+            elResult.textContent = t('destructive');
+            elResult.style.color = "#ff5252";
+            elResult.style.border = "1px solid #ff5252";
+        } else {
+            elResult.textContent = t('intermediate');
+            elResult.style.color = "#FFC107";
+            elResult.style.border = "1px solid #FFC107";
+        }
+    }
+
+    function drawLineTool() {
+        simCtx.beginPath();
+        simCtx.moveTo(lineStart.x, lineStart.y);
+        simCtx.lineTo(lineEnd.x, lineEnd.y);
+        simCtx.strokeStyle = '#FFC107';
+        simCtx.lineWidth = 3;
+        simCtx.setLineDash([5, 5]);
+        simCtx.stroke();
+        simCtx.setLineDash([]);
+
+        simCtx.fillStyle = '#FFC107';
+        simCtx.beginPath(); simCtx.arc(lineStart.x, lineStart.y, 5, 0, Math.PI * 2); simCtx.fill();
+        simCtx.beginPath(); simCtx.arc(lineEnd.x, lineEnd.y, 5, 0, Math.PI * 2); simCtx.fill();
+
+        simCtx.fillStyle = '#FFF';
+        simCtx.font = "12px Arial";
+        simCtx.fillText(t('lineStart'), lineStart.x + 8, lineStart.y);
+        simCtx.fillText(t('lineEnd'), lineEnd.x + 8, lineEnd.y);
+    }
+
+    function drawWaves(s1, s2) {
+        const lambdaPx = lambda * PIXELS_PER_METER;
+        const maxDist = Math.hypot(simCanvas.width, simCanvas.height);
+        const phase = (time * 5) % lambdaPx;
+
+        simCtx.lineWidth = 2;
+
+        [s1, s2].forEach(s => {
+            for (let r = phase; r < maxDist; r += lambdaPx) {
+                // Alpha fades with distance naturally (visual representation of wavefront)
+                const alpha = Math.max(0, 1 - r / maxDist);
+                simCtx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
+                simCtx.beginPath();
+                simCtx.arc(s.x, s.y, r, 0, Math.PI * 2);
+                simCtx.stroke();
+            }
+        });
+    }
+
+    function drawIntensityMap(s1, s2) {
+        const res = 5;
+        const w = Math.ceil(simCanvas.width / res);
+        const h = Math.ceil(simCanvas.height / res);
+        const k = (2 * Math.PI) / lambda;
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const px = x * res;
+                const py = y * res;
+                const d1 = Math.hypot(px - s1.x, py - s1.y) / PIXELS_PER_METER;
+                const d2 = Math.hypot(px - s2.x, py - s2.y) / PIXELS_PER_METER;
+
+                // Interference term
+                const interference = Math.pow(Math.cos(k * (d1 - d2) / 2), 2);
+
+                // Decay term
+                const avgDist = (d1 + d2) / 2;
+                const decay = 1 / (1 + DISTANCE_DECAY_COEFF * avgDist);
+
+                const val = interference * decay;
+
+                const g = Math.floor(val * 150);
+                const b = Math.floor(val * 50);
+                simCtx.fillStyle = `rgb(0, ${g}, ${b})`;
+                simCtx.fillRect(px, py, res, res);
+            }
+        }
+    }
+
+    function drawGraph(s1, s2) {
+        const w = graphCanvas.width;
+        const h = graphCanvas.height;
+        graphCtx.clearRect(0, 0, w, h);
+
+        graphCtx.strokeStyle = '#333';
+        graphCtx.lineWidth = 1;
+        graphCtx.beginPath();
+        graphCtx.moveTo(0, h / 2); graphCtx.lineTo(w, h / 2);
+        graphCtx.stroke();
+
+        const numPoints = w;
+        const lineDx = lineEnd.x - lineStart.x;
+        const lineDy = lineEnd.y - lineStart.y;
+        const lineLen = Math.hypot(lineDx, lineDy);
+
+        if (lineLen === 0) return;
+
+        graphCtx.beginPath();
+        graphCtx.strokeStyle = '#FFC107';
+        graphCtx.lineWidth = 2;
+
+        const k = (2 * Math.PI) / lambda;
+
+        for (let i = 0; i <= numPoints; i++) {
+            const tVal = i / numPoints;
+            const px = lineStart.x + tVal * lineDx;
+            const py = lineStart.y + tVal * lineDy;
+
+            const d1 = Math.hypot(px - s1.x, py - s1.y) / PIXELS_PER_METER;
+            const d2 = Math.hypot(px - s2.x, py - s2.y) / PIXELS_PER_METER;
+
+            // Interference term
+            const interference = Math.pow(Math.cos(k * (d1 - d2) / 2), 2);
+
+            // Decay term
+            const avgDist = (d1 + d2) / 2;
+            const decay = 1 / (1 + DISTANCE_DECAY_COEFF * avgDist);
+
+            const intensity = interference * decay;
+
+            const gy = h - 10 - (intensity * (h - 20));
+
+            if (i === 0) graphCtx.moveTo(i, gy);
+            else graphCtx.lineTo(i, gy);
+        }
+        graphCtx.stroke();
+    }
+
+    function loop() {
+        time += 0.05;
+        draw();
+        updateAudio();
+    }
+
+    // --- Interaction Handlers ---
+
+    btnAudio.addEventListener('click', () => {
+        if (isAudioOn) stopAudio();
+        else initAudio();
+    });
+
+    inputFreq.addEventListener('input', (e) => {
+        freq = parseInt(e.target.value);
+        lambda = SPEED_OF_SOUND / freq;
+        valFreq.textContent = `${freq} ${t('unitHz')}`;
+        valLambda.textContent = `${lambda.toFixed(2)} ${t('unitM')}`;
+    });
+
+    inputSep.addEventListener('input', (e) => {
+        separation = parseFloat(e.target.value);
+        valSep.textContent = `${separation.toFixed(1)} ${t('unitM')}`;
+    });
+
+    radioVizMode.forEach(r => {
+        r.addEventListener('change', (e) => vizMode = e.target.value);
+    });
+
+    radioInterMode.forEach(r => {
+        r.addEventListener('change', (e) => {
+            interactionMode = e.target.value;
+            if (interactionMode === 'mic') {
+                viewMath.classList.remove('hidden');
+                viewGraph.classList.add('hidden');
+            } else {
+                viewMath.classList.add('hidden');
+                viewGraph.classList.remove('hidden');
+            }
+            updateOverlayText();
+        });
+    });
+
+    // --- MOUSE/TOUCH LOGIC ---
+
+    function getCanvasCoordinates(e) {
+        const rect = simCanvas.getBoundingClientRect();
+        let clientX, clientY;
+
+        if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const scaleX = simCanvas.width / rect.width;
+        const scaleY = simCanvas.height / rect.height;
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    const startDrag = (e) => {
+        if (e.type === 'mousedown' && e.button !== 0) return;
+
+        e.preventDefault();
+        isDragging = true;
+        const pos = getCanvasCoordinates(e);
+
+        if (interactionMode === 'mic') {
+            listenerPos = pos;
+        } else {
+            lineStart = pos;
+            lineEnd = pos;
+        }
+    };
+
+    const doDrag = (e) => {
+        if (!isDragging) return;
+
+        const rect = simCanvas.getBoundingClientRect();
+        let clientX, clientY;
+
+        if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const scaleX = simCanvas.width / rect.width;
+        const scaleY = simCanvas.height / rect.height;
+
+        let x = (clientX - rect.left) * scaleX;
+        let y = (clientY - rect.top) * scaleY;
+
+        x = Math.max(0, Math.min(simCanvas.width, x));
+        y = Math.max(0, Math.min(simCanvas.height, y));
+
+        if (interactionMode === 'mic') {
+            listenerPos = { x, y };
+        } else {
+            lineEnd = { x, y };
+        }
+    };
+
+    const endDrag = () => {
+        isDragging = false;
+    };
+
+    simCanvas.addEventListener('mousedown', startDrag);
+    simCanvas.addEventListener('touchstart', startDrag, { passive: false });
+
+    window.addEventListener('mousemove', doDrag);
+    window.addEventListener('touchmove', doDrag, { passive: false });
+
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchend', endDrag);
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+    });
+    window.addEventListener('popstate', () => {
+        changeLanguage(getInitialLanguage(), false);
+    });
+
+    changeLanguage(getInitialLanguage());
+    updateAudioButton();
+    updateOverlayText();
+    loop();
+</script>
+
+</body>
+</html>

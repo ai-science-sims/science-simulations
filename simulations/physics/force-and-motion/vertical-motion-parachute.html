@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="x-poe-datastore-behavior" content="local_only">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical Motion &amp; Parachute Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --bg-color: #f4f4f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: var(--secondary-color);
+            margin: 0;
+            text-align: center;
+        }
+
+        .lang-toggle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: flex;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .lang-toggle button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f1f5f9;
+            color: #334155;
+            cursor: pointer;
+        }
+
+        .lang-toggle button.active {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Simulation Area */
+        .sim-panel {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            flex: 1 1 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas#simCanvas {
+            border: 2px solid #ddd;
+            background: linear-gradient(to bottom, #87CEEB 0%, #e0f7fa 80%, #8d6e63 80%, #5d4037 100%);
+            border-radius: 4px;
+            cursor: crosshair;
+        }
+
+        /* Controls Area */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        input[type="number"], input[type="range"] {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            color: white;
+        }
+
+        #startBtn { background-color: #27ae60; }
+        #startBtn:hover { background-color: #2ecc71; }
+
+        #resetBtn { background-color: #c0392b; }
+        #resetBtn:hover { background-color: #e74c3c; }
+
+        #parachuteBtn {
+            background-color: var(--primary-color);
+            grid-column: span 2;
+            font-size: 1.1em;
+        }
+        #parachuteBtn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        /* Graphs Area */
+        .graphs-panel {
+            flex: 1 1 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .graph-container {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            height: 200px;
+            position: relative;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            margin-top: 5px;
+            justify-content: center;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            canvas#simCanvas { width: 100%; height: auto; }
+            header { padding-right: 72px; }
+        }
+    </style>
+    <script src="https://puc.poecdn.net/authenticated_preview_page/syncedState.3f7572448765332f3047.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1 data-i18n="headerTitle">Vertical Motion &amp; Parachute Simulator</h1>
+        <div class="lang-toggle" aria-label="Language selector">
+            <button type="button" class="lang-btn" data-lang="en-US">EN</button>
+            <button type="button" class="lang-btn" data-lang="zh-HK">繁</button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Left Side: Simulation & Controls -->
+        <div class="sim-panel">
+            <canvas id="simCanvas" width="400" height="500"></canvas>
+
+            <div class="legend">
+                <div class="legend-item"><div class="dot" style="background:red;"></div><span data-i18n="legendGravity">Gravity (Fg)</span></div>
+                <div class="legend-item"><div class="dot" style="background:blue;"></div><span data-i18n="legendDrag">Air Resistance (Fd)</span></div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="initVel" data-i18n="initVelLabel">Initial Velocity (m/s)</label>
+                    <input type="number" id="initVel" value="0" min="-100" max="100">
+                    <small data-i18n="initVelHint">(Positive = Up, Negative = Down)</small>
+                </div>
+                <div class="control-group">
+                    <label for="initHeight" data-i18n="initHeightLabel">Initial Height (m)</label>
+                    <input type="number" id="initHeight" value="200" min="0" max="500">
+                </div>
+                <div class="control-group">
+                    <label for="dragCoeff" data-i18n="dragCoeffLabel">Drag Coeff (Cd)</label>
+                    <input type="number" id="dragCoeff" value="0.47" step="0.01" min="0">
+                    <small data-i18n="dragCoeffHint">(Sphere ~0.47)</small>
+                </div>
+                <div class="control-group">
+                    <label for="mass" data-i18n="massLabel">Mass (kg)</label>
+                    <input type="number" id="mass" value="10" min="0.1">
+                </div>
+
+                <button id="startBtn"></button>
+                <button id="resetBtn" data-i18n="reset">Reset</button>
+                <button id="parachuteBtn" disabled></button>
+            </div>
+            <div id="status" style="margin-top:10px; font-weight:bold;" data-i18n="statusReady">Status: Ready</div>
+        </div>
+
+        <!-- Right Side: Graphs -->
+        <div class="graphs-panel">
+            <div class="graph-container">
+                <canvas id="dispChart"></canvas>
+            </div>
+            <div class="graph-container">
+                <canvas id="velChart"></canvas>
+            </div>
+            <div class="graph-container">
+                <canvas id="accChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            "en-US": {
+                title: "Vertical Motion & Parachute Simulator",
+                headerTitle: "Vertical Motion & Parachute Simulator",
+                legendGravity: "Gravity (Fg)",
+                legendDrag: "Air Resistance (Fd)",
+                initVelLabel: "Initial Velocity (m/s)",
+                initVelHint: "(Positive = Up, Negative = Down)",
+                initHeightLabel: "Initial Height (m)",
+                dragCoeffLabel: "Drag Coeff (Cd)",
+                dragCoeffHint: "(Sphere ~0.47)",
+                massLabel: "Mass (kg)",
+                start: "Start",
+                pause: "Pause",
+                resume: "Resume",
+                reset: "Reset",
+                deployParachute: "Deploy Parachute",
+                parachuteDeployed: "Parachute Deployed",
+                statusReady: "Status: Ready",
+                statusRunning: "Status: Running",
+                statusPaused: "Status: Paused",
+                statusLanded: "Status: Landed",
+                statusFinished: "Status: Finished",
+                graphDisp: "Displacement (m)",
+                graphVel: "Velocity (m/s)",
+                graphAcc: "Acceleration (m/s²)",
+                timeAxis: "Time (s)",
+                heightLabel: "Height",
+                velocityLabel: "Velocity",
+                timeLabel: "Time",
+                unitM: "m",
+                unitMs: "m/s",
+                unitS: "s"
+            },
+            "zh-HK": {
+                title: "垂直運動與降落傘模擬器",
+                headerTitle: "垂直運動與降落傘模擬器",
+                legendGravity: "重力 (Fg)",
+                legendDrag: "空氣阻力 (Fd)",
+                initVelLabel: "初速度 (m/s)",
+                initVelHint: "(正值向上，負值向下)",
+                initHeightLabel: "初始高度 (m)",
+                dragCoeffLabel: "阻力係數 (Cd)",
+                dragCoeffHint: "(球體約 0.47)",
+                massLabel: "質量 (kg)",
+                start: "開始",
+                pause: "暫停",
+                resume: "繼續",
+                reset: "重設",
+                deployParachute: "開傘",
+                parachuteDeployed: "已開傘",
+                statusReady: "狀態：準備",
+                statusRunning: "狀態：運行中",
+                statusPaused: "狀態：已暫停",
+                statusLanded: "狀態：已著陸",
+                statusFinished: "狀態：完成",
+                graphDisp: "位移 (m)",
+                graphVel: "速度 (m/s)",
+                graphAcc: "加速度 (m/s²)",
+                timeAxis: "時間 (s)",
+                heightLabel: "高度",
+                velocityLabel: "速度",
+                timeLabel: "時間",
+                unitM: "m",
+                unitMs: "m/s",
+                unitS: "s"
+            }
+        };
+
+        const supportedLanguages = Object.keys(translations);
+        let currentLang = "en-US";
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key);
+            });
+            document.title = t('title');
+        }
+
+        function setActiveLanguageButton(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const isActive = btn.dataset.lang === lang;
+                btn.classList.toggle('active', isActive);
+            });
+        }
+
+        function changeLanguage(lang, shouldPush = true) {
+            currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+            document.documentElement.lang = currentLang;
+            applyTranslations();
+            setActiveLanguageButton(currentLang);
+            updateUiText();
+            applyChartLabels();
+            if (shouldPush) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('lang', currentLang);
+                window.history.pushState({}, '', url);
+            }
+        }
+
+        function getInitialLanguage() {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get('lang');
+            return supportedLanguages.includes(lang) ? lang : "en-US";
+        }
+
+        // --- Configuration & Physics Constants ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const G = 9.81; // Gravity m/s^2
+        const AIR_DENSITY = 1.225; // kg/m^3
+        const SCALE = 1.5; // Pixels per meter (Visual scaling)
+        const DT = 0.02; // Time step (s)
+
+        // --- State Variables ---
+        let state = {
+            y: 0,
+            v: 0,
+            a: 0,
+            t: 0,
+            mass: 10,
+            cd: 0.47,
+            area: 0.1,
+            parachuteOpen: false,
+            running: false,
+            finished: false,
+            groundY: 0
+        };
+
+        let animationFrame;
+        let chartUpdateCounter = 0;
+
+        // --- Chart.js Instances ---
+        let charts = {};
+
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                elements: { point: { radius: 0 } },
+                scales: { x: { title: { display: true, text: t('timeAxis') } } }
+            };
+
+            charts.disp = new Chart(document.getElementById('dispChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: t('graphDisp'), data: [], borderColor: '#8e44ad', borderWidth: 2 }] },
+                options: commonOptions
+            });
+
+            charts.vel = new Chart(document.getElementById('velChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: t('graphVel'), data: [], borderColor: '#2980b9', borderWidth: 2 }] },
+                options: commonOptions
+            });
+
+            charts.acc = new Chart(document.getElementById('accChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: t('graphAcc'), data: [], borderColor: '#c0392b', borderWidth: 2 }] },
+                options: commonOptions
+            });
+        }
+
+        function applyChartLabels() {
+            if (!charts.disp) return;
+            charts.disp.data.datasets[0].label = t('graphDisp');
+            charts.vel.data.datasets[0].label = t('graphVel');
+            charts.acc.data.datasets[0].label = t('graphAcc');
+            charts.disp.options.scales.x.title.text = t('timeAxis');
+            charts.vel.options.scales.x.title.text = t('timeAxis');
+            charts.acc.options.scales.x.title.text = t('timeAxis');
+            charts.disp.update();
+            charts.vel.update();
+            charts.acc.update();
+        }
+
+        // --- Physics Engine ---
+        function updatePhysics() {
+            if (!state.running || state.finished) return;
+
+            const F_gravity = -state.mass * G;
+
+            const vSq = state.v * state.v;
+            const dragDir = state.v > 0 ? -1 : 1;
+
+            let currentCd = state.cd;
+            let currentArea = state.area;
+
+            if (state.parachuteOpen) {
+                currentCd = 1.75;
+                currentArea = 20.0;
+            }
+
+            const F_drag = 0.5 * AIR_DENSITY * vSq * currentCd * currentArea * dragDir;
+
+            const F_net = F_gravity + F_drag;
+
+            state.a = F_net / state.mass;
+
+            state.v += state.a * DT;
+            state.y += state.v * DT;
+            state.t += DT;
+
+            if (state.y <= 0) {
+                state.y = 0;
+                state.v = 0;
+                state.a = 0;
+                state.running = false;
+                state.finished = true;
+                setStatusText('statusLanded');
+                startBtn.textContent = t('statusFinished');
+                startBtn.disabled = true;
+                parachuteBtn.disabled = true;
+            }
+
+            chartUpdateCounter++;
+            if (chartUpdateCounter % 5 === 0) {
+                updateCharts();
+            }
+        }
+
+        function updateCharts() {
+            const addData = (chart, label, data) => {
+                chart.data.labels.push(label.toFixed(1));
+                chart.data.datasets[0].data.push(data);
+                chart.update();
+            };
+
+            addData(charts.disp, state.t, state.y);
+            addData(charts.vel, state.t, state.v);
+            addData(charts.acc, state.t, state.a);
+        }
+
+        // --- Drawing ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const groundPixel = canvas.height * 0.8;
+            let drawY = groundPixel - (state.y * SCALE);
+
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(0, groundPixel, canvas.width, canvas.height - groundPixel);
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(0, groundPixel, canvas.width, 10);
+
+            const ballX = canvas.width / 2;
+            const ballRadius = 10;
+
+            if (state.parachuteOpen) {
+                ctx.beginPath();
+                ctx.arc(ballX, drawY - 25, 30, Math.PI, 0);
+                ctx.lineTo(ballX, drawY - 5);
+                ctx.closePath();
+                ctx.fillStyle = '#e67e22';
+                ctx.fill();
+                ctx.strokeStyle = '#d35400';
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(ballX - 30, drawY - 25);
+                ctx.lineTo(ballX, drawY);
+                ctx.moveTo(ballX + 30, drawY - 25);
+                ctx.lineTo(ballX, drawY);
+                ctx.strokeStyle = 'white';
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            ctx.arc(ballX, drawY, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#2c3e50';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            drawArrow(ballX, drawY, 0, 1, Math.abs(state.mass * G) * 2, 'red');
+
+            let vSq = state.v * state.v;
+            let currentCd = state.parachuteOpen ? 1.75 : state.cd;
+            let currentArea = state.parachuteOpen ? 20.0 : state.area;
+            let fDragMag = 0.5 * AIR_DENSITY * vSq * currentCd * currentArea;
+
+            let visualDrag = Math.min(fDragMag * 2, 100);
+
+            if (Math.abs(state.v) > 0.1) {
+                let dirY = state.v > 0 ? 1 : -1;
+                drawArrow(ballX, drawY - (dirY * ballRadius), 0, dirY, visualDrag, 'blue');
+            }
+
+            ctx.fillStyle = 'black';
+            ctx.font = '14px Arial';
+            ctx.fillText(`${t('heightLabel')}: ${state.y.toFixed(1)} ${t('unitM')}`, 10, 20);
+            ctx.fillText(`${t('velocityLabel')}: ${state.v.toFixed(1)} ${t('unitMs')}`, 10, 40);
+            ctx.fillText(`${t('timeLabel')}: ${state.t.toFixed(1)} ${t('unitS')}`, 10, 60);
+        }
+
+        function drawArrow(x, y, dx, dy, length, color) {
+            if (length < 2) return;
+
+            const headlen = 10;
+            const angle = Math.atan2(dy, dx);
+
+            const ex = x + dx * 0;
+            const ey = y + dy * length;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.moveTo(x, y);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.moveTo(ex, ey);
+            ctx.lineTo(ex - headlen * Math.cos(angle - Math.PI / 6), ey - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(ex - headlen * Math.cos(angle + Math.PI / 6), ey - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+        }
+
+        // --- Main Loop ---
+        function loop() {
+            updatePhysics();
+            draw();
+            animationFrame = requestAnimationFrame(loop);
+        }
+
+        // --- Interaction Functions ---
+        function setStatusText(key) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = t(key);
+        }
+
+        function updateUiText() {
+            if (state.finished) {
+                startBtn.textContent = t('statusFinished');
+            } else if (state.running) {
+                startBtn.textContent = t('pause');
+            } else if (state.t > 0) {
+                startBtn.textContent = t('resume');
+            } else {
+                startBtn.textContent = t('start');
+            }
+
+            parachuteBtn.textContent = state.parachuteOpen ? t('parachuteDeployed') : t('deployParachute');
+        }
+
+        function startSimulation() {
+            if (state.finished) return;
+
+            if (!state.running) {
+                state.running = true;
+                setStatusText('statusRunning');
+                parachuteBtn.disabled = false;
+
+                if (state.t === 0) {
+                    state.v = parseFloat(document.getElementById('initVel').value);
+                    state.y = parseFloat(document.getElementById('initHeight').value);
+                    state.mass = parseFloat(document.getElementById('mass').value);
+                    state.cd = parseFloat(document.getElementById('dragCoeff').value);
+                }
+            } else {
+                state.running = false;
+                setStatusText('statusPaused');
+            }
+            updateUiText();
+        }
+
+        function resetSimulation() {
+            state.running = false;
+            state.finished = false;
+            state.t = 0;
+            state.parachuteOpen = false;
+            state.y = parseFloat(document.getElementById('initHeight').value);
+            state.v = parseFloat(document.getElementById('initVel').value);
+            state.a = 0;
+
+            setStatusText('statusReady');
+            startBtn.disabled = false;
+            parachuteBtn.disabled = true;
+            parachuteBtn.style.backgroundColor = "";
+
+            charts.disp.data.labels = [];
+            charts.disp.data.datasets[0].data = [];
+            charts.disp.update();
+
+            charts.vel.data.labels = [];
+            charts.vel.data.datasets[0].data = [];
+            charts.vel.update();
+
+            charts.acc.data.labels = [];
+            charts.acc.data.datasets[0].data = [];
+            charts.acc.update();
+
+            updateUiText();
+            draw();
+        }
+
+        function deployParachute() {
+            if (!state.finished) {
+                state.parachuteOpen = true;
+                parachuteBtn.textContent = t('parachuteDeployed');
+                parachuteBtn.style.backgroundColor = "#27ae60";
+                parachuteBtn.disabled = true;
+            }
+        }
+
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const parachuteBtn = document.getElementById('parachuteBtn');
+
+        startBtn.addEventListener('click', startSimulation);
+        resetBtn.addEventListener('click', resetSimulation);
+        parachuteBtn.addEventListener('click', deployParachute);
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+        });
+        window.addEventListener('popstate', () => {
+            changeLanguage(getInitialLanguage(), false);
+        });
+
+        window.onload = function() {
+            changeLanguage(getInitialLanguage(), false);
+            initCharts();
+            resetSimulation();
+            loop();
+        };
+    </script>
+
+</body>
+</html>

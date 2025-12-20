@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projectile Motion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background-color: #f3f4f6; }
+        canvas { border-radius: 8px; touch-action: none; }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+
+        .stat-box {
+            background: #fff;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #f3f4f6;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+        .stat-label { color: #6b7280; display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+        .stat-value { display: block; font-weight: 700; color: #1f2937; font-size: 0.875rem; }
+
+        .lang-btn { border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.25rem 0.5rem; font-size: 10px; font-weight: 700; }
+        .lang-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .lang-btn.inactive { background: #fff; color: #6b7280; }
+    </style>
+</head>
+<body class="h-screen flex flex-col lg:flex-row overflow-hidden">
+
+    <div class="absolute top-4 right-4 flex gap-1 z-20">
+        <button type="button" id="btn-lang-en" class="lang-btn active" data-lang="en-US" data-i18n="langEn">EN</button>
+        <button type="button" id="btn-lang-zh" class="lang-btn inactive" data-lang="zh-HK" data-i18n="langZh">繁</button>
+    </div>
+
+    <div class="w-full lg:w-80 bg-white p-4 border-r border-gray-200 z-10 flex flex-col gap-3 overflow-y-auto shrink-0 shadow-lg">
+
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 id="lbl-title" class="text-xl font-bold text-blue-700 tracking-tight" data-i18n="title">Projectile Motion</h1>
+                <p id="lbl-subtitle" class="text-xs text-gray-400 font-medium" data-i18n="subtitle">HKDSE Physics (Force & Motion)</p>
+            </div>
+        </div>
+
+        <div class="space-y-4 border-b border-gray-100 pb-4 bg-gray-50 p-3 rounded-lg">
+
+            <div>
+                <label id="lbl-u" class="block text-xs font-bold text-gray-700 mb-1" data-i18n="uLabel">Initial Velocity (u)</label>
+                <div class="flex items-center gap-2">
+                    <input type="range" id="u-slider" min="1" max="100" value="25" step="0.1" class="flex-1 accent-blue-600 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+                    <input type="number" id="u-input" min="1" max="100" step="0.1" value="25" class="w-16 text-right text-sm border border-gray-300 rounded px-1 py-0.5 focus:border-blue-500 font-mono">
+                    <span class="text-xs font-bold text-gray-500 w-6" data-i18n="unitMs">m/s</span>
+                </div>
+            </div>
+
+            <div>
+                <label id="lbl-theta" class="block text-xs font-bold text-gray-700 mb-1" data-i18n="thetaLabel">Launch Angle (θ)</label>
+                <div class="flex items-center gap-2">
+                    <input type="range" id="theta-slider" min="-90" max="90" value="45" step="0.1" class="flex-1 accent-blue-600 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+                    <input type="number" id="theta-input" min="-90" max="90" step="0.1" value="45" class="w-16 text-right text-sm border border-gray-300 rounded px-1 py-0.5 focus:border-blue-500 font-mono">
+                    <span class="text-xs font-bold text-gray-500 w-6" data-i18n="unitDeg">deg</span>
+                </div>
+            </div>
+
+            <div>
+                <label id="lbl-h" class="block text-xs font-bold text-gray-700 mb-1" data-i18n="hLabel">Initial Height (h)</label>
+                <div class="flex items-center gap-2">
+                    <input type="range" id="h-slider" min="0" max="100" value="0" step="0.1" class="flex-1 accent-blue-600 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+                    <input type="number" id="h-input" min="0" max="100" step="0.1" value="0" class="w-16 text-right text-sm border border-gray-300 rounded px-1 py-0.5 focus:border-blue-500 font-mono">
+                    <span class="text-xs font-bold text-gray-500 w-6" data-i18n="unitM">m</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+                <button id="air-toggle" class="flex-1 bg-white border border-gray-300 text-gray-600 px-2 py-1.5 rounded text-xs font-bold hover:bg-gray-50 transition shadow-sm">Air Resistance: OFF</button>
+                <select id="time-scale" class="bg-white border border-gray-300 text-gray-700 text-xs rounded px-2 font-bold shadow-sm focus:outline-none">
+                    <option value="1">1.0x Speed</option>
+                    <option value="0.5">0.5x Slow</option>
+                    <option value="0.1">0.1x Analysis</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+            <button id="btn-fire" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded shadow transition text-sm flex items-center justify-center gap-1">🚀 <span id="txt-fire" data-i18n="fire">FIRE</span></button>
+            <button id="btn-pause" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded shadow transition text-sm">PAUSE</button>
+            <button id="btn-clear" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded shadow transition text-sm" data-i18n="clear">CLEAR</button>
+        </div>
+
+        <div class="flex-1 min-h-0 flex flex-col">
+            <h3 class="font-bold text-gray-700 text-xs mb-2 flex items-center gap-2 mt-2">
+                <span class="w-2 h-2 rounded-full bg-gray-400" id="status-dot"></span>
+                <span id="lbl-realtime" data-i18n="realtime">Real-time Data</span>
+            </h3>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="stat-box border-l-2 border-l-blue-500"><span id="lbl-t" class="stat-label" data-i18n="timeLabel">Time (t)</span><br><span id="data-t" class="stat-value">0.00 s</span></div>
+                <div class="stat-box border-l-2 border-l-green-500"><span id="lbl-v" class="stat-label" data-i18n="speedLabel">Speed (v)</span><br><span id="data-v" class="stat-value">0.00 m/s</span></div>
+                <div class="stat-box"><span id="lbl-x" class="stat-label" data-i18n="posXLabel">Pos X (x)</span><br><span id="data-x" class="stat-value">0.00 m</span></div>
+                <div class="stat-box"><span id="lbl-y" class="stat-label" data-i18n="posYLabel">Pos Y (y)</span><br><span id="data-y" class="stat-value">0.00 m</span></div>
+                <div class="stat-box"><span id="lbl-vx" class="stat-label" data-i18n-html="velXLabelHtml">Vel X (v<sub>x</sub>)</span><br><span id="data-vx" class="stat-value text-red-600">0.00 m/s</span></div>
+                <div class="stat-box"><span id="lbl-vy" class="stat-label" data-i18n-html="velYLabelHtml">Vel Y (v<sub>y</sub>)</span><br><span id="data-vy" class="stat-value text-purple-600">0.00 m/s</span></div>
+            </div>
+
+            <div id="results-panel" class="hidden bg-emerald-50 border border-emerald-200 p-3 rounded-lg mt-auto">
+                <h3 class="font-bold text-emerald-800 text-xs mb-2 uppercase tracking-wide border-b border-emerald-200 pb-1">
+                    <span id="lbl-results" data-i18n="results">Experiment Results</span> <span id="res-type" class="normal-case font-normal opacity-70"></span>
+                </h3>
+                <div class="space-y-1.5 text-xs text-emerald-900 font-mono">
+                    <div class="flex justify-between"><span id="lbl-res-time" data-i18n="resTime">Total Time:</span><span id="res-time" class="font-bold">--</span></div>
+                    <div class="flex justify-between"><span id="lbl-res-height" data-i18n="resHeight">Max Height:</span><span id="res-height" class="font-bold">--</span></div>
+                    <div class="flex justify-between"><span id="lbl-res-range" data-i18n="resRange">Max Range:</span><span id="res-range" class="font-bold">--</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 bg-gray-100 flex flex-col p-3 gap-3 w-full overflow-hidden relative">
+
+        <div id="canvas-container" class="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 relative w-full overflow-hidden min-h-[300px]">
+        <div id="pause-overlay" class="hidden absolute top-10 right-4 bg-yellow-100 text-yellow-800 px-3 py-1 rounded font-bold text-xs shadow border border-yellow-300 z-10 pointer-events-none">PAUSED</div>
+        </div>
+
+        <div class="h-40 flex gap-3 w-full shrink-0">
+            <div class="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 p-2 relative flex flex-col">
+                <div class="flex justify-between items-center mb-1">
+                    <select id="graph1-select" data-default="vx" class="text-[10px] font-bold text-gray-700 border border-gray-300 rounded bg-gray-50 px-1 py-0.5 focus:outline-none uppercase">
+                    </select>
+                </div>
+                <canvas id="graph1" class="flex-1 w-full h-full"></canvas>
+            </div>
+
+            <div class="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 p-2 relative flex flex-col">
+                <div class="flex justify-between items-center mb-1">
+                    <select id="graph2-select" data-default="vy" class="text-[10px] font-bold text-gray-700 border border-gray-300 rounded bg-gray-50 px-1 py-0.5 focus:outline-none uppercase">
+                    </select>
+                </div>
+                <canvas id="graph2" class="flex-1 w-full h-full"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            "en-US": {
+                langEn: "EN",
+                langZh: "繁",
+                title: "Projectile Motion",
+                subtitle: "HKDSE Physics (Force & Motion)",
+                uLabel: "Initial Velocity (u)",
+                thetaLabel: "Launch Angle (θ)",
+                hLabel: "Initial Height (h)",
+                unitMs: "m/s",
+                unitDeg: "deg",
+                unitM: "m",
+                airLabel: "Air Resistance",
+                airOn: "ON",
+                airOff: "OFF",
+                speed1: "1.0x Speed",
+                speed05: "0.5x Slow",
+                speed01: "0.1x Analysis",
+                fire: "FIRE",
+                pause: "PAUSE",
+                resume: "RESUME",
+                clear: "CLEAR",
+                realtime: "Real-time Data",
+                timeLabel: "Time (t)",
+                speedLabel: "Speed (v)",
+                posXLabel: "Pos X (x)",
+                posYLabel: "Pos Y (y)",
+                velXLabelHtml: "Vel X (v<sub>x</sub>)",
+                velYLabelHtml: "Vel Y (v<sub>y</sub>)",
+                results: "Experiment Results",
+                resTime: "Total Time:",
+                resHeight: "Max Height:",
+                resRange: "Max Range:",
+                theo: "(Theoretical)",
+                sim: "(Simulated)",
+                paused: "PAUSED",
+                unitS: "s",
+                graphs: {
+                    vy: "Velocity Y (vy)",
+                    vx: "Velocity X (vx)",
+                    v: "Speed (v)",
+                    y: "Displacement Y (y)",
+                    x: "Displacement X (x)",
+                    ke: "Kinetic Energy (KE)",
+                    pe: "Potential Energy (PE)",
+                    ay: "Acceleration (ay)"
+                }
+            },
+            "zh-HK": {
+                langEn: "EN",
+                langZh: "繁",
+                title: "拋體運動",
+                subtitle: "HKDSE 物理（力與運動）",
+                uLabel: "初速度 (u)",
+                thetaLabel: "發射角度 (θ)",
+                hLabel: "初始高度 (h)",
+                unitMs: "m/s",
+                unitDeg: "度",
+                unitM: "m",
+                airLabel: "空氣阻力",
+                airOn: "開",
+                airOff: "關",
+                speed1: "1.0x 速度",
+                speed05: "0.5x 慢動作",
+                speed01: "0.1x 分析模式",
+                fire: "發射",
+                pause: "暫停",
+                resume: "繼續",
+                clear: "清除",
+                realtime: "實時數據",
+                timeLabel: "時間 (t)",
+                speedLabel: "速率 (v)",
+                posXLabel: "位移 X (x)",
+                posYLabel: "位移 Y (y)",
+                velXLabelHtml: "速度 X (v<sub>x</sub>)",
+                velYLabelHtml: "速度 Y (v<sub>y</sub>)",
+                results: "實驗結果",
+                resTime: "總時間:",
+                resHeight: "最高點:",
+                resRange: "最遠射程:",
+                theo: "(理論值)",
+                sim: "(模擬值)",
+                paused: "已暫停",
+                unitS: "s",
+                graphs: {
+                    vy: "速度 Y (vy)",
+                    vx: "速度 X (vx)",
+                    v: "速率 (v)",
+                    y: "位移 Y (y)",
+                    x: "位移 X (x)",
+                    ke: "動能 (KE)",
+                    pe: "勢能 (PE)",
+                    ay: "加速度 (ay)"
+                }
+            }
+        };
+
+        const supportedLanguages = Object.keys(translations);
+        let currentLang = 'en-US';
+        let lastResultTypeKey = null;
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key);
+            });
+            document.querySelectorAll('[data-i18n-html]').forEach(el => {
+                const key = el.dataset.i18nHtml;
+                el.innerHTML = t(key);
+            });
+            document.title = t('title');
+        }
+
+        function setActiveLanguageButton(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                const isActive = btn.dataset.lang === lang;
+                btn.classList.toggle('active', isActive);
+                btn.classList.toggle('inactive', !isActive);
+            });
+        }
+
+        function updateAirBtnText() {
+            const label = `${t('airLabel')}: ${params.airResistance ? t('airOn') : t('airOff')}`;
+            ui.btns.air.textContent = label;
+        }
+
+        function updatePauseBtnText() {
+            const overlay = document.getElementById('pause-overlay');
+            if (state.paused) {
+                ui.btns.pause.textContent = t('resume');
+                overlay.textContent = t('paused');
+                overlay.classList.remove('hidden');
+            } else {
+                ui.btns.pause.textContent = t('pause');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function updateTimeScaleOptions() {
+            const sel = ui.timeScale;
+            sel.options[0].text = t('speed1');
+            sel.options[1].text = t('speed05');
+            sel.options[2].text = t('speed01');
+        }
+
+        function updateGraphDropdowns(selectEl) {
+            const labels = translations[currentLang].graphs;
+            const currentVal = selectEl.value;
+            selectEl.innerHTML = "";
+            const keys = ['vy', 'vx', 'v', 'y', 'x', 'ke', 'pe', 'ay'];
+            keys.forEach(key => {
+                let opt = document.createElement('option');
+                opt.value = key;
+                opt.text = labels[key];
+                selectEl.appendChild(opt);
+            });
+            const defaultKey = selectEl.dataset.default || keys[0];
+            selectEl.value = currentVal || defaultKey;
+        }
+
+        function changeLanguage(lang, shouldPush = true) {
+            currentLang = supportedLanguages.includes(lang) ? lang : 'en-US';
+            document.documentElement.lang = currentLang;
+            applyTranslations();
+            setActiveLanguageButton(currentLang);
+            updateAirBtnText();
+            updatePauseBtnText();
+            updateTimeScaleOptions();
+            updateGraphDropdowns(ui.graphs.sel1);
+            updateGraphDropdowns(ui.graphs.sel2);
+
+            if (lastResultTypeKey) document.getElementById('res-type').textContent = t(lastResultTypeKey);
+            if (state.history.length > 0) updateGraphs();
+
+            if (shouldPush) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('lang', currentLang);
+                window.history.pushState({}, '', url);
+            }
+        }
+
+        function getInitialLanguage() {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get('lang');
+            return supportedLanguages.includes(lang) ? lang : 'en-US';
+        }
+
+        // --- CONSTANTS ---
+        const g = 9.81;
+        let PIXELS_PER_METER = 8;
+        const GROUND_OFFSET = 50;
+
+        // --- APP STATE ---
+        let state = {
+            t: 0, pos: null, vel: null, acc: null, maxHeightSim: 0,
+            running: false, paused: false, finished: false,
+            history: [], previousRunPath: null, savedPaths: []
+        };
+
+        let params = { u: 25, theta: 45, h: 0, airResistance: false, timeScale: 1.0 };
+
+        // --- DOM ELEMENTS ---
+        const ui = {
+            sliders: { u: document.getElementById('u-slider'), theta: document.getElementById('theta-slider'), h: document.getElementById('h-slider') },
+            inputs: { u: document.getElementById('u-input'), theta: document.getElementById('theta-input'), h: document.getElementById('h-input') },
+            btns: { fire: document.getElementById('btn-fire'), pause: document.getElementById('btn-pause'), clear: document.getElementById('btn-clear'), air: document.getElementById('air-toggle') },
+            data: { t: document.getElementById('data-t'), v: document.getElementById('data-v'), x: document.getElementById('data-x'), y: document.getElementById('data-y'), vx: document.getElementById('data-vx'), vy: document.getElementById('data-vy') },
+            statusDot: document.getElementById('status-dot'),
+            graphs: { sel1: document.getElementById('graph1-select'), sel2: document.getElementById('graph2-select') },
+            txtFire: document.getElementById('txt-fire'),
+            timeScale: document.getElementById('time-scale')
+        };
+
+        function toSigFig(num, n = 3) {
+            if (Math.abs(num) < 1e-9) return "0.00";
+            let val = Number(num);
+            if (Math.abs(val) >= 1000) return val.toFixed(0);
+            if (Math.abs(val) >= 100) return val.toFixed(1);
+            if (Math.abs(val) >= 1) return val.toFixed(2);
+            return val.toPrecision(n);
+        }
+
+        // --- P5.JS ---
+        function setup() {
+            let container = document.getElementById('canvas-container');
+            let c = createCanvas(container.clientWidth, container.clientHeight);
+            c.parent('canvas-container');
+            state.pos = createVector(0,0);
+            state.vel = createVector(0,0);
+            state.acc = createVector(0,0);
+            changeLanguage(getInitialLanguage(), false);
+            resetSimulation(true);
+            window.addEventListener('resize', () => {
+                resizeCanvas(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function draw() {
+            background(255);
+
+            let rad = radians(params.theta);
+            let ux = params.u * Math.cos(rad);
+            let uy = params.u * Math.sin(rad);
+
+            let peakY = params.h;
+            if (uy > 0) peakY += (uy * uy) / (2 * g);
+
+            let t_flight = 0;
+            if (uy < 0 && params.h <= 0) t_flight = 0;
+            else {
+                let delta = Math.sqrt(uy * uy + 2 * g * params.h);
+                t_flight = (uy + delta) / g;
+            }
+            let maxDistX = Math.abs(ux * t_flight);
+
+            if (maxDistX < 1) maxDistX = 10;
+            if (peakY < 1) peakY = 10;
+
+            let marginX = 120;
+            let marginY = 120;
+
+            let scaleX = (width - marginX) / maxDistX;
+            let scaleY = (height - marginY) / peakY;
+
+            let targetScale = Math.min(scaleX, scaleY);
+            targetScale = constrain(targetScale, 0.5, 30);
+
+            PIXELS_PER_METER = lerp(PIXELS_PER_METER, targetScale, 0.1);
+
+            drawGrid();
+
+            if (state.running && !state.paused && !state.finished) {
+                let dt = (deltaTime / 1000) * params.timeScale;
+                if (dt > 0.05) dt = 0.05;
+                updatePhysics(dt);
+            }
+
+            drawPaths();
+            drawCannon();
+            drawBall();
+
+            if (state.running || state.paused) drawVectors();
+            if (state.running && !state.paused) updateGraphs();
+
+            updateStatusDot();
+        }
+
+        // --- PHYSICS ---
+        function updatePhysics(dt) {
+            let prevPos = state.pos.copy();
+            let prevT = state.t;
+            state.t += dt;
+
+            let gravity = createVector(0, -g);
+            let drag = createVector(0, 0);
+            let currentAccY = -g;
+
+            if (params.airResistance) {
+                let k = 0.1;
+                drag = state.vel.copy().mult(-1).mult(k);
+                state.acc = p5.Vector.add(gravity, drag);
+                currentAccY = state.acc.y;
+            } else {
+                state.acc = gravity;
+            }
+
+            state.vel.add(p5.Vector.mult(state.acc, dt));
+            state.pos.add(p5.Vector.mult(state.vel, dt));
+
+            if (state.pos.y > state.maxHeightSim) state.maxHeightSim = state.pos.y;
+            recordHistory(currentAccY);
+
+            if (state.pos.y <= 0) {
+                finishRun(prevPos, prevT, dt);
+            } else {
+                updateRealtimeData();
+            }
+        }
+
+        function recordHistory(ay) {
+            state.history.push({
+                t: state.t, x: state.pos.x, y: state.pos.y,
+                vx: state.vel.x, vy: state.vel.y, v: state.vel.mag(),
+                ay: ay, ke: 0.5 * Math.pow(state.vel.mag(), 2), pe: 9.81 * state.pos.y
+            });
+        }
+
+        function finishRun(prevPos, prevT, dt) {
+            state.running = false;
+            state.finished = true;
+            let dy = prevPos.y - state.pos.y;
+            let frac = (dy > 1e-9) ? prevPos.y / dy : 0;
+            let impactT = prevT + (dt * frac);
+            let impactX = prevPos.x + ((state.pos.x - prevPos.x) * frac);
+
+            if (!params.airResistance) {
+                let theo = calculateTheoretical();
+                state.t = theo.time;
+                state.pos.x = theo.range;
+                state.pos.y = 0;
+                let finalV = Math.sqrt(Math.pow(params.u, 2) + 2 * g * params.h);
+                let finalVx = params.u * Math.cos(radians(params.theta));
+                let finalVy = Math.sqrt(Math.pow(finalV, 2) - Math.pow(finalVx, 2));
+                if (params.theta >= 0) finalVy = -finalVy;
+                state.history.push({
+                    t: state.t, x: state.pos.x, y: 0,
+                    vx: finalVx, vy: finalVy, v: finalV, ay: -g, ke: 0.5 * Math.pow(finalV, 2), pe: 0
+                });
+                showResults(theo.time, theo.height, theo.range, "theo");
+            } else {
+                state.t = impactT; state.pos.x = impactX; state.pos.y = 0;
+                state.history.push({
+                    t: impactT, x: impactX, y: 0,
+                    vx: state.vel.x, vy: state.vel.y, v: state.vel.mag(),
+                    ay: state.acc.y, ke: 0.5 * Math.pow(state.vel.mag(), 2), pe: 0
+                });
+                showResults(impactT, state.maxHeightSim, impactX, "sim");
+            }
+            state.vel.set(0,0);
+            state.previousRunPath = state.history.map(h => createVector(h.x, h.y));
+            updateRealtimeData();
+            updateGraphs();
+        }
+
+        // --- DRAWING ---
+        function toScreen(v) {
+            return createVector(60 + v.x * PIXELS_PER_METER, height - GROUND_OFFSET - v.y * PIXELS_PER_METER);
+        }
+
+        function drawGrid() {
+            noStroke(); fill(245); rect(0, height - GROUND_OFFSET, width, GROUND_OFFSET);
+            stroke(200); strokeWeight(1); line(0, height - GROUND_OFFSET, width, height - GROUND_OFFSET);
+            fill(150); noStroke(); textSize(10); textAlign(CENTER);
+
+            let step = 10;
+            if (PIXELS_PER_METER < 2) step = 50;
+            else if (PIXELS_PER_METER < 5) step = 20;
+            else if (PIXELS_PER_METER > 15) step = 5;
+
+            for (let x = 0; x < width / PIXELS_PER_METER; x += step) {
+                let sx = 60 + x * PIXELS_PER_METER;
+                text(x, sx, height - GROUND_OFFSET + 15);
+                stroke(240); line(sx, 0, sx, height - GROUND_OFFSET);
+            }
+        }
+
+        function drawPaths() {
+            noFill(); strokeWeight(2); stroke(220);
+            for (let path of state.savedPaths) {
+                beginShape();
+                path.forEach(p => { let s = toScreen(p); vertex(s.x, s.y); });
+                endShape();
+            }
+            if (state.history.length > 0) {
+                stroke(100);
+                beginShape();
+                state.history.forEach(h => { let s = toScreen(createVector(h.x, h.y)); vertex(s.x, s.y); });
+                endShape();
+            }
+        }
+
+        function drawCannon() {
+            let start = toScreen(createVector(0, params.h));
+            push(); translate(start.x, start.y);
+            stroke(100); strokeWeight(3); line(0, 0, 0, (height - GROUND_OFFSET) - start.y);
+            rotate(radians(-params.theta)); noStroke(); fill(80); rect(0, -5, 30, 10);
+            pop();
+        }
+
+        function drawBall() {
+            let s = toScreen(state.pos);
+            fill(50); noStroke(); circle(s.x, s.y, 14);
+        }
+
+        function drawVectors() {
+            let s = toScreen(state.pos);
+            if (state.vel.mag() < 0.1) return;
+            let scale = 3.0;
+            if (Math.abs(state.vel.x) > 0.1) drawArrow(s, createVector(state.vel.x, 0), '#ef4444', scale);
+            if (Math.abs(state.vel.y) > 0.1) drawArrow(s, createVector(0, state.vel.y), '#9333ea', scale);
+            drawArrow(s, state.vel, '#22c55e', scale);
+        }
+
+        function drawArrow(base, vec, colorHex, scale) {
+            push(); stroke(colorHex); fill(colorHex); strokeWeight(2);
+            translate(base.x, base.y);
+            let vDraw = createVector(vec.x, -vec.y).mult(scale);
+            line(0, 0, vDraw.x, vDraw.y);
+            rotate(vDraw.heading());
+            translate(vDraw.mag() - 5, 0);
+            triangle(0, 3, 0, -3, 6, 0);
+            pop();
+        }
+
+        function updateGraphs() {
+            if (frameCount % 3 !== 0 && !state.finished) return;
+            let tArr = state.history.map(h => h.t);
+            renderGraph('graph1', tArr, state.history, ui.graphs.sel1.value);
+            renderGraph('graph2', tArr, state.history, ui.graphs.sel2.value);
+        }
+
+        function renderGraph(canvasId, tArr, history, key) {
+            let cvs = document.getElementById(canvasId);
+            let ctx = cvs.getContext('2d');
+            if (cvs.width !== cvs.clientWidth) { cvs.width = cvs.clientWidth; cvs.height = cvs.clientHeight; }
+            ctx.clearRect(0,0,cvs.width, cvs.height);
+            if (history.length < 2) return;
+
+            let yArr = history.map(h => h[key]);
+            let color = "#666";
+            if (key.includes('v')) color = (key === 'vx') ? '#ef4444' : (key === 'vy' ? '#9333ea' : '#22c55e');
+            else if (key.includes('x')) color = '#ef4444';
+            else if (key.includes('y') && key !== 'ay') color = '#9333ea';
+            else if (key === 'ke') color = '#f59e0b'; else if (key === 'pe') color = '#3b82f6'; else if (key === 'ay') color = '#000000';
+
+            let maxT = Math.max(...tArr) || 1;
+            let maxY = Math.max(...yArr);
+            let minY = Math.min(...yArr);
+
+            if (Math.abs(maxY - minY) < 1e-5) {
+                let center = maxY; maxY = center + 10; minY = center - 10;
+            } else {
+                let span = maxY - minY; maxY += span * 0.065; minY -= span * 0.065;
+            }
+            if (['v', 'vx', 'vy', 'ke', 'pe'].includes(key)) {
+                if (minY > 0) minY = 0; if (maxY < 0) maxY = 0;
+            }
+
+            let rangeY = maxY - minY;
+            let padL = 15, padB = 15, padT = 10, padR = 15;
+            let w = cvs.width - padL - padR;
+            let h = cvs.height - padT - padB;
+
+            ctx.beginPath(); ctx.strokeStyle = "#eee"; ctx.lineWidth = 1; ctx.rect(padL, padT, w, h); ctx.stroke();
+
+            let xAxisY = (cvs.height - padB);
+            if (minY <= 0 && maxY >= 0) xAxisY = (cvs.height - padB) - ((0 - minY) / rangeY) * h;
+            ctx.beginPath(); ctx.strokeStyle = "#000"; ctx.lineWidth = 1.5;
+            ctx.moveTo(padL, xAxisY); ctx.lineTo(cvs.width - 5, xAxisY);
+            ctx.moveTo(padL, cvs.height - padB); ctx.lineTo(padL, 5);
+            ctx.stroke();
+
+            drawArrowHead(ctx, cvs.width - 5, xAxisY, 'right');
+            drawArrowHead(ctx, padL, 5, 'up');
+
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+            let minPX = padL; let maxPX = cvs.width - padR; let minPY = padT; let maxPY = cvs.height - padB;
+
+            for (let i = 0; i < tArr.length; i++) {
+                let px = padL + (tArr[i] / maxT) * w;
+                let py = (cvs.height - padB) - ((yArr[i] - minY) / rangeY) * h;
+                px = Math.max(minPX, Math.min(maxPX, px)); py = Math.max(minPY, Math.min(maxPY, py));
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+
+        function drawArrowHead(ctx, x, y, dir) {
+            ctx.beginPath(); ctx.fillStyle = "#000";
+            if (dir === 'right') { ctx.moveTo(x, y); ctx.lineTo(x - 6, y - 3); ctx.lineTo(x - 6, y + 3); }
+            else if (dir === 'up') { ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 6); ctx.lineTo(x + 3, y + 6); }
+            ctx.fill();
+        }
+
+        function calculateTheoretical() {
+            let rad = radians(params.theta);
+            let ux = params.u * Math.cos(rad);
+            let uy = params.u * Math.sin(rad);
+            let delta = Math.sqrt(uy * uy + 2 * g * params.h);
+            let t = (uy + delta) / g;
+            let range = ux * t;
+            let maxHeight = (params.theta < 0) ? params.h : params.h + (uy * uy) / (2 * g);
+            return { time: t, range: range, height: maxHeight };
+        }
+
+        function updateRealtimeData() {
+            ui.data.t.textContent = `${toSigFig(state.t)} ${t('unitS')}`;
+            ui.data.v.textContent = `${toSigFig(state.vel.mag())} ${t('unitMs')}`;
+            ui.data.x.textContent = `${toSigFig(state.pos.x)} ${t('unitM')}`;
+            ui.data.y.textContent = `${toSigFig(state.pos.y)} ${t('unitM')}`;
+            ui.data.vx.textContent = `${toSigFig(state.vel.x)} ${t('unitMs')}`;
+            ui.data.vy.textContent = `${toSigFig(state.vel.y)} ${t('unitMs')}`;
+        }
+
+        function showResults(tVal, hVal, rVal, typeKey) {
+            lastResultTypeKey = typeKey;
+            document.getElementById('results-panel').classList.remove('hidden');
+            document.getElementById('res-type').textContent = t(typeKey);
+            document.getElementById('res-time').textContent = `${toSigFig(tVal, 4)} ${t('unitS')}`;
+            document.getElementById('res-height').textContent = `${toSigFig(hVal, 4)} ${t('unitM')}`;
+            document.getElementById('res-range').textContent = `${toSigFig(rVal, 4)} ${t('unitM')}`;
+        }
+
+        function updateStatusDot() {
+            if (state.paused) ui.statusDot.className = "w-2 h-2 rounded-full bg-yellow-500";
+            else if (state.running) ui.statusDot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
+            else ui.statusDot.className = "w-2 h-2 rounded-full bg-gray-400";
+        }
+
+        function resetSimulation(fullClear = false) {
+            state.running = false; state.paused = false; state.finished = false;
+            state.maxHeightSim = params.h; state.t = 0; state.history = [];
+            if (fullClear) {
+                state.savedPaths = []; state.previousRunPath = null;
+                document.getElementById('results-panel').classList.add('hidden');
+                lastResultTypeKey = null;
+            }
+            let rad = radians(params.theta);
+            state.pos.set(0, params.h);
+            state.vel.set(params.u * Math.cos(rad), params.u * Math.sin(rad));
+            if (params.airResistance) {
+                let k = 0.1;
+                let drag = state.vel.copy().mult(-1).mult(k);
+                let acc = p5.Vector.add(createVector(0, -g), drag);
+                state.acc.set(acc.x, acc.y);
+            } else {
+                state.acc.set(0, -g);
+            }
+            state.history.push({
+                t: 0,
+                x: state.pos.x,
+                y: state.pos.y,
+                vx: state.vel.x,
+                vy: state.vel.y,
+                v: state.vel.mag(),
+                ay: state.acc.y,
+                ke: 0.5 * Math.pow(state.vel.mag(), 2),
+                pe: 9.81 * state.pos.y
+            });
+            updateRealtimeData();
+            updatePauseBtnText();
+            ['graph1', 'graph2'].forEach(id => {
+                let c = document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width, c.height);
+            });
+            document.getElementById('pause-overlay').classList.add('hidden');
+        }
+
+        function handleFire() {
+            if (state.previousRunPath) {
+                state.savedPaths.push(state.previousRunPath);
+                state.previousRunPath = null;
+            }
+            resetSimulation(false);
+            state.running = true;
+        }
+
+        function handlePause() {
+            if (!state.running && !state.finished) return;
+            state.paused = !state.paused;
+            updatePauseBtnText();
+        }
+
+        function syncInput(p, isSlider) {
+            let val = parseFloat(isSlider ? ui.sliders[p].value : ui.inputs[p].value);
+            if (!isSlider) {
+                let min = parseFloat(ui.inputs[p].min); let max = parseFloat(ui.inputs[p].max);
+                if (val < min) val = min; if (val > max) val = max;
+            }
+            params[p] = val; ui.sliders[p].value = val; ui.inputs[p].value = val;
+            resetSimulation(false);
+        }
+        ['u', 'theta', 'h'].forEach(k => {
+            ui.sliders[k].addEventListener('input', () => syncInput(k, true));
+            ui.inputs[k].addEventListener('change', () => syncInput(k, false));
+        });
+
+        ui.btns.fire.onclick = handleFire;
+        ui.btns.pause.onclick = handlePause;
+        ui.btns.clear.onclick = () => resetSimulation(true);
+        ui.btns.air.onclick = () => {
+            params.airResistance = !params.airResistance;
+            updateAirBtnText();
+            resetSimulation(false);
+        };
+        ui.timeScale.onchange = (e) => params.timeScale = parseFloat(e.target.value);
+        ui.graphs.sel1.addEventListener('change', () => { if (state.finished || state.paused) updateGraphs(); });
+        ui.graphs.sel2.addEventListener('change', () => { if (state.finished || state.paused) updateGraphs(); });
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+        });
+        window.addEventListener('popstate', () => {
+            changeLanguage(getInitialLanguage(), false);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouncing Ball Free Fall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Slider Styles */
+        .slider-wrapper {
+            position: relative;
+            width: 30px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider-vertical {
+            -webkit-appearance: none;
+            width: 100px; 
+            height: 4px;
+            background: #9ca3af;
+            outline: none;
+            border-radius: 2px;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            cursor: pointer;
+        }
+
+        .slider-vertical::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #2563eb;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .slider-vertical::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #2563eb;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; 
+        }
+
+        .lang-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+
+        .lang-toggle button {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #334155;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .lang-toggle button.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex flex-col overflow-hidden text-slate-800 font-sans">
+
+    <!-- Top Control Bar -->
+    <header class="bg-white shadow-sm z-30 px-3 py-2.5 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 shrink-0 border-b border-gray-200 text-xs sm:text-sm h-auto relative">
+        
+        <!-- Left Group: Playback -->
+        <div class="flex items-center space-x-1">
+            <button id="btn-play" class="flex items-center px-2 sm:px-3 py-1 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded shadow-sm transition font-medium">
+                <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                </svg>
+                <svg id="icon-pause" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4 mr-1 hidden" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <span id="txt-play" data-i18n="play">Play</span>
+            </button>
+            <button id="btn-reset" class="flex items-center px-2 sm:px-3 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded shadow-sm transition font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                <span data-i18n="reset">Reset</span>
+            </button>
+        </div>
+
+        <!-- Middle Group: Inputs & Physics -->
+        <div class="flex flex-wrap items-center gap-2 justify-center border-l border-gray-200 pl-2">
+            
+            <!-- Pos Adjustment -->
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="moveBall">Move Ball</span>
+                <div class="flex space-x-0.5">
+                    <button id="btn-move-down" class="px-2 py-0.5 text-[11px] rounded bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 font-bold" title="-10m">↓</button>
+                    <button id="btn-move-up" class="px-2 py-0.5 text-[11px] rounded bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 font-bold" title="+10m">↑</button>
+                </div>
+            </div>
+
+            <!-- Inputs -->
+            <div class="flex items-center space-x-2">
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="initH">Init H</span>
+                    <input type="number" id="inp-init-h" value="45" class="w-11 px-1 py-0.5 text-[11px] sm:text-sm border rounded text-center outline-none focus:border-blue-500">
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="origin">Origin</span>
+                    <input type="number" id="inp-origin" value="50" class="w-11 px-1 py-0.5 text-[11px] sm:text-sm border rounded text-center outline-none focus:border-blue-500">
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="cor">COR</span>
+                    <input type="number" id="inp-cor" value="1" step="0.1" min="0" max="1" class="w-12 px-1 py-0.5 text-[11px] sm:text-sm border rounded text-center outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- Mass Slider -->
+            <div class="flex flex-col items-center border-l border-gray-200 pl-2 w-24">
+                <div class="flex justify-between w-full text-[10px] text-gray-400 leading-none mb-0.5">
+                    <span data-i18n="mass">Mass</span>
+                    <span id="val-mass" class="text-blue-600 font-bold">1kg</span>
+                </div>
+                <input type="range" id="inp-mass" min="1" max="5" step="0.1" value="1" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Physics Toggles -->
+            <div class="flex items-center space-x-2 border-l border-gray-200 pl-2">
+                <label class="flex flex-col items-center cursor-pointer select-none">
+                    <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="air">Air</span>
+                    <input type="checkbox" id="chk-air" class="accent-orange-500 w-3 h-3 sm:w-4 sm:h-4 rounded">
+                </label>
+                
+                <button id="btn-parachute" disabled class="flex flex-col items-center justify-center px-2 py-0.5 rounded border transition-colors opacity-50 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400 hover:bg-gray-200">
+                    <span class="text-[10px] leading-none mb-0.5" data-i18n="para">Para</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 2a6 6 0 00-6 6v3a6 6 0 006 6 6 6 0 006-6V8a6 6 0 00-6-6zM5 8a5 5 0 015-5v10a5 5 0 01-5-5z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Group: View & Vectors -->
+        <div class="flex flex-wrap items-center gap-2 justify-end border-l border-gray-200 pl-2 ml-auto">
+            
+            <!-- Zoom & Lock -->
+            <div class="flex items-center space-x-2">
+                <label class="flex flex-col items-center cursor-pointer select-none" title="Lock Camera">
+                    <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="lock">Lock</span>
+                    <input type="checkbox" id="chk-cam-lock" class="accent-gray-600 w-3 h-3 sm:w-4 sm:h-4 rounded">
+                </label>
+                
+                <div class="flex items-center bg-gray-100 rounded border border-gray-200">
+                    <button id="btn-zoom-out" class="px-1.5 py-0.5 hover:bg-gray-200 text-gray-600 font-bold text-xs">-</button>
+                    <span id="txt-zoom" class="text-[10px] sm:text-sm font-mono w-9 text-center text-gray-600">100</span>
+                    <button id="btn-zoom-in" class="px-1.5 py-0.5 hover:bg-gray-200 text-gray-600 font-bold text-xs">+</button>
+                </div>
+            </div>
+
+            <!-- Vectors -->
+            <div class="flex items-center space-x-1 sm:space-x-2">
+                <label class="flex flex-col items-center cursor-pointer select-none" title="Velocity Vector">
+                    <span class="text-[10px] text-blue-500 leading-none mb-0.5 font-bold" data-i18n="vecV">v</span>
+                    <input type="checkbox" id="chk-vec-v" class="accent-blue-600 w-3 h-3 sm:w-4 sm:h-4 rounded">
+                </label>
+                <label class="flex flex-col items-center cursor-pointer select-none" title="Acceleration Vector">
+                    <span class="text-[10px] text-green-500 leading-none mb-0.5 font-bold" data-i18n="vecA">a</span>
+                    <input type="checkbox" id="chk-vec-a" class="accent-green-600 w-3 h-3 sm:w-4 sm:h-4 rounded">
+                </label>
+                <label class="flex flex-col items-center cursor-pointer select-none" title="Force Vectors (Gravity & Drag)">
+                    <span class="text-[10px] text-purple-500 leading-none mb-0.5 font-bold" data-i18n="vecF">F</span>
+                    <input type="checkbox" id="chk-vec-f" class="accent-purple-600 w-3 h-3 sm:w-4 sm:h-4 rounded">
+                </label>
+            </div>
+
+            <!-- Direction -->
+             <div class="flex flex-col items-center ml-1">
+                <span class="text-[10px] text-gray-400 leading-none mb-0.5" data-i18n="posLabel">Pos</span>
+                <div class="flex">
+                    <button id="btn-dir-down" class="px-1.5 py-0.5 text-[11px] rounded-l shadow-sm bg-white text-blue-700 font-bold border border-gray-300">↓</button>
+                    <button id="btn-dir-up" class="px-1.5 py-0.5 text-[11px] rounded-r bg-gray-100 text-gray-400 border border-l-0 border-gray-300">↑</button>
+                </div>
+            </div>
+            <div class="lang-toggle ml-2" aria-label="Language selector">
+                <button type="button" class="lang-btn" data-lang="en-US">EN</button>
+                <button type="button" class="lang-btn" data-lang="zh-HK">繁</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative" style="height: calc(100vh - 60px);">
+        
+        <!-- Graphs Section (Left) -->
+        <div class="flex flex-col w-full md:w-1/2 lg:w-2/3 p-2 gap-2 bg-slate-50 md:border-r border-gray-200 order-2 md:order-1 h-1/2 md:h-full">
+            <div class="flex-1 relative border border-gray-200 rounded-lg bg-white shadow-sm min-h-0 overflow-hidden">
+                <canvas id="chart-s" class="absolute inset-0 w-full h-full"></canvas>
+                <div class="absolute top-2 left-8 text-[12px] font-bold text-gray-500 bg-white/80 px-1 rounded z-10" data-i18n="graphPos">Position (m) vs Time (s)</div>
+            </div>
+            <div class="flex-1 relative border border-gray-200 rounded-lg bg-white shadow-sm min-h-0 overflow-hidden">
+                <canvas id="chart-v" class="absolute inset-0 w-full h-full"></canvas>
+                <div class="absolute top-2 left-8 text-[12px] font-bold text-blue-500 bg-white/80 px-1 rounded z-10" data-i18n="graphVel">Velocity (m/s) vs Time (s)</div>
+            </div>
+            <div class="flex-1 relative border border-gray-200 rounded-lg bg-white shadow-sm min-h-0 overflow-hidden">
+                <canvas id="chart-a" class="absolute inset-0 w-full h-full"></canvas>
+                <div class="absolute top-2 left-8 text-[12px] font-bold text-green-600 bg-white/80 px-1 rounded z-10" data-i18n="graphAccel">Accel (m/s²) vs Time (s)</div>
+            </div>
+        </div>
+
+        <!-- Simulation Section (Right) -->
+        <div class="w-full md:w-1/2 lg:w-1/3 bg-slate-100 relative flex flex-col border-b md:border-b-0 md:border-l border-gray-200 no-select order-1 md:order-2 h-1/2 md:h-full shrink-0">
+            
+            <!-- Animation Container -->
+            <div class="flex-1 relative overflow-hidden bg-white" id="sim-container">
+                
+                <!-- Layer 1: Background Canvas (Gridlines) -->
+                <canvas id="bg-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+
+                <!-- Layer 2: Ball -->
+                <div id="ball" class="absolute left-1/2 -ml-5 w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full shadow-lg cursor-grab active:cursor-grabbing hover:scale-105 z-10 select-none pointer-events-auto transform-gpu origin-center"></div>
+
+                <!-- Layer 3: Foreground Canvas (Vectors) -->
+                <canvas id="fg-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-20"></canvas>
+
+                <!-- Floating Controls (Slider & Meter) -->
+                <div class="absolute top-4 left-4 z-30 flex flex-col items-center p-3 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-sm transition-opacity hover:opacity-100 opacity-90 pointer-events-auto w-24">
+                    
+                    <!-- Slider Section -->
+                    <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1" data-i18n="initV0">Init V₀</span>
+                    <div class="slider-wrapper">
+                        <input type="range" id="slider-v0" min="-20" max="20" value="0" step="1" class="slider-vertical">
+                    </div>
+                    <div class="text-center mb-3">
+                        <span id="val-v0" class="text-xs font-mono font-bold text-gray-700">0</span>
+                    <span class="text-[9px] text-gray-400" data-i18n="unitMs">m/s</span>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="w-full h-px bg-gray-200 mb-2"></div>
+
+                    <!-- Current Velocity Section -->
+                    <span class="text-[9px] font-bold text-blue-500 uppercase tracking-wider mb-1" data-i18n="currV">Curr V</span>
+                    <div class="text-center">
+                        <span id="val-curr-v" class="text-sm font-mono font-bold text-blue-700">0.0</span>
+                    <span class="text-[9px] text-blue-400" data-i18n="unitMs">m/s</span>
+                    </div>
+                </div>
+
+                <!-- Hint -->
+                <div id="hint-overlay" class="absolute inset-x-0 bottom-4 text-center pointer-events-none transition-opacity duration-300 opacity-100 z-40">
+                    <span class="bg-black/10 text-gray-500 text-[10px] px-2 py-1 rounded-full backdrop-blur-sm" data-i18n="pausedHint">Paused: Drag ball • Adjust V₀</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const translations = {
+            "en-US": {
+                title: "Bouncing Ball Free Fall",
+                play: "Play",
+                pause: "Pause",
+                reset: "Reset",
+                moveBall: "Move Ball",
+                initH: "Init H",
+                origin: "Origin",
+                cor: "COR",
+                mass: "Mass",
+                air: "Air",
+                para: "Para",
+                lock: "Lock",
+                posLabel: "Pos",
+                vecV: "v",
+                vecA: "a",
+                vecF: "F",
+                graphPos: "Position (m) vs Time (s)",
+                graphVel: "Velocity (m/s) vs Time (s)",
+                graphAccel: "Accel (m/s²) vs Time (s)",
+                initV0: "Init V₀",
+                currV: "Curr V",
+                pausedHint: "Paused: Drag ball • Adjust V₀",
+                unitMs: "m/s",
+                unitM: "m",
+                unitKg: "kg",
+                heightLabel: "Height",
+                positionLabel: "Position",
+                originMarker: "s=0"
+            },
+            "zh-HK": {
+                title: "彈跳球自由落體",
+                play: "播放",
+                pause: "暫停",
+                reset: "重設",
+                moveBall: "移動球",
+                initH: "初始高度",
+                origin: "原點",
+                cor: "恢復係數",
+                mass: "質量",
+                air: "空氣",
+                para: "降落傘",
+                lock: "鎖定",
+                posLabel: "方向",
+                vecV: "v",
+                vecA: "a",
+                vecF: "F",
+                graphPos: "位置 (m) 對 時間 (s)",
+                graphVel: "速度 (m/s) 對 時間 (s)",
+                graphAccel: "加速度 (m/s²) 對 時間 (s)",
+                initV0: "初速 V₀",
+                currV: "現速",
+                pausedHint: "暫停：拖動球 • 調整 V₀",
+                unitMs: "m/s",
+                unitM: "m",
+                unitKg: "kg",
+                heightLabel: "高度",
+                positionLabel: "位置",
+                originMarker: "s=0"
+            }
+        };
+
+        const supportedLanguages = Object.keys(translations);
+        let currentLang = "en-US";
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key);
+            });
+            document.title = t('title');
+        }
+
+        function setActiveLanguageButton(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+        }
+
+        function updatePlayButton() {
+            ui.txtPlay.textContent = state.paused ? t('play') : t('pause');
+        }
+
+        function updateUnits() {
+            ui.valMass.innerText = state.mass.toFixed(1) + t('unitKg');
+        }
+
+        function changeLanguage(lang, shouldPush = true) {
+            currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+            document.documentElement.lang = currentLang;
+            applyTranslations();
+            setActiveLanguageButton(currentLang);
+            updatePlayButton();
+            updateUnits();
+            if (shouldPush) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('lang', currentLang);
+                window.history.pushState({}, '', url);
+            }
+        }
+
+        function getInitialLanguage() {
+            const params = new URLSearchParams(window.location.search);
+            const lang = params.get('lang');
+            return supportedLanguages.includes(lang) ? lang : "en-US";
+        }
+
+        // --- Configuration & Constants ---
+        const CONSTANTS = {
+            g: -9.81,          // m/s^2 (Physics: UP is +h)
+            baseViewHeight: 50, 
+            maxHistory: 10,   
+            vectorScaleV: 3,  
+            vectorScaleA: 5, 
+            vectorScaleF: 4.0, // Scale for Forces
+            cameraBuffer: 3,  
+            dragCoeff: 0.02,   // Base Air Resistance factor
+            parachuteDrag: 0.8 // High Drag for Parachute
+        };
+
+        // --- State ---
+        const state = {
+            t: 0,
+            h: 45,            
+            v: 0,             
+            a: -9.81,         
+            v0: 0,           
+            mass: 1.0,        
+            
+            originH: 50,      
+            airResistance: false, 
+            parachute: false,
+            
+            squashScale: 1.0, 
+            
+            cameraBottom: 0,  
+            cameraTarget: 0,  
+            cameraVel: 0,     
+            
+            zoom: 1.0,       
+            cameraLocked: false,
+            
+            paused: true,
+            dragging: false,
+            dragScreenY: 0, 
+            
+            downIsPositive: true,
+            showVVector: false,
+            showAVector: false,
+            showForces: false, 
+            
+            history: [],
+            lastFrameTime: 0
+        };
+
+        // --- DOM Elements ---
+        const ui = {
+            ball: document.getElementById('ball'),
+            container: document.getElementById('sim-container'),
+            bgCanvas: document.getElementById('bg-canvas'),
+            fgCanvas: document.getElementById('fg-canvas'),
+            
+            btnPlay: document.getElementById('btn-play'),
+            txtPlay: document.getElementById('txt-play'),
+            iconPlay: document.getElementById('icon-play'),
+            iconPause: document.getElementById('icon-pause'),
+            btnReset: document.getElementById('btn-reset'),
+            
+            btnDirDown: document.getElementById('btn-dir-down'),
+            btnDirUp: document.getElementById('btn-dir-up'),
+            
+            sliderV0: document.getElementById('slider-v0'),
+            valV0: document.getElementById('val-v0'),
+            valCurrV: document.getElementById('val-curr-v'),
+            
+            inpInitH: document.getElementById('inp-init-h'),
+            inpOrigin: document.getElementById('inp-origin'),
+            inpCor: document.getElementById('inp-cor'),
+            inpMass: document.getElementById('inp-mass'),
+            valMass: document.getElementById('val-mass'),
+            
+            chkCamLock: document.getElementById('chk-cam-lock'),
+            chkAir: document.getElementById('chk-air'),
+            btnParachute: document.getElementById('btn-parachute'),
+            
+            btnZoomIn: document.getElementById('btn-zoom-in'),
+            btnZoomOut: document.getElementById('btn-zoom-out'),
+            txtZoom: document.getElementById('txt-zoom'),
+            
+            btnMoveUp: document.getElementById('btn-move-up'),
+            btnMoveDown: document.getElementById('btn-move-down'),
+            
+            hint: document.getElementById('hint-overlay'),
+            chkV: document.getElementById('chk-vec-v'),
+            chkA: document.getElementById('chk-vec-a'),
+            chkF: document.getElementById('chk-vec-f'),
+            
+            charts: {
+                s: document.getElementById('chart-s'),
+                v: document.getElementById('chart-v'),
+                a: document.getElementById('chart-a'),
+            }
+        };
+
+        // --- Physics & Logic ---
+
+        function updatePhysics(dt) {
+            
+            // --- 1. Calculate Forces (Always) ---
+            let k = 0;
+            if (state.airResistance) {
+                k = state.parachute ? CONSTANTS.parachuteDrag : CONSTANTS.dragCoeff;
+            }
+
+            let accel = CONSTANTS.g; 
+
+            if (k > 0) {
+                const dragForce = -k * state.v * Math.abs(state.v);
+                const dragAccel = dragForce / state.mass; 
+                accel += dragAccel;
+            }
+
+            state.a = accel;
+
+            // --- 2. Update Camera (Always) ---
+            updateCamera(dt);
+            updateSquash(dt);
+
+            // --- 3. Integration (Only if running) ---
+            if (state.paused || state.dragging) return;
+
+            const cor = parseFloat(ui.inpCor.value) || 1.0;
+
+            state.v += state.a * dt;
+            state.h += state.v * dt;
+
+            // Collision
+            if (state.h <= 0) {
+                state.h = 0;
+                if (Math.abs(state.v) > 2.0) state.squashScale = 0.7; 
+                state.v = -state.v * cor;
+                if (Math.abs(state.v) < 0.5 && state.h <= 0.01) state.v = 0;
+            }
+            
+            state.t += dt;
+            recordHistory();
+        }
+
+        function updateSquash(dt) {
+            const recoverySpeed = 10.0;
+            const diff = 1.0 - state.squashScale;
+            if (Math.abs(diff) > 0.01) {
+                state.squashScale += diff * recoverySpeed * dt;
+            } else {
+                state.squashScale = 1.0;
+            }
+        }
+
+        // --- Camera Logic ---
+        function updateCamera(dt) {
+            if (state.cameraLocked) return;
+
+            const viewHeight = CONSTANTS.baseViewHeight / state.zoom;
+            const buffer = CONSTANTS.cameraBuffer; // 3m
+            
+            let idealBottom = state.cameraTarget; 
+
+            // 1. Play Mode: Hard Tracking (No Physics)
+            if (!state.paused && !state.dragging) {
+                // Pin ball 3m from top (or whatever buffer is)
+                // H_ball = CameraBottom + ViewHeight - Buffer
+                const hardTarget = state.h - (viewHeight - buffer);
+                state.cameraBottom = hardTarget > 0 ? hardTarget : 0;
+                state.cameraTarget = state.cameraBottom;
+                state.cameraVel = 0;
+                return;
+            }
+
+            // 2. Pause / Drag Mode: Spring Physics
+            if (state.dragging) {
+                const containerH = ui.container.clientHeight;
+                const pxPerMeter = containerH / viewHeight;
+                const mouseH_relative = (containerH - state.dragScreenY) / pxPerMeter;
+                
+                // Edge Scrolling
+                const scrollSpeed = 150.0;
+                if (mouseH_relative > viewHeight - buffer) {
+                    idealBottom = state.cameraBottom + scrollSpeed * dt; 
+                } else if (mouseH_relative < buffer) {
+                    idealBottom = state.cameraBottom - scrollSpeed * dt; 
+                } else {
+                    idealBottom = state.cameraBottom; 
+                }
+                
+                if (idealBottom < 0) idealBottom = 0;
+                
+                // Soft Spring for Drag (K=100, D=20)
+                const k = 100.0; 
+                const d = 20.0;
+                const displacement = idealBottom - state.cameraBottom;
+                const acceleration = (displacement * k) - (state.cameraVel * d);
+                state.cameraVel += acceleration * dt;
+                state.cameraBottom += state.cameraVel * dt;
+                
+                // Update Targets
+                state.cameraTarget = idealBottom;
+                state.h = state.cameraBottom + mouseH_relative;
+                if (state.h < 0) state.h = 0;
+                
+            } else {
+                // Paused & Released (Post-Drag Smoothing)
+                // Target is Cinematic Position (Ball @ Top Buffer)
+                const cinematicTarget = state.h - (viewHeight - buffer);
+                idealBottom = cinematicTarget > 0 ? cinematicTarget : 0;
+                state.cameraTarget = idealBottom;
+
+                // Stiffer Spring to settle (K=400, D=40)
+                const k = 400.0; 
+                const d = 40.0;
+                const displacement = state.cameraTarget - state.cameraBottom;
+                const acceleration = (displacement * k) - (state.cameraVel * d);
+                state.cameraVel += acceleration * dt;
+                state.cameraBottom += state.cameraVel * dt;
+            }
+
+            // Ground Clamp
+            if (state.cameraBottom < -0.1) {
+                state.cameraBottom = -0.1;
+                state.cameraVel = 0;
+            }
+        }
+
+        function recordHistory() {
+            state.history.push({
+                t: state.t,
+                h: state.h,
+                v: state.v,
+                a: state.paused ? 0 : state.a 
+            });
+
+            const cutoff = state.t - CONSTANTS.maxHistory - 1.0; 
+            while(state.history.length > 0 && state.history[0].t < cutoff) {
+                state.history.shift();
+            }
+        }
+
+        function getDisplayValues(rawH, rawV, rawA) {
+            let s, v, a;
+            if (state.downIsPositive) {
+                s = state.originH - rawH;
+                v = -rawV; 
+                a = -rawA; 
+            } else {
+                s = rawH - state.originH;
+                v = rawV; 
+                a = rawA; 
+            }
+            return { s, v, a };
+        }
+
+        // --- Render ---
+
+        function render() {
+            const containerH = ui.container.clientHeight;
+            const containerW = ui.container.clientWidth;
+            
+            const viewHeight = CONSTANTS.baseViewHeight / state.zoom;
+            const pxPerMeter = containerH / viewHeight;
+
+            // Resize
+            if (ui.bgCanvas.width !== containerW || ui.bgCanvas.height !== containerH) {
+                ui.bgCanvas.width = containerW; ui.bgCanvas.height = containerH;
+                ui.fgCanvas.width = containerW; ui.fgCanvas.height = containerH;
+            }
+
+            const ctxBg = ui.bgCanvas.getContext('2d');
+            const ctxFg = ui.fgCanvas.getContext('2d');
+            
+            ctxBg.clearRect(0, 0, containerW, containerH);
+            ctxFg.clearRect(0, 0, containerW, containerH);
+
+            // Utils
+            const worldToScreen = (h) => {
+                const relH = h - state.cameraBottom;
+                return containerH - (relH * pxPerMeter);
+            };
+
+            // --- Draw BG ---
+            ctxBg.strokeStyle = '#e5e7eb';
+            ctxBg.lineWidth = 1;
+            
+            const startGridH = Math.floor(state.cameraBottom / 10) * 10;
+            const endGridH = state.cameraBottom + viewHeight;
+            
+            for (let h = startGridH; h <= endGridH; h += 10) {
+                const y = worldToScreen(h);
+                if (y >= -10 && y <= containerH + 10) {
+                    ctxBg.beginPath(); ctxBg.moveTo(35, y); ctxBg.lineTo(containerW - 35, y); ctxBg.stroke();
+                }
+            }
+
+            if (state.cameraBottom <= 0) {
+                const groundY = worldToScreen(0);
+                ctxBg.fillStyle = '#d1d5db';
+                ctxBg.fillRect(0, groundY, containerW, containerH - groundY);
+                ctxBg.strokeStyle = '#9ca3af';
+                ctxBg.beginPath(); ctxBg.moveTo(0, groundY); ctxBg.lineTo(containerW, groundY); ctxBg.stroke();
+            }
+
+            // Origin
+            if (state.originH >= state.cameraBottom && state.originH <= state.cameraBottom + viewHeight) {
+                const originY = worldToScreen(state.originH);
+                ctxBg.strokeStyle = '#4b5563'; ctxBg.lineWidth = 2; ctxBg.setLineDash([5, 3]);
+                ctxBg.beginPath(); ctxBg.moveTo(40, originY); ctxBg.lineTo(containerW - 40, originY); ctxBg.stroke();
+                ctxBg.setLineDash([]);
+                ctxBg.fillStyle = '#4b5563'; ctxBg.font = 'bold 12px sans-serif'; ctxBg.textAlign = 'right';
+                ctxBg.fillText(t('originMarker'), containerW - 45, originY - 4);
+            }
+
+            // Scales
+            ctxBg.fillStyle = '#9ca3af'; ctxBg.font = '12px monospace';
+            ctxBg.textAlign = 'right'; ctxBg.fillText(t('heightLabel'), containerW - 2, 12);
+            for (let h = startGridH; h <= endGridH; h += 10) {
+                const y = worldToScreen(h);
+                if (y >= -10 && y <= containerH + 10) {
+                ctxBg.fillText(h + t('unitM'), containerW - 5, y + 4);
+                    ctxBg.beginPath(); ctxBg.moveTo(containerW-4, y); ctxBg.lineTo(containerW, y); ctxBg.stroke();
+                }
+            }
+            ctxBg.textAlign = 'left'; ctxBg.fillText(t('positionLabel'), 5, 12);
+            for (let h = startGridH; h <= endGridH; h += 10) {
+                const y = worldToScreen(h);
+                if (y >= -10 && y <= containerH + 10) {
+                    const vals = getDisplayValues(h, 0, 0); 
+                    ctxBg.fillText(vals.s.toFixed(0), 5, y + 4);
+                    ctxBg.beginPath(); ctxBg.moveTo(0, y); ctxBg.lineTo(4, y); ctxBg.stroke();
+                }
+            }
+
+            // --- Ball Visuals ---
+            const ballScreenY = worldToScreen(state.h);
+            const cx = containerW / 2;
+            const cy = ballScreenY; 
+            
+            const sy = state.squashScale;
+            const sx = 2 - sy; 
+            ui.ball.style.transform = `translateY(${ballScreenY - 20}px) scale(${sx}, ${sy})`;
+
+            // --- Draw FG ---
+            
+            // Mass
+            ctxFg.fillStyle = '#4b5563'; ctxFg.font = '12px sans-serif'; ctxFg.textAlign = 'left';
+            ctxFg.fillText(state.mass.toFixed(1) + 'kg', cx + 22, cy - 22);
+
+            // Parachute
+            if (state.parachute) {
+                ctxFg.strokeStyle = '#ef4444'; ctxFg.fillStyle = 'rgba(239, 68, 68, 0.2)'; ctxFg.lineWidth = 2;
+                ctxFg.beginPath(); ctxFg.arc(cx, cy - 40, 30, Math.PI, 0); ctxFg.lineTo(cx - 30, cy - 40);
+                ctxFg.fill(); ctxFg.stroke();
+                ctxFg.beginPath(); ctxFg.lineWidth = 1; ctxFg.strokeStyle = '#6b7280';
+                ctxFg.moveTo(cx - 30, cy - 40); ctxFg.lineTo(cx, cy - 10);
+                ctxFg.moveTo(cx + 30, cy - 40); ctxFg.lineTo(cx, cy - 10);
+                ctxFg.moveTo(cx, cy - 70); ctxFg.lineTo(cx, cy - 10);
+                ctxFg.stroke();
+            }
+
+            // Vectors (Always Visible)
+            if (state.showVVector) {
+                const vLen = -state.v * CONSTANTS.vectorScaleV; 
+                if (Math.abs(vLen) > 1) drawArrow(ctxFg, cx, cy, 0, vLen, '#2563eb', 'v', 'right');
+            }
+            if (state.showAVector) {
+                // Always show acceleration vector, even if paused (it represents force potential)
+                const a = state.a;
+                const aLen = -a * CONSTANTS.vectorScaleA;
+                if (Math.abs(aLen) > 1) drawArrow(ctxFg, cx - 25, cy, 0, aLen, '#16a34a', 'a', 'left');
+            }
+            
+            if (state.showForces) {
+                const fgLen = -CONSTANTS.g * state.mass * CONSTANTS.vectorScaleF; 
+                drawArrow(ctxFg, cx, cy, 0, fgLen, '#9333ea', 'Fg', 'right');
+
+                let k = 0;
+                if (state.airResistance) k = state.parachute ? CONSTANTS.parachuteDrag : CONSTANTS.dragCoeff;
+                
+                if (k > 0 && Math.abs(state.v) > 0.1) {
+                    const dragForce = k * state.v * state.v; 
+                    let fdLen = dragForce * CONSTANTS.vectorScaleF; 
+                    if (state.v < 0) fdLen = -fdLen; else fdLen = Math.abs(fdLen); 
+                    if (Math.abs(fdLen) > 1) drawArrow(ctxFg, cx, cy, 0, fdLen, '#374151', 'Fd', 'right'); 
+                }
+            }
+
+            // UI Update (Velocity Fix)
+            const physV = state.v; // Use actual state velocity
+            const arrow = physV > 0.1 ? '↑' : (physV < -0.1 ? '↓' : '');
+            ui.valCurrV.innerText = `${Math.abs(physV).toFixed(1)} ${arrow} ${t('unitMs')}`;
+            ui.txtZoom.innerText = Math.round(state.zoom * 100);
+            
+            if (state.dragging) ui.inpInitH.value = state.h.toFixed(1);
+
+            // Graphs
+            drawGraph(ui.charts.s, 's', '#ef4444'); 
+            drawGraph(ui.charts.v, 'v', '#3b82f6');
+            drawGraph(ui.charts.a, 'a', '#10b981');
+        }
+
+        function drawArrow(ctx, x, y, dx, dy, color, label, labelSide = 'right') {
+            const headlen = 8; 
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+            // Strict Center Start
+            ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x + dx, y + dy);
+            ctx.lineTo(x + dx - headlen * Math.cos(angle - Math.PI / 6), y + dy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x + dx - headlen * Math.cos(angle + Math.PI / 6), y + dy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+            
+            ctx.fillStyle = color; 
+            ctx.font = "bold 13px sans-serif"; 
+            const tipX = x + dx; const tipY = y + dy; const offset = 8;
+            if (labelSide === 'left') { ctx.textAlign = 'right'; ctx.fillText(label, tipX - offset, tipY); } 
+            else { ctx.textAlign = 'left'; ctx.fillText(label, tipX + offset, tipY); }
+        }
+
+        function drawGraph(canvas, displayKey, colorStr) {
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+
+            if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+            }
+            
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, rect.width, rect.height);
+            
+            const w = rect.width;
+            const h = rect.height;
+            const paddingLeft = 35; 
+            const paddingBottom = 20; 
+            const graphW = w - paddingLeft;
+            const graphH = h - paddingBottom;
+
+            const dataPoints = state.history.map(pt => {
+                const vals = getDisplayValues(pt.h, pt.v, pt.a);
+                return { t: pt.t, val: vals[displayKey] };
+            });
+
+            let min = Infinity, max = -Infinity;
+            if (dataPoints.length < 2) { min = -10; max = 10; } 
+            else { for (const pt of dataPoints) { if (pt.val < min) min = pt.val; if (pt.val > max) max = pt.val; } }
+            let range = max - min;
+            if (range < 0.1) { min -= 5; max += 5; range = 10; }
+            const pad = range * 0.15; min -= pad; max += pad;
+
+            // Clamp Ranges for Acceleration
+            if (displayKey === 'a') {
+                min = Math.max(min, -40);
+                max = Math.min(max, 40);
+            }
+
+            const tEnd = state.t;
+            const tStart = Math.max(0, tEnd - CONSTANTS.maxHistory);
+            const tRange = tEnd - tStart || 1;
+
+            ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#9ca3af'; ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+
+            function niceStep(range, targetLines = 4) {
+                const rough = range / targetLines;
+                const pow10 = Math.pow(10, Math.floor(Math.log10(rough)));
+                const candidates = [2, 5, 10];
+                for (const c of candidates) {
+                    if (c * pow10 >= rough) return c * pow10;
+                }
+                return 10 * pow10;
+            }
+
+            const xStep = niceStep(tRange, 4);
+            const firstGridT = Math.ceil(tStart / xStep) * xStep;
+
+            ctx.save(); ctx.beginPath(); ctx.rect(paddingLeft, 0, graphW, graphH); ctx.clip();
+            for (let tGrid = firstGridT; tGrid <= tEnd; tGrid += xStep) {
+                const x = paddingLeft + ((tGrid - tStart) / tRange) * graphW;
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, graphH); ctx.stroke();
+                ctx.fillText(tGrid.toFixed(0) + 's', x, graphH - 5);
+            }
+            ctx.restore();
+
+            const yStep = niceStep(max - min, 4);
+            const firstGridY = Math.ceil(min / yStep) * yStep;
+            ctx.textAlign = 'right';
+            for (let yVal = firstGridY; yVal <= max; yVal += yStep) {
+                const ratio = (yVal - min) / (max - min);
+                const y = graphH - (ratio * graphH);
+                ctx.strokeStyle = '#f3f4f6';
+                ctx.beginPath(); ctx.moveTo(paddingLeft, y); ctx.lineTo(w, y); ctx.stroke();
+                ctx.fillText(yVal.toFixed(1), paddingLeft - 5, y);
+            }
+
+            if (min < 0 && max > 0) {
+                const y0 = graphH - ((0 - min) / (max - min)) * graphH;
+                ctx.strokeStyle = '#d1d5db'; ctx.beginPath(); ctx.moveTo(paddingLeft, y0); ctx.lineTo(w, y0); ctx.stroke();
+            }
+
+            if (dataPoints.length > 1) {
+                ctx.beginPath(); ctx.strokeStyle = colorStr; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+                ctx.save(); ctx.beginPath(); ctx.rect(paddingLeft, 0, graphW, graphH); ctx.clip();
+                ctx.beginPath();
+                for (let i = 0; i < dataPoints.length; i++) {
+                    const pt = dataPoints[i];
+                    const x = paddingLeft + ((pt.t - tStart) / tRange) * graphW;
+                    const y = graphH - ((pt.val - min) / (max - min)) * graphH;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke(); ctx.restore();
+            }
+            ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(paddingLeft, 0); ctx.lineTo(paddingLeft, graphH); ctx.lineTo(w, graphH); ctx.stroke();
+        }
+
+        // --- Interaction ---
+
+        function togglePlay() {
+            state.paused = !state.paused;
+            ui.txtPlay.innerText = state.paused ? t('play') : t('pause');
+            ui.iconPlay.classList.toggle('hidden', !state.paused);
+            ui.iconPause.classList.toggle('hidden', state.paused);
+            ui.btnPlay.className = state.paused 
+                ? "flex items-center px-2 sm:px-3 py-1 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded shadow-sm transition font-medium"
+                : "flex items-center px-2 sm:px-3 py-1 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded shadow-sm transition font-medium";
+            
+            // Kill momentum on toggle
+            state.cameraVel = 0;
+            // No camera target reset, let it snap in updateCamera per logic
+        }
+
+        function toggleParachute() {
+            if (!state.airResistance) return;
+            state.parachute = !state.parachute;
+            updateParachuteBtn();
+            if (state.parachute) ui.inpCor.value = 0;
+        }
+        
+        function updateParachuteBtn() {
+            if (state.airResistance) {
+                ui.btnParachute.disabled = false;
+                ui.btnParachute.classList.remove('opacity-50', 'cursor-not-allowed');
+                if (state.parachute) {
+                    ui.btnParachute.classList.add('bg-red-100', 'text-red-600', 'border-red-300');
+                    ui.btnParachute.classList.remove('bg-gray-100', 'text-gray-500', 'border-gray-300');
+                } else {
+                    ui.btnParachute.classList.remove('bg-red-100', 'text-red-600', 'border-red-300');
+                    ui.btnParachute.classList.add('bg-gray-100', 'text-gray-500', 'border-gray-300');
+                }
+            } else {
+                ui.btnParachute.disabled = true;
+                ui.btnParachute.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-100', 'text-gray-400', 'border-gray-200');
+                ui.btnParachute.classList.remove('bg-red-100', 'text-red-600', 'border-red-300', 'bg-white', 'text-gray-700', 'border-gray-300');
+            }
+        }
+
+        function toggleAir() {
+            state.airResistance = ui.chkAir.checked;
+            if (!state.airResistance) state.parachute = false;
+            updateParachuteBtn();
+        }
+
+        function reset() {
+            state.paused = true;
+            state.t = 0;
+            ui.inpInitH.value = "45";
+            ui.inpOrigin.value = "50";
+            ui.inpCor.value = "1";
+            ui.chkAir.checked = false;
+            ui.inpMass.value = 1;
+            ui.valMass.innerText = "1" + t('unitKg');
+            state.mass = 1.0;
+            state.airResistance = false;
+            state.parachute = false;
+            updateParachuteBtn();
+            state.h = 45; 
+            state.originH = 50;
+            state.v = 0; 
+            state.v0 = 0;
+            ui.sliderV0.value = 0;
+            ui.valV0.innerText = "0 " + t('unitMs');
+            state.squashScale = 1.0;
+            state.history = [];
+            ui.txtPlay.innerText = t('play');
+            ui.iconPlay.classList.remove('hidden'); ui.iconPause.classList.add('hidden');
+            ui.btnPlay.className = "flex items-center px-2 sm:px-3 py-1 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded shadow-sm transition font-medium";
+            state.cameraVel = 0;
+            
+            const viewHeight = CONSTANTS.baseViewHeight / state.zoom;
+            // Snap instant on reset
+            const target = state.h > viewHeight ? state.h - viewHeight + 3 : 0;
+            state.cameraBottom = target;
+            state.cameraTarget = target;
+            
+            render();
+        }
+
+        function setDirection(isDown) {
+            state.downIsPositive = isDown;
+            if (isDown) {
+                ui.btnDirDown.className = "px-1.5 py-0.5 text-[10px] rounded-l shadow-sm bg-white text-blue-700 font-bold border border-gray-300";
+                ui.btnDirUp.className = "px-1.5 py-0.5 text-[10px] rounded-r bg-gray-100 text-gray-400 border border-l-0 border-gray-300";
+            } else {
+                ui.btnDirUp.className = "px-1.5 py-0.5 text-[10px] rounded-r shadow-sm bg-white text-blue-700 font-bold border border-l-0 border-gray-300";
+                ui.btnDirDown.className = "px-1.5 py-0.5 text-[10px] rounded-l bg-gray-100 text-gray-400 border border-gray-300";
+            }
+            render(); 
+        }
+
+        function nudge(amount) {
+            if (!state.paused) return;
+            state.h += amount;
+            if (state.h < 0) state.h = 0;
+            ui.inpInitH.value = state.h.toFixed(1);
+            // Snap camera
+            const viewHeight = CONSTANTS.baseViewHeight / state.zoom;
+            const buffer = CONSTANTS.cameraBuffer;
+            if (state.h > state.cameraBottom + viewHeight - buffer) {
+                state.cameraTarget = state.h - (viewHeight - buffer);
+                state.cameraBottom = state.cameraTarget;
+            }
+            render();
+        }
+
+        // --- Event Listeners ---
+
+        ui.sliderV0.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            state.v0 = val;
+            const arrow = val > 0 ? '↑' : (val < 0 ? '↓' : '');
+            ui.valV0.innerText = `${Math.abs(val)} ${arrow} ${t('unitMs')}`;
+            if (state.paused) { state.v = state.v0; render(); }
+        });
+
+        ui.inpMass.addEventListener('input', (e) => {
+            state.mass = parseFloat(e.target.value);
+            ui.valMass.innerText = state.mass.toFixed(1) + t('unitKg');
+            render();
+        });
+
+        ui.inpOrigin.addEventListener('input', (e) => { state.originH = parseFloat(e.target.value) || 0; render(); });
+        
+        ui.inpInitH.addEventListener('change', (e) => {
+             if (state.t === 0) {
+                 state.h = parseFloat(e.target.value) || 45;
+                 render();
+             }
+        });
+
+        ui.chkCamLock.addEventListener('change', (e) => { state.cameraLocked = e.target.checked; });
+        ui.chkAir.addEventListener('change', toggleAir);
+        ui.btnParachute.addEventListener('click', toggleParachute);
+        
+        ui.btnZoomIn.addEventListener('click', () => { 
+            state.zoom = Math.min(4, state.zoom + 0.25); 
+            render(); 
+        });
+        ui.btnZoomOut.addEventListener('click', () => { 
+            state.zoom = Math.max(0.25, state.zoom - 0.25); 
+            render(); 
+        });
+
+        ui.chkV.addEventListener('change', (e) => { state.showVVector = e.target.checked; render(); });
+        ui.chkA.addEventListener('change', (e) => { state.showAVector = e.target.checked; render(); });
+        ui.chkF.addEventListener('change', (e) => { state.showForces = e.target.checked; render(); });
+
+        ui.btnDirDown.addEventListener('click', () => setDirection(true));
+        ui.btnDirUp.addEventListener('click', () => setDirection(false));
+
+        ui.btnPlay.addEventListener('click', togglePlay);
+        ui.btnReset.addEventListener('click', reset);
+        
+        ui.btnMoveUp.addEventListener('click', () => nudge(10.0));
+        ui.btnMoveDown.addEventListener('click', () => nudge(-10.0));
+
+        // Dragging
+        function getPointerH(e) {
+             const rect = ui.container.getBoundingClientRect();
+             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+             const relY = clientY - rect.top;
+             state.dragScreenY = relY; // Store for scroll logic
+             
+             const containerH = ui.container.clientHeight;
+             const pxFromBottom = containerH - relY;
+             const viewHeight = CONSTANTS.baseViewHeight / state.zoom;
+             const pxPerMeter = containerH / viewHeight;
+             return state.cameraBottom + (pxFromBottom / pxPerMeter);
+        }
+
+        function onPointerDown(e) {
+            if (!state.paused) return;
+            state.dragging = true;
+            ui.ball.style.cursor = 'grabbing';
+            ui.ball.classList.add('scale-110');
+            const rect = ui.container.getBoundingClientRect();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            state.dragScreenY = clientY - rect.top;
+            e.preventDefault(); 
+        }
+        function onPointerUp(e) {
+            if (!state.dragging) return;
+            
+            state.dragging = false;
+            ui.ball.style.cursor = 'grab';
+            ui.ball.classList.remove('scale-110');
+            
+            // Fix: On Release, reset target to optimal tracking position immediately
+            // This ensures "smooth move to correct position" instead of freezing at drag loc
+            const viewHeight = CONSTANTS.baseViewHeight / state.zoom;
+            const buffer = CONSTANTS.cameraBuffer; 
+            const optimal = state.h - (viewHeight - buffer);
+            state.cameraTarget = optimal > 0 ? optimal : 0;
+        }
+        function onPointerMove(e) {
+            if (!state.dragging) return;
+            let h = getPointerH(e); 
+            if (h < 0) h = 0;
+            state.h = h;
+            state.v = state.v0;
+            e.preventDefault();
+        }
+
+        ui.ball.addEventListener('mousedown', onPointerDown);
+        ui.ball.addEventListener('touchstart', onPointerDown, {passive: false});
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchend', onPointerUp);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('touchmove', onPointerMove, {passive: false});
+
+        function loop(timestamp) {
+            const dt = (timestamp - state.lastFrameTime) / 1000;
+            state.lastFrameTime = timestamp;
+            if (dt < 0.1) { updatePhysics(dt); render(); }
+            requestAnimationFrame(loop);
+        }
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+        });
+        window.addEventListener('popstate', () => {
+            changeLanguage(getInitialLanguage(), false);
+        });
+
+        changeLanguage(getInitialLanguage(), false);
+        setDirection(true);
+        reset(); 
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+</html>

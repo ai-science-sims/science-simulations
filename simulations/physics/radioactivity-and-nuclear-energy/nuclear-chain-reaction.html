@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="x-poe-datastore-behavior" content="local_only">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuclear Chain Reaction Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            position: relative;
+        }
+        h1 { margin-bottom: 5px; color: #4facfe; }
+        p { margin-bottom: 15px; color: #aaa; font-size: 0.9em; }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        canvas {
+            background-color: #000;
+            border: 2px dashed #666;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            cursor: crosshair;
+            transition: background-color 0.5s ease;
+        }
+
+        .controls {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            width: 320px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="range"], select { width: 100%; padding: 5px; border-radius: 4px; border: none; }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-image: linear-gradient(to right, #43e97b 0%, #38f9d7 100%);
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        button:hover { opacity: 0.9; }
+        button.reset {
+            background-image: linear-gradient(to right, #ff8177 0%, #ff867a 0%, #ff8c7f 21%, #f99185 52%, #cf556c 78%, #b12a5b 100%);
+            color: white;
+        }
+
+        .legend { margin-top: 20px; font-size: 0.9em; background: #333; padding: 10px; border-radius: 5px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; display: inline-block; border: 1px solid #fff; }
+
+        #stats { font-family: monospace; color: #4facfe; margin-bottom: 10px; min-height: 45px; line-height: 1.4; }
+
+        .lang-toggle {
+            position: absolute;
+            top: 18px;
+            right: 20px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .lang-toggle button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #1f2937;
+            color: #e5e7eb;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .lang-toggle button.active {
+            background: #2563eb;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        @media (max-width: 600px) {
+            .lang-toggle { top: 12px; right: 12px; }
+            .container { flex-direction: column; align-items: center; }
+        }
+    </style>
+    <script src="https://puc.poecdn.net/authenticated_preview_page/syncedState.3f7572448765332f3047.js"></script>
+</head>
+<body>
+
+    <h1 data-i18n="title">Nuclear Chain Reaction Simulator</h1>
+    <p data-i18n="subtitle">Neutrons escape when they cross the boundary (leakage model).</p>
+
+    <div class="lang-toggle" aria-label="Language selector">
+        <button type="button" class="lang-btn" data-lang="en-US">EN</button>
+        <button type="button" class="lang-btn" data-lang="zh-HK">繁</button>
+    </div>
+
+    <div class="container">
+        <canvas id="simCanvas" width="600" height="500"></canvas>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="fuelDensity" data-i18n="fuelDensityLabel">Fuel Density (U-235 count)</label>
+                <input type="range" id="fuelDensity" min="20" max="250" value="80">
+                <small><span data-i18n="quantityLabel">Quantity</span>: <span id="fuelVal">80</span></small>
+            </div>
+
+            <div class="control-group">
+                <label style="background: #444; padding: 10px; border-radius: 5px; cursor: pointer;">
+                    <input type="checkbox" id="moderatorToggle">
+                    <span data-i18n="moderatorLabel">Enable Moderator (Water)</span>
+                    <br><small style="font-weight:normal; color:#ddd;" data-i18n="moderatorHint">(Blue background, neutrons slow down)</small>
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label for="neutronOutput" data-i18n="neutronOutputLabel">Neutrons released per fission</label>
+                <select id="neutronOutput">
+                    <option value="1" data-i18n="neutronOption1">1 (hard to sustain)</option>
+                    <option value="2" selected data-i18n="neutronOption2">2 (standard)</option>
+                    <option value="3" data-i18n="neutronOption3">3 (intense)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="controlRods" data-i18n="controlRodsLabel">Control rod insertion depth</label>
+                <input type="range" id="controlRods" min="0" max="100" value="0">
+            </div>
+
+            <div id="stats"></div>
+
+            <button type="button" id="fireBtn" data-i18n="fire">Fire Neutron</button>
+            <button type="button" class="reset" id="resetBtn" data-i18n="reset">Reset / Regenerate Fuel</button>
+
+            <div class="legend">
+                <div class="legend-item"><span class="dot" style="background:lime;"></span> <span data-i18n="legendFuel">U-235 nucleus</span></div>
+                <div class="legend-item"><span class="dot" style="background:red;"></span> <span data-i18n="legendThermal">Thermal neutron (slow/effective)</span></div>
+                <div class="legend-item"><span class="dot" style="background:white;"></span> <span data-i18n="legendFast">Fast neutron (fast/penetrating)</span></div>
+                <div class="legend-item"><span class="dot" style="background:grey;"></span> <span data-i18n="legendRods">Control rods (absorb)</span></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const translations = {
+        "en-US": {
+            title: "Nuclear Chain Reaction Simulator",
+            subtitle: "Neutrons escape when they cross the boundary (leakage model).",
+            fuelDensityLabel: "Fuel Density (U-235 count)",
+            quantityLabel: "Quantity",
+            moderatorLabel: "Enable Moderator (Water)",
+            moderatorHint: "(Blue background, neutrons slow down)",
+            neutronOutputLabel: "Neutrons released per fission",
+            neutronOption1: "1 (hard to sustain)",
+            neutronOption2: "2 (standard)",
+            neutronOption3: "3 (intense)",
+            controlRodsLabel: "Control rod insertion depth",
+            fire: "Fire Neutron",
+            reset: "Reset / Regenerate Fuel",
+            legendFuel: "U-235 nucleus",
+            legendThermal: "Thermal neutron (slow/effective)",
+            legendFast: "Fast neutron (fast/penetrating)",
+            legendRods: "Control rods (absorb)",
+            statusReady: "Status: ready",
+            statusWaiting: "Status: waiting for trigger",
+            statusActive: "Status: reaction ongoing",
+            statusEnded: "Status: reaction ended (neutrons exhausted or escaped)",
+            activeNeutrons: "Active neutrons",
+            totalFissions: "Total fissions"
+        },
+        "zh-HK": {
+            title: "核子連鎖反應模擬器",
+            subtitle: "中子越過邊界會逃逸消失（洩漏模型）。",
+            fuelDensityLabel: "燃料密度（U-235 數量）",
+            quantityLabel: "數量",
+            moderatorLabel: "啟用減速劑（水）",
+            moderatorHint: "（背景變藍，中子減速）",
+            neutronOutputLabel: "每次裂變釋放中子數",
+            neutronOption1: "1（不易維持）",
+            neutronOption2: "2（標準）",
+            neutronOption3: "3（劇烈）",
+            controlRodsLabel: "控制棒插入深度",
+            fire: "發射中子",
+            reset: "重置 / 重新生成燃料",
+            legendFuel: "鈾-235 原子核",
+            legendThermal: "熱中子（慢／有效）",
+            legendFast: "快中子（快／穿透）",
+            legendRods: "控制棒（吸收）",
+            statusReady: "狀態：準備就緒",
+            statusWaiting: "狀態：等待中子觸發",
+            statusActive: "狀態：反應中",
+            statusEnded: "狀態：反應結束（中子耗盡或逃逸）",
+            activeNeutrons: "活性中子",
+            totalFissions: "累積裂變"
+        }
+    };
+
+    const supportedLanguages = Object.keys(translations);
+    let currentLang = "en-US";
+
+    function t(key) {
+        return translations[currentLang][key] || key;
+    }
+
+    function applyTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            el.textContent = t(key);
+        });
+        document.title = t('title');
+        updateStats();
+    }
+
+    function setActiveLanguageButton(lang) {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+    }
+
+    function changeLanguage(lang, shouldPush = true) {
+        currentLang = supportedLanguages.includes(lang) ? lang : "en-US";
+        document.documentElement.lang = currentLang;
+        applyTranslations();
+        setActiveLanguageButton(currentLang);
+        if (shouldPush) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('lang', currentLang);
+            window.history.pushState({}, '', url);
+        }
+    }
+
+    function getInitialLanguage() {
+        const params = new URLSearchParams(window.location.search);
+        const lang = params.get('lang');
+        return supportedLanguages.includes(lang) ? lang : "en-US";
+    }
+
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let atoms = [];
+    let neutrons = [];
+    let particles = [];
+    let fissionCount = 0;
+
+    const ATOM_RADIUS = 9;
+    const NEUTRON_RADIUS = 4;
+    const FAST_SPEED = 7;
+    const THERMAL_SPEED = 2;
+
+    const fuelSlider = document.getElementById('fuelDensity');
+    const fuelValDisplay = document.getElementById('fuelVal');
+    const modCheckbox = document.getElementById('moderatorToggle');
+    const neutronSelect = document.getElementById('neutronOutput');
+    const rodSlider = document.getElementById('controlRods');
+    const statsDiv = document.getElementById('stats');
+    const fireBtn = document.getElementById('fireBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    class Atom {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.active = true;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ATOM_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = '#32CD32';
+            ctx.fill();
+            ctx.strokeStyle = '#006400';
+            ctx.stroke();
+
+            ctx.fillStyle = 'black';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('U', this.x, this.y);
+        }
+    }
+
+    class Neutron {
+        constructor(x, y, vx, vy, isThermal = false) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.isThermal = isThermal;
+        }
+
+        update() {
+            if (modCheckbox.checked) {
+                if (!this.isThermal) {
+                    this.vx *= 0.96;
+                    this.vy *= 0.96;
+
+                    const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                    if (speed <= THERMAL_SPEED) {
+                        this.isThermal = true;
+                    }
+                } else {
+                    const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                    if (speed < THERMAL_SPEED - 0.5) {
+                        this.vx *= 1.05; this.vy *= 1.05;
+                    }
+                }
+            } else {
+                this.isThermal = false;
+                const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                if (speed < FAST_SPEED) {
+                    this.vx *= 1.1; this.vy *= 1.1;
+                }
+            }
+
+            this.x += this.vx;
+            this.y += this.vy;
+
+            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                return false;
+            }
+
+            const rodHeight = (rodSlider.value / 100) * canvas.height;
+            const rodsX = [canvas.width * 0.25, canvas.width * 0.5, canvas.width * 0.75];
+            for (let rx of rodsX) {
+                if (this.x > rx - 10 && this.x < rx + 10 && this.y < rodHeight) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, NEUTRON_RADIUS, 0, Math.PI * 2);
+
+            if (this.isThermal) {
+                ctx.fillStyle = '#FF0000';
+            } else {
+                ctx.fillStyle = modCheckbox.checked ? '#444' : '#FFF';
+            }
+            ctx.fill();
+            ctx.strokeStyle = this.isThermal ? '#FFF' : '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+    }
+
+    class Particle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 1;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.life = 30;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life--;
+            return this.life > 0;
+        }
+        draw() {
+            ctx.globalAlpha = this.life / 30;
+            ctx.fillStyle = 'orange';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    function updateStats() {
+        if (neutrons.length > 0) {
+            statsDiv.innerHTML = `${t('statusActive')}<br>${t('activeNeutrons')}: ${neutrons.length} | ${t('totalFissions')}: ${fissionCount}`;
+        } else if (fissionCount > 0 && neutrons.length === 0) {
+            statsDiv.innerHTML = `${t('statusEnded')}<br>${t('totalFissions')}: ${fissionCount}`;
+        } else {
+            statsDiv.innerHTML = t('statusWaiting');
+        }
+    }
+
+    function init() {
+        atoms = [];
+        neutrons = [];
+        particles = [];
+        fissionCount = 0;
+
+        const count = parseInt(fuelSlider.value);
+        fuelValDisplay.innerText = count;
+
+        for (let i = 0; i < count; i++) {
+            const x = Math.random() * (canvas.width - 40) + 20;
+            const y = Math.random() * (canvas.height - 40) + 20;
+            atoms.push(new Atom(x, y));
+        }
+
+        drawFrame();
+        statsDiv.innerHTML = t('statusWaiting');
+    }
+
+    function fireNeutron() {
+        const y = Math.random() * (canvas.height - 100) + 50;
+        neutrons.push(new Neutron(0, y, FAST_SPEED, (Math.random() - 0.5) * 2));
+    }
+
+    function checkCollisions() {
+        for (let n = neutrons.length - 1; n >= 0; n--) {
+            let neutron = neutrons[n];
+            let hit = false;
+
+            if (!neutron.isThermal) {
+                continue;
+            }
+
+            for (let i = atoms.length - 1; i >= 0; i--) {
+                let atom = atoms[i];
+                if (!atom.active) continue;
+
+                const dx = atom.x - neutron.x;
+                const dy = atom.y - neutron.y;
+                const distSq = dx*dx + dy*dy;
+
+                if (distSq < (ATOM_RADIUS + NEUTRON_RADIUS) ** 2) {
+                    atom.active = false;
+                    hit = true;
+                    fissionCount++;
+
+                    for (let p = 0; p < 6; p++) particles.push(new Particle(atom.x, atom.y));
+
+                    const releaseCount = parseInt(neutronSelect.value, 10);
+
+                    for (let k = 0; k < releaseCount; k++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        neutrons.push(new Neutron(
+                            atom.x,
+                            atom.y,
+                            Math.cos(angle) * FAST_SPEED,
+                            Math.sin(angle) * FAST_SPEED,
+                            false
+                        ));
+                    }
+                    break;
+                }
+            }
+            if (hit) {
+                neutrons.splice(n, 1);
+            }
+        }
+    }
+
+    function drawFrame() {
+        if (modCheckbox.checked) {
+            ctx.fillStyle = '#b3e5fc';
+        } else {
+            ctx.fillStyle = '#000000';
+        }
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const rodH = (rodSlider.value / 100) * canvas.height;
+        ctx.fillStyle = '#666';
+        const rodsX = [canvas.width * 0.25, canvas.width * 0.5, canvas.width * 0.75];
+        for (let rx of rodsX) {
+            ctx.fillRect(rx - 10, 0, 20, rodH);
+            ctx.strokeStyle = '#333';
+            ctx.strokeRect(rx - 10, 0, 20, rodH);
+        }
+
+        atoms.forEach(a => a.draw());
+        neutrons.forEach(n => n.draw());
+        particles.forEach(p => p.draw());
+
+        updateStats();
+    }
+
+    function animate() {
+        for (let i = neutrons.length - 1; i >= 0; i--) {
+            if (!neutrons[i].update()) {
+                neutrons.splice(i, 1);
+            }
+        }
+        for (let i = particles.length - 1; i >= 0; i--) {
+            if (!particles[i].update()) {
+                particles.splice(i, 1);
+            }
+        }
+
+        checkCollisions();
+        drawFrame();
+        requestAnimationFrame(animate);
+    }
+
+    fuelSlider.addEventListener('input', init);
+    fireBtn.addEventListener('click', fireNeutron);
+    resetBtn.addEventListener('click', init);
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => changeLanguage(btn.dataset.lang));
+    });
+    window.addEventListener('popstate', () => {
+        changeLanguage(getInitialLanguage(), false);
+    });
+
+    window.onload = function() {
+        changeLanguage(getInitialLanguage(), false);
+        init();
+        animate();
+    };
+
+</script>
+</body>
+</html>
