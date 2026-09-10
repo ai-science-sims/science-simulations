@@ -50,13 +50,15 @@
                     <label class="block text-sm font-medium text-gray-600 mb-2" data-i18n="materialLabel">Choose a material</label>
                     <select id="materialSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
                     </select>
-                    <div class="mt-2 p-3 bg-blue-50 rounded-lg">
-                        <p class="text-sm text-blue-800 font-semibold flex flex-wrap items-center gap-1">
-                            <span data-i18n="shcLabel">Specific heat capacity (c):</span>
-                            <span id="shcDisplay" class="text-lg font-bold">4200</span>
-                            <span data-i18n="shcUnit">J/kg°C</span>
-                        </p>
-                    </div>
+                    <label class="mt-3 flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="showShcToggle" aria-controls="shcValueRow" class="w-4 h-4 accent-blue-600">
+                        <span data-i18n="showShcLabel">Show specific heat capacity</span>
+                    </label>
+                    <p id="shcValueRow" class="mt-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 font-semibold flex flex-wrap items-center gap-1" style="display: none;">
+                        <span data-i18n="shcLabel">Specific heat capacity (c):</span>
+                        <span id="shcDisplay" class="text-lg font-bold">4200</span>
+                        <span data-i18n="shcUnit">J/kg°C</span>
+                    </p>
                 </div>
 
                 <div class="mb-6">
@@ -82,13 +84,13 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button id="btnStart" class="bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    <button id="btnStart" class="bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2 disabled:bg-green-300 disabled:hover:bg-green-300 disabled:opacity-60 disabled:cursor-not-allowed">
                         <i class="fa-solid fa-play"></i> <span data-i18n="startButton">Start Heating</span>
                     </button>
                     <button id="btnPause" class="bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2 hidden">
                         <i class="fa-solid fa-pause"></i> <span data-i18n="pauseButton">Pause</span>
                     </button>
-                    <button id="btnReset" class="bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                    <button id="btnReset" class="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-rotate-right"></i> <span data-i18n="resetButton">Reset</span>
                     </button>
                 </div>
@@ -115,30 +117,25 @@
 
         <div class="lg:col-span-8 space-y-6">
             
-            <div class="bg-white rounded-xl shadow-lg p-6 h-64 relative overflow-hidden flex items-end justify-center border-b-4 border-gray-300 bg-gradient-to-t from-gray-100 to-white">
-                
-                <div class="absolute bottom-0 w-48 h-4 bg-gray-800 rounded-t-lg z-10 flex justify-center items-center">
-                    <div id="heaterCoil" class="w-40 h-2 bg-gray-600 rounded-full transition-colors duration-500"></div>
-                </div>
-                
-                <div id="heatEffect" class="absolute bottom-4 w-48 h-12 opacity-0 transition-opacity duration-300 z-0 flex justify-center gap-2">
-                    <div class="w-2 h-8 bg-red-500 rounded-full animate-pulse"></div>
-                    <div class="w-2 h-10 bg-orange-500 rounded-full animate-pulse delay-75"></div>
-                    <div class="w-2 h-6 bg-yellow-500 rounded-full animate-pulse delay-150"></div>
-                </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 h-64 relative overflow-hidden flex flex-col items-center justify-end border-b-4 border-gray-300 bg-gradient-to-t from-gray-100 to-white">
 
-                <div class="relative z-20 mb-4">
+                <div class="relative z-20">
                     <div class="absolute -right-16 bottom-0 h-48 w-8 bg-white border-2 border-gray-300 rounded-full shadow-md flex flex-col justify-end p-1">
                         <div id="thermometerLiquid" class="w-full bg-red-500 rounded-b-full rounded-t-sm transition-all duration-100" style="height: 20%;"></div>
-                        <div class="absolute -right-8 top-0 text-xs text-gray-500" data-i18n="thermometerMax">120°C</div>
+                        <div id="thermometerMaxLabel" class="absolute -right-8 top-0 text-xs text-gray-500" data-i18n="thermometerMax">100°C</div>
                         <div class="absolute -right-8 bottom-0 text-xs text-gray-500" data-i18n="thermometerMin">0°C</div>
                     </div>
+
+                    <div class="text-center mb-1 text-sm text-gray-500 font-medium" id="massVisualLabel">1.0 kg</div>
 
                     <div id="substanceContainer" class="w-40 transition-all duration-300 border-2 border-gray-400 bg-blue-400/50 backdrop-blur-sm relative overflow-hidden rounded-lg flex items-center justify-center shadow-inner" style="height: 100px;">
                         <span class="text-white font-bold drop-shadow-md text-lg z-10 select-none" id="substanceLabel">Water</span>
                         <div id="particleContainer" class="absolute inset-0 overflow-hidden opacity-50"></div>
                     </div>
-                    <div class="text-center mt-1 text-sm text-gray-500 font-medium" id="massVisualLabel">1.0 kg</div>
+                </div>
+
+                <div class="w-48 h-4 bg-gray-800 rounded-t-lg z-10 flex justify-center items-center">
+                    <div id="heaterCoil" class="w-40 h-2 bg-gray-600 rounded-full transition-colors duration-500"></div>
                 </div>
             </div>
 
@@ -177,6 +174,7 @@
                 navFormula: "Formula: E = mcΔT",
                 setupHeading: "Experiment Setup",
                 materialLabel: "Choose a material",
+                showShcLabel: "Show specific heat capacity",
                 shcLabel: "Specific heat capacity (c):",
                 shcUnit: "J/kg°C",
                 massLabel: "Mass (m):",
@@ -195,7 +193,7 @@
                 energyUnit: "J",
                 timeLabel: "Heating time (t)",
                 timeUnit: "s",
-                thermometerMax: "120°C",
+                thermometerMax: "100°C",
                 thermometerMin: "0°C",
                 graphHeading: "Energy vs Temperature Graph",
                 graphSlope: "Slope = 1 / (mc)",
@@ -227,6 +225,7 @@
                 navFormula: "公式：E = mcΔT",
                 setupHeading: "實驗設定",
                 materialLabel: "選擇物質",
+                showShcLabel: "顯示比熱容量",
                 shcLabel: "比熱容量（c）：",
                 shcUnit: "J/kg°C",
                 massLabel: "質量（m）：",
@@ -245,7 +244,7 @@
                 energyUnit: "焦耳",
                 timeLabel: "加熱時間（t）",
                 timeUnit: "秒",
-                thermometerMax: "120°C",
+                thermometerMax: "100°C",
                 thermometerMin: "0°C",
                 graphHeading: "能量對溫度關係圖",
                 graphSlope: "斜率 = 1 /（mc）",
@@ -355,9 +354,8 @@
         ];
 
         const INITIAL_TEMP = 20;
-        const MAX_TEMP = 120;
         const UPDATE_INTERVAL = 50;
-        
+
         let state = {
             material: materials[0],
             mass: 1.0,
@@ -367,11 +365,18 @@
             timeElapsed: 0,
             isRunning: false,
             timerId: null,
-            dataPoints: []
+            dataPoints: [],
+            showShc: false
         };
+
+        function getMaxTemp() {
+            return state.material.id === 'water' ? 100 : 120;
+        }
 
         const els = {
             select: document.getElementById('materialSelect'),
+            showShcToggle: document.getElementById('showShcToggle'),
+            shcValueRow: document.getElementById('shcValueRow'),
             shcDisplay: document.getElementById('shcDisplay'),
             massInput: document.getElementById('massInput'),
             massValue: document.getElementById('massValue'),
@@ -387,8 +392,8 @@
             substanceContainer: document.getElementById('substanceContainer'),
             substanceLabel: document.getElementById('substanceLabel'),
             thermometerLiquid: document.getElementById('thermometerLiquid'),
+            thermometerMaxLabel: document.getElementById('thermometerMaxLabel'),
             heaterCoil: document.getElementById('heaterCoil'),
-            heatEffect: document.getElementById('heatEffect'),
             particleContainer: document.getElementById('particleContainer'),
             chartCanvas: document.getElementById('chartCanvas')
         };
@@ -423,7 +428,7 @@
                         y: {
                             title: { display: true, text: getTranslation('chartYAxisLabel') },
                             min: 0,
-                            max: MAX_TEMP
+                            max: getMaxTemp()
                         }
                     },
                     plugins: {
@@ -465,6 +470,7 @@
             els.btnStart.addEventListener('click', toggleSimulation);
             els.btnPause.addEventListener('click', toggleSimulation);
             els.btnReset.addEventListener('click', resetSimulation);
+            els.showShcToggle.addEventListener('change', handleShowShcChange);
 
             initChart();
             updateUI();
@@ -472,32 +478,54 @@
             createParticles();
         }
 
+        function addDataPoint() {
+            const points = state.dataPoints;
+            const last = points[points.length - 1];
+            if (last && last.x === state.totalEnergy && last.y === state.currentTemp) {
+                return;
+            }
+            points.push({ x: state.totalEnergy, y: state.currentTemp });
+            chart.data.datasets[0].data = points;
+            chart.update();
+        }
+
         function physicsLoop() {
-            if (!state.isRunning || state.currentTemp >= MAX_TEMP) {
-                if (state.currentTemp >= MAX_TEMP) {
-                    stopSimulation();
-                    alert(getTranslation('maxTempAlert'));
-                }
+            const maxTemp = getMaxTemp();
+            if (!state.isRunning || state.currentTemp >= maxTemp) {
                 return;
             }
 
             const dt = UPDATE_INTERVAL / 1000;
-            const energyStep = state.power * dt;
-            
+            let energyStep = state.power * dt;
+            let timeStep = dt;
+            let reachedMax = false;
+
+            const tempRise = energyStep / (state.mass * state.material.c);
+            if (state.currentTemp + tempRise >= maxTemp) {
+                const remainingEnergy = (maxTemp - state.currentTemp) * state.mass * state.material.c;
+                timeStep = dt * (remainingEnergy / energyStep);
+                energyStep = remainingEnergy;
+                reachedMax = true;
+            }
+
             state.totalEnergy += energyStep;
-            state.timeElapsed += dt;
+            state.timeElapsed += timeStep;
+            state.currentTemp = reachedMax
+                ? maxTemp
+                : Math.min(state.currentTemp + energyStep / (state.mass * state.material.c), maxTemp);
 
-            const tempChange = energyStep / (state.mass * state.material.c);
-            state.currentTemp += tempChange;
-
-            if (state.totalEnergy % (state.power * 0.2) < energyStep * 2) {
-                 state.dataPoints.push({ x: state.totalEnergy, y: state.currentTemp });
-                 chart.data.datasets[0].data = state.dataPoints;
-                 chart.update();
+            if (!reachedMax && state.totalEnergy % (state.power * 0.2) < energyStep * 2) {
+                addDataPoint();
             }
 
             updateUI();
             updateVisuals();
+
+            if (reachedMax) {
+                addDataPoint();
+                stopSimulation();
+                alert(getTranslation('maxTempAlert'));
+            }
         }
 
         function handleMaterialChange(e) {
@@ -507,6 +535,11 @@
                 state.material = found;
                 resetSimulation();
             }
+        }
+
+        function handleShowShcChange(e) {
+            state.showShc = e.target.checked;
+            updateUI();
         }
 
         function handleMassChange(e) {
@@ -520,13 +553,16 @@
         }
 
         function toggleSimulation() {
+            if (!state.isRunning && state.currentTemp >= getMaxTemp()) {
+                return;
+            }
+
             state.isRunning = !state.isRunning;
             
             if (state.isRunning) {
                 els.btnStart.classList.add('hidden');
                 els.btnPause.classList.remove('hidden');
                 els.heaterCoil.classList.replace('bg-gray-600', 'bg-red-600');
-                els.heatEffect.style.opacity = '1';
                 state.timerId = setInterval(physicsLoop, UPDATE_INTERVAL);
             } else {
                 stopSimulation();
@@ -539,7 +575,6 @@
             els.btnStart.classList.remove('hidden');
             els.btnPause.classList.add('hidden');
             els.heaterCoil.classList.replace('bg-red-600', 'bg-gray-600');
-            els.heatEffect.style.opacity = '0';
         }
 
         function resetSimulation() {
@@ -551,6 +586,7 @@
             
             chart.data.datasets[0].data = state.dataPoints;
             chart.scales.x.max = undefined;
+            chart.options.scales.y.max = getMaxTemp();
             chart.update();
 
             updateUI();
@@ -568,10 +604,14 @@
                 els.select.value = state.material.id;
             }
             els.powerValue.textContent = state.power;
+            els.showShcToggle.checked = state.showShc;
+            els.shcValueRow.style.display = state.showShc ? 'flex' : 'none';
+            els.btnStart.disabled = state.currentTemp >= getMaxTemp();
         }
 
         function updateVisuals() {
-            const progress = (state.currentTemp - 20) / 100;
+            const maxTemp = getMaxTemp();
+            const progress = (state.currentTemp - INITIAL_TEMP) / (maxTemp - INITIAL_TEMP);
             const clampedProgress = Math.min(Math.max(progress, 0), 1);
             
             const h = 40 + (state.mass * 30);
@@ -588,7 +628,8 @@
             els.substanceContainer.style.backgroundColor = `rgba(${currentR}, ${currentG}, ${currentB}, 0.8)`;
             els.substanceLabel.textContent = getTranslation(state.material.shortKey);
 
-            const thermHeight = (state.currentTemp / 120) * 100;
+            els.thermometerMaxLabel.textContent = `${maxTemp}°C`;
+            const thermHeight = (state.currentTemp / maxTemp) * 100;
             els.thermometerLiquid.style.height = `${Math.min(thermHeight, 100)}%`;
 
             updateParticles(clampedProgress);
