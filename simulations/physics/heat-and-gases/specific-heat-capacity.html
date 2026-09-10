@@ -404,15 +404,7 @@
             chart = new Chart(ctx, {
                 type: 'scatter',
                 data: {
-                    datasets: [{
-                        label: getTranslation('chartDatasetLabel'),
-                        data: [],
-                        borderColor: 'rgb(37, 99, 235)',
-                        backgroundColor: 'rgba(37, 99, 235, 0.5)',
-                        showLine: true,
-                        pointRadius: 0,
-                        borderWidth: 2
-                    }]
+                    datasets: []
                 },
                 options: {
                     responsive: true,
@@ -448,10 +440,51 @@
 
         function updateChartLanguage() {
             if (!chart) return;
-            chart.data.datasets[0].label = getTranslation('chartDatasetLabel');
+            chart.data.datasets.forEach((dataset) => {
+                const material = materials.find(m => m.id === dataset.materialId);
+                if (material) {
+                    dataset.label = getTranslation(material.shortKey);
+                }
+            });
             chart.options.scales.x.title.text = getTranslation('chartXAxisLabel');
             chart.options.scales.y.title.text = getTranslation('chartYAxisLabel');
             chart.update();
+        }
+
+        function createDatasetFor(material) {
+            return {
+                label: getTranslation(material.shortKey),
+                data: [{ x: 0, y: INITIAL_TEMP }],
+                borderColor: `rgb(${material.color})`,
+                backgroundColor: `rgba(${material.color}, 0.5)`,
+                showLine: true,
+                pointRadius: 0,
+                borderWidth: 2,
+                materialId: material.id
+            };
+        }
+
+        function getChartMaxTemp() {
+            const hasNonWater = chart.data.datasets.some(dataset => dataset.materialId !== 'water');
+            return hasNonWater ? 120 : 100;
+        }
+
+        function startNewRun(clearPrevious) {
+            stopSimulation();
+            state.currentTemp = INITIAL_TEMP;
+            state.totalEnergy = 0;
+            state.timeElapsed = 0;
+            const dataset = createDatasetFor(state.material);
+            state.dataPoints = dataset.data;
+            if (clearPrevious) {
+                chart.data.datasets.length = 0;
+            }
+            chart.data.datasets.push(dataset);
+            chart.scales.x.max = undefined;
+            chart.options.scales.y.max = getChartMaxTemp();
+            chart.update();
+            updateUI();
+            updateVisuals();
         }
 
         function init() {
@@ -473,19 +506,18 @@
             els.showShcToggle.addEventListener('change', handleShowShcChange);
 
             initChart();
-            updateUI();
-            updateVisuals();
+            startNewRun(true);
             createParticles();
         }
 
         function addDataPoint() {
             const points = state.dataPoints;
+            if (!points) return;
             const last = points[points.length - 1];
             if (last && last.x === state.totalEnergy && last.y === state.currentTemp) {
                 return;
             }
             points.push({ x: state.totalEnergy, y: state.currentTemp });
-            chart.data.datasets[0].data = points;
             chart.update();
         }
 
@@ -529,12 +561,11 @@
         }
 
         function handleMaterialChange(e) {
-            const selectedId = e.target.value;
-            const found = materials.find(m => m.id === selectedId);
-            if (found) {
-                state.material = found;
-                resetSimulation();
-            }
+            const found = materials.find(m => m.id === e.target.value);
+            if (!found || found.id === state.material.id) return;
+            addDataPoint();
+            state.material = found;
+            startNewRun(false);
         }
 
         function handleShowShcChange(e) {
@@ -578,19 +609,7 @@
         }
 
         function resetSimulation() {
-            stopSimulation();
-            state.currentTemp = INITIAL_TEMP;
-            state.totalEnergy = 0;
-            state.timeElapsed = 0;
-            state.dataPoints = [{ x: 0, y: INITIAL_TEMP }];
-            
-            chart.data.datasets[0].data = state.dataPoints;
-            chart.scales.x.max = undefined;
-            chart.options.scales.y.max = getMaxTemp();
-            chart.update();
-
-            updateUI();
-            updateVisuals();
+            startNewRun(true);
         }
 
         function updateUI() {
