@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water: Particle Motion &amp; States of Matter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        }
+        #simCanvas {
+            width: 100%;
+            max-width: 800px;
+            height: 500px;
+            border-radius: 0.75rem;
+            background-color: #020617;
+            display: block;
+        }
+        .lang-btn.active {
+            background-color: #308a8f;
+            border-color: #308a8f;
+            color: #ffffff;
+        }
+        .temp-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <header class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4 px-4 py-4">
+        <div>
+            <h1 class="text-2xl font-bold" data-i18n="headerTitle"></h1>
+            <p class="text-slate-400 text-sm mt-1" data-i18n="headerSubtitle"></p>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" class="lang-btn border rounded-lg px-3 py-1.5 text-sm transition-colors" data-lang-btn="en-US">EN</button>
+            <button type="button" class="lang-btn border rounded-lg px-3 py-1.5 text-sm transition-colors" data-lang-btn="zh-HK">繁</button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 px-4 py-6">
+        <!-- Left column: canvas + controls -->
+        <div class="space-y-5">
+            <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
+                <canvas id="simCanvas" width="800" height="500"></canvas>
+            </div>
+
+            <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
+                <label class="block text-sm font-medium text-slate-200" data-i18n="tempLabel"></label>
+                <div class="mt-2 flex items-center gap-3 flex-wrap">
+                    <input type="range" id="tempSlider" min="1" max="500" step="1" value="300"
+                        class="w-full flex-1 min-w-0 accent-emerald-400">
+                    <span id="tempReadout" class="text-lg font-semibold tabular-nums">T = 300 K (26.9 &deg;C)</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-2" data-i18n="sliderHint"></p>
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3">
+                    <button type="button" data-preset="1" class="preset border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors">1 K</button>
+                    <button type="button" data-preset="100" class="preset border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors">100 K</button>
+                    <button type="button" data-preset="273" class="preset border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors">273 K</button>
+                    <button type="button" data-preset="300" class="preset border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors">300 K</button>
+                    <button type="button" data-preset="373" class="preset border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors">373 K</button>
+                    <button type="button" data-preset="500" class="preset border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors">500 K</button>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" id="pauseBtn" class="flex-1 border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors" data-i18n="pauseBtn"></button>
+                    <button type="button" id="resetBtn" class="flex-1 border border-slate-700 rounded-lg py-1.5 text-sm text-slate-300 hover:border-emerald-400 hover:text-white transition-colors" data-i18n="resetBtn"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column: info -->
+        <div class="space-y-5">
+            <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-sm font-medium text-slate-200" data-i18n="stateLabel"></span>
+                    <span id="stateText" class="text-sm font-semibold text-amber-300">Liquid</span>
+                </div>
+                <dl class="mt-4 space-y-3 text-sm">
+                    <div class="flex justify-between gap-2">
+                        <dt class="text-slate-400" data-i18n="keLabel"></dt>
+                        <dd>
+                            <span class="tabular-nums text-white font-medium" id="keValue"></span>
+                            <span class="text-slate-400 ml-1" data-i18n="keUnit"></span>
+                        </dd>
+                    </div>
+                    <div class="flex justify-between gap-2">
+                        <dt class="text-slate-400" data-i18n="rmsLabel"></dt>
+                        <dd>
+                            <span class="tabular-nums text-white font-medium" id="rmsValue"></span>
+                            <span class="text-slate-400 ml-1" data-i18n="rmsUnit"></span>
+                        </dd>
+                    </div>
+                </dl>
+                <div class="flex items-center gap-3 mt-4">
+                    <dt class="text-slate-400 shrink-0" data-i18n="structLabel"></dt>
+                    <dd class="text-slate-300 min-w-0" id="structText"></dd>
+                </div>
+            </div>
+
+            <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-sm font-medium text-slate-200" data-i18n="legendTitle"></span>
+                </div>
+                <div class="mt-3 flex items-center justify-center gap-3">
+                    <span class="flex items-center gap-2 text-sm text-slate-300">
+                        <span class="temp-dot" style="background:#3b82f6"></span><span data-i18n="legendSlow"></span>
+                    </span>
+                    <span class="flex items-center gap-2 text-sm text-slate-300">
+                        <span class="temp-dot" style="background:#ef4444"></span><span data-i18n="legendFast"></span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
+                <h2 class="text-sm font-semibold text-slate-100" data-i18n="infoHeading"></h2>
+                <p class="text-sm text-slate-300 mt-2 leading-relaxed" data-i18n="infoText"></p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* ---------------- Translations ---------------- */
+        const translations = {
+            "en-US": {
+                pageTitle: "Water: Particle Motion & States of Matter",
+                headerTitle: "Water: Particle Motion & States of Matter",
+                headerSubtitle: "Explore how water molecules move and arrange themselves from 1 K to 500 K.",
+                tempLabel: "Temperature",
+                sliderHint: "Drag to change temperature (1 K – 500 K)",
+                stateLabel: "State",
+                stateSolid: "Solid (Ice)",
+                stateLiquid: "Liquid",
+                stateGas: "Gas (Steam)",
+                melting: "Melting…",
+                boiling: "Boiling…",
+                freezing: "Freezing…",
+                condensing: "Condensing…",
+                desubliming: "Depositing…",
+                keLabel: "Avg. KE per molecule",
+                keUnit: "×10⁻²¹ J",
+                rmsLabel: "RMS molecular speed",
+                rmsUnit: "m/s",
+                structLabel: "Molecular arrangement",
+                structSolid: "Molecules held in a fixed, ordered lattice, only vibrating in place.",
+                structLiquid: "Molecules close together, randomly arranged, sliding past each other.",
+                structGas: "Molecules far apart, moving rapidly and randomly in all directions.",
+                pauseBtn: "Pause",
+                resumeBtn: "Resume",
+                resetBtn: "Reset Simulation",
+                legendTitle: "Molecular speed",
+                legendSlow: "Slow",
+                legendFast: "Fast",
+                infoHeading: "💡 What you are seeing",
+                infoText: "Temperature is a measure of the average kinetic energy of the molecules: the hotter the water, the faster its molecules move. During melting and boiling the temperature stays constant because the energy supplied goes into separating the molecules, not into speeding them up."
+            },
+            "zh-HK": {
+                pageTitle: "水的微觀世界：粒子運動與三態",
+                headerTitle: "水的微觀世界：粒子運動與三態",
+                headerSubtitle: "探索水分子在 1 K 至 500 K 之間的運動與排列。",
+                tempLabel: "溫度",
+                sliderHint: "拖曳以改變溫度（1 K – 500 K）",
+                stateLabel: "狀態",
+                stateSolid: "固態（冰）",
+                stateLiquid: "液態",
+                stateGas: "氣態（水蒸氣）",
+                melting: "熔化中…",
+                boiling: "沸騰中…",
+                freezing: "凝固中…",
+                condensing: "凝結中…",
+                desubliming: "凝華中…",
+                keLabel: "每個分子的平均動能",
+                keUnit: "×10⁻²¹ 焦耳",
+                rmsLabel: "分子均方根速率",
+                rmsUnit: "米/秒",
+                structLabel: "分子排列",
+                structSolid: "分子固定在有序晶格中，只能在原位振動。",
+                structLiquid: "分子緊密相貼但排列混亂，可互相滑過。",
+                structGas: "分子相距甚遠，向各個方向急速隨機運動。",
+                pauseBtn: "暫停",
+                resumeBtn: "繼續",
+                resetBtn: "重置模擬",
+                legendTitle: "分子速率",
+                legendSlow: "慢",
+                legendFast: "快",
+                infoHeading: "💡 你看到甚麼",
+                infoText: "溫度是分子平均動能的度量：水越熱，分子運動越快。熔化和沸騰期間溫度保持不變，因為輸入的能量用於把分子分開，而不是加快分子運動。"
+            }
+        };
+
+        /* ---------------- i18n ---------------- */
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentLang = urlParams.get('lang') || 'en-US';
+        if (!translations[currentLang]) currentLang = 'en-US';
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('lang', lang);
+            window.history.pushState({}, '', newUrl);
+            document.title = translations[lang].pageTitle;
+            document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('active', b.dataset.langBtn === lang));
+            document.querySelectorAll('[data-i18n]').forEach(elem => {
+                const key = elem.getAttribute('data-i18n');
+                if (translations[lang][key]) elem.textContent = translations[lang][key];
+            });
+            updateReadouts(); // re-render dynamic text in current language
+        }
+
+        document.querySelectorAll('[data-lang-btn]').forEach(btn => {
+            btn.addEventListener('click', () => setLanguage(btn.dataset.langBtn));
+        });
+
+        /* ---------------- Readouts (step 1: placeholders) ---------------- */
+        const slider = document.getElementById('tempSlider');
+        const readout = document.getElementById('tempReadout');
+        let targetTempK = 300;
+
+        function fmtTemp(t) {
+            return 'T = ' + t + ' K (' + (t - 273.15).toFixed(1) + ' °C)';
+        }
+
+        function updateReadouts() {
+            readout.textContent = fmtTemp(targetTempK);
+        }
+
+        slider.addEventListener('input', function () {
+            targetTempK = parseInt(this.value, 10);
+            updateReadouts();
+        });
+
+        document.querySelectorAll('.preset').forEach(btn => {
+            btn.addEventListener('click', function () {
+                targetTempK = parseInt(this.dataset.preset, 10);
+                slider.value = targetTempK;
+                updateReadouts();
+            });
+        });
+
+        /* Static placeholders for values filled by step 2. */
+        const defaultKE = '1.6';
+        const defaultRMS = '190';
+        document.getElementById('keValue').textContent = defaultKE;
+        document.getElementById('rmsValue').textContent = defaultRMS;
+
+        /* ---------------- Gas phase particle engine ---------------- */
+        const kB = 1.381e-23;
+        const MOLAR_MASS = 0.018;
+        const R = 8.314;
+        const N_MOLECULES = 150;
+        const MELT_K = 273;
+        const BOIL_K = 373;
+        const BASE_SPEED = 90;       // px/s at 300 K (thermal speed scales with sqrt(T))
+        const BASE_ROT = 1.2;        // rad/s at 300 K
+        const MIN_DIST = 28;        // px minimum separation between molecule centres
+
+        let simTempK = 300;          // displayed/animated temperature (lerps toward targetTempK)
+        let phase = 'liquid';        // current phase: 'solid' | 'liquid' | 'gas'
+        let transition = null;       // active cross-phase morph: { from, to, t, dur, label, fromPos, toPos }
+        let paused = false;
+        let molecules = [];
+
+        // The whole canvas box the molecules bounce against (molecule half-width ~6 px).
+        const CW = 800, CH = 500;
+        const BOUND = 16;
+        // Liquid pool: molecules never leave this region in liquid phase.
+        const POOL_H = 170;
+        const POOL_TOP = CH - BOUND - POOL_H;
+
+        // Hexagonal lattice of solid-phase molecule sites (built once at startup).
+        let lattice = [];
+        function buildLattice() {
+            lattice = [];
+            const spacing = 44, dy = spacing * 0.87;
+            const rows = 10, cols = 15;
+            const y0 = CH - BOUND - (rows - 1) * dy;
+            for (let r = 0; r < rows; r++) {
+                const offset = (r % 2) * spacing / 2;
+                for (let c = 0; c < cols; c++) {
+                    lattice.push({ x: 40 + offset + c * spacing, y: y0 + r * dy });
+                }
+            }
+        }
+        function thermalSpeed(k) {
+            return BASE_SPEED * Math.sqrt(k / 300);
+        }
+
+        function initMolecules() {
+            molecules = [];
+            for (let i = 0; i < N_MOLECULES; i++) {
+                molecules.push({
+                    x: BOUND + Math.random() * (CW - 2 * BOUND),
+                    y: POOL_TOP + Math.random() * (CH - BOUND - POOL_TOP),
+                    dir: Math.random() * Math.PI * 2,
+                    rot: Math.random() * Math.PI * 2,
+                    spin: Math.random() < 0.5 ? -1 : 1,
+                    speedF: 0.8 + Math.random() * 0.4,   // tiny ±20% variety
+                    phaseX: 0,
+                    phaseY: 0,
+                    ang: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function moleculeSpeed(m) {
+            return thermalSpeed(simTempK) * m.speedF;
+        }
+
+        function stepMolecules(dt, phase) {
+            const v = thermalSpeed(simTempK);
+            if (phase === 'solid') {
+                for (let i = 0; i < molecules.length; i++) {
+                    const m = molecules[i];
+                    const s = lattice[i];
+                    const A = 1.5 + 3.5 * Math.sqrt(simTempK / 300);
+                    m.ang += (3 + 6 * Math.sqrt(simTempK / 300)) * dt;
+                    m.x = s.x + A * Math.sin(m.ang);
+                    m.y = s.y + A * Math.cos(m.ang * 0.8);
+                    m.rot = Math.sin(m.ang * 0.5) * 0.3;
+                }
+                return;
+            }
+
+            if (phase === 'liquid') {
+                for (let i = 0; i < molecules.length; i++) {
+                    const m = molecules[i];
+                    m.x += Math.cos(m.dir) * v * m.speedF * dt;
+                    m.y += Math.sin(m.dir) * v * m.speedF * dt;
+                    m.rot += BASE_ROT * Math.sqrt(simTempK / 300) * m.spin * dt;
+
+                    // cumulative random-walk jitter of the heading direction
+                    m.dir += (Math.random() - 0.5) * 2.5 * dt;
+                }
+            } else {
+                for (let i = 0; i < molecules.length; i++) {
+                    const m = molecules[i];
+                    m.x += Math.cos(m.dir) * v * m.speedF * dt;
+                    m.y += Math.sin(m.dir) * v * m.speedF * dt;
+                    m.rot += BASE_ROT * Math.sqrt(simTempK / 300) * m.spin * dt;
+                }
+            }
+
+            for (let i = 0; i < molecules.length; i++) {
+                for (let j = i + 1; j < molecules.length; j++) {
+                    const a = molecules[i], b = molecules[j];
+                    let dx = b.x - a.x, dy = b.y - a.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (!(dist > 0) || dist >= MIN_DIST) continue;
+
+                    // Equal-mass elastic collision -> exchange normal velocity components (approaching only).
+                    const nx = dx / dist, ny = dy / dist;
+                    const vax = Math.cos(a.dir), vay = Math.sin(a.dir);
+                    const vbx = Math.cos(b.dir), vby = Math.sin(b.dir);
+                    const van = vax * nx + vay * ny;
+                    const vbn = vbx * nx + vby * ny;
+                    if (vbn - van < 0) { // approaching
+                        a.dir = Math.atan2(vay + (vbn - van) * ny, vax + (vbn - van) * nx);
+                        b.dir = Math.atan2(vby + (van - vbn) * ny, vbx + (van - vbn) * nx);
+                    }
+
+                    const overlap = MIN_DIST - dist;
+                    a.x -= nx * overlap / 2;
+                    a.y -= ny * overlap / 2;
+                    b.x += nx * overlap / 2;
+                    b.y += ny * overlap / 2;
+                }
+            }
+
+            // Wall clamps run AFTER collision so the wall is the final constraint each frame.
+            // (Collision can push molecules past a freshly-set wall; re-clamping here prevents
+            //  slow drift out of the pool for liquid.)
+            applyWallClamps(phase);
+        }
+
+        function applyWallClamps(phase) {
+            for (let i = 0; i < molecules.length; i++) {
+                const m = molecules[i];
+                if (m.x < BOUND) { m.x = BOUND; m.dir = Math.PI - m.dir; }
+                else if (m.x > CW - BOUND) { m.x = CW - BOUND; m.dir = Math.PI - m.dir; }
+                if (phase === 'liquid') {
+                    if (m.y < POOL_TOP) { m.y = POOL_TOP; m.dir = -m.dir; }
+                    else if (m.y > CH - BOUND) { m.y = CH - BOUND; m.dir = -m.dir; }
+                } else {
+                    if (m.y < BOUND) { m.y = BOUND; m.dir = -m.dir; }
+                    else if (m.y > CH - BOUND) { m.y = CH - BOUND; m.dir = -m.dir; }
+                }
+            }
+        }
+
+        function updateReadoutsPhysics() {
+            document.getElementById('keValue').textContent = (1.5 * kB * simTempK / 1e-21).toFixed(2);
+            document.getElementById('rmsValue').textContent =
+                Math.round(Math.sqrt(3 * R * simTempK / MOLAR_MASS));
+            document.getElementById('structText').textContent =
+                simTempK < MELT_K ? translations[currentLang].structSolid
+                   : simTempK < BOIL_K ? translations[currentLang].structLiquid
+                   : translations[currentLang].structGas;
+            document.getElementById('stateText').textContent =
+                transition ? translations[currentLang][transition.label]
+                    : simTempK < MELT_K ? translations[currentLang].stateSolid
+                       : simTempK < BOIL_K ? translations[currentLang].stateLiquid
+                       : translations[currentLang].stateGas;
+        }
+
+        function drawMolecule(m) {
+            const col = colorize(m);
+            ctx.save();
+            ctx.translate(m.x, m.y);
+            ctx.rotate(m.rot);
+            ctx.strokeStyle = 'rgba(148,163,184,0.55)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-Math.cos(52 * Math.PI / 180) * 11, -Math.sin(52 * Math.PI / 180) * 11);
+            ctx.lineTo(0, 0);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(52 * Math.PI / 180) * 11, Math.sin(52 * Math.PI / 180) * 11);
+            ctx.stroke();
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.arc(0, 0, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.arc(-Math.cos(52 * Math.PI / 180) * 9, -Math.sin(52 * Math.PI / 180) * 9, 3, 0, Math.PI * 2);
+            ctx.arc(Math.cos(52 * Math.PI / 180) * 9, Math.sin(52 * Math.PI / 180) * 9, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function colorize(m) {
+            const sp = moleculeSpeed(m);
+            const u = Math.pow(Math.max(0, Math.min(1, (simTempK - 1) / 499)), 1.56);
+            const slow = [0x3b, 0x82, 0xf6];
+            const fast = [0xef, 0x44, 0x44];
+            const c = slow.map((v, i) => Math.round(v + (fast[i] - v) * u));
+            return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+        }
+
+        function loop(now) {
+            requestAnimationFrame(loop);
+            const dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+            lastTime = now;
+
+            simTempK += (targetTempK - simTempK) * Math.min(1, dt * 0.8);
+            if (Math.abs(targetTempK - simTempK) < 0.5) simTempK = targetTempK;
+
+            const desired = simTempK < MELT_K ? 'solid' : simTempK < BOIL_K ? 'liquid' : 'gas';
+            if (!paused) {
+                if (!transition && desired !== phase) startTransition(phase, desired);
+                else if (transition) {
+                    transition.t += dt;
+                    if (transition.t >= transition.dur) {
+                        phase = transition.to;
+                        transition = null;
+                    }
+                }
+                if (transition) stepTransition(dt);
+                else stepMolecules(dt, phase);
+            }
+
+            ctx.clearRect(0, 0, CW, CH);
+            for (let i = 0; i < molecules.length; i++) drawMolecule(molecules[i]);
+
+            updateReadoutsPhysics();
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function smoothstep(e0) {
+            const e = Math.min(1, e0);
+            return e * e * (3 - 2 * e);
+        }
+
+        function labelFor(from, to) {
+            if (from === 'solid' && to === 'liquid') return 'melting';
+            if (from === 'liquid' && to === 'solid') return 'freezing';
+            if (from === 'liquid' && to === 'gas') return 'boiling';
+            if (from === 'gas' && to === 'liquid') return 'condensing';
+            if (from === 'solid' && to === 'gas') return 'boiling'; // rare direct jumps; never blank
+            if (from === 'gas' && to === 'solid') return 'desubliming';
+            return 'melting';
+        }
+
+        function startTransition(from, to) {
+            const fromPos = molecules.map(m => ({ x: m.x, y: m.y }));
+            let toPos;
+            if (to === 'solid') {
+                toPos = lattice.map(s => ({ x: s.x, y: s.y }));
+            } else if (to === 'gas') {
+                toPos = molecules.map(() => ({
+                    x: BOUND + Math.random() * (CW - 2 * BOUND),
+                    y: BOUND + Math.random() * (CH - 2 * BOUND)
+                }));
+            } else {
+                toPos = molecules.map(() => ({
+                    x: BOUND + Math.random() * (CW - 2 * BOUND),
+                    y: POOL_TOP + Math.random() * (CH - BOUND - POOL_TOP)
+                }));
+            }
+            const label = labelFor(from, to);
+            transition = { from: from, to: to, t: 0, dur: 1.6, label: label, fromPos: fromPos, toPos: toPos };
+        }
+
+        function stepTransition(dt) {
+            const e = smoothstep(transition.t / transition.dur);
+            for (let i = 0; i < molecules.length; i++) {
+                const m = molecules[i];
+                m.rot += m.spin * 0.8 * dt;
+                m.x = lerp(transition.fromPos[i].x, transition.toPos[i].x, e);
+                m.y = lerp(transition.fromPos[i].y, transition.toPos[i].y, e);
+            }
+        }
+
+        const simCanvas = document.getElementById('simCanvas');
+        const ctx = simCanvas.getContext('2d');
+        let lastTime = performance.now();
+
+        // Kick the animation loop off.
+
+        function togglePause() {
+            paused = !paused;
+            document.getElementById('pauseBtn').textContent =
+                paused ? translations[currentLang].resumeBtn : translations[currentLang].pauseBtn;
+        }
+
+        function resetSim() {
+            targetTempK = 300;
+            simTempK = 300;
+            slider.value = 300;
+            initMolecules();
+            transition = null;
+            phase = 'liquid';
+            updateReadouts();
+        }
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('resetBtn').addEventListener('click', resetSim);
+
+        // Kick the animation loop off.
+        setLanguage(currentLang);
+        buildLattice();             // hexagonal solid lattice, built once before molecules
+        initMolecules();            // molecules must exist before the first frame
+        lastTime = performance.now();
+        loop(lastTime);
+    </script>
+</body>
+</html>
