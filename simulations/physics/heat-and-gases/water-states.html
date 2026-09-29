@@ -253,164 +253,165 @@
         document.getElementById('keValue').textContent = defaultKE;
         document.getElementById('rmsValue').textContent = defaultRMS;
 
-        /* ---------------- Gas phase particle engine ---------------- */
-        const kB = 1.381e-23;
-        const MOLAR_MASS = 0.018;
-        const R = 8.314;
-        const N_MOLECULES = 150;
-        const MELT_K = 273;
-        const BOIL_K = 373;
-        const BASE_SPEED = 90;       // px/s at 300 K (thermal speed scales with sqrt(T))
-        const BASE_ROT = 1.2;        // rad/s at 300 K
-        const MIN_DIST = 28;        // px minimum separation between molecule centres
+        /* ---------------- Cohesive molecular-dynamics engine ----------------
+           Generic for any van der Waals fluid (water now; nitrogen / argon later).
+           There is no scripted phase morph: molecules attract and repel through a
+           pair potential and are thermalised by a Langevin thermostat, so solid,
+           liquid and gas all emerge from the SAME equations and every transition is
+           continuous by construction (no site springs, no moving lids, no clamps). */
 
-        let simTempK = 300;          // displayed/animated temperature (lerps toward targetTempK)
-        let phase = 'liquid';        // current phase: 'solid' | 'liquid' | 'gas'
-        let transition = null;       // active cross-phase morph: { from, to, t, dur, label }
+        // Real-chemistry constants - used only for the numeric readouts.
+        const kB = 1.381e-23;
+        const R = 8.314;
+
+        // ---- Substance descriptor (the only thing that changes for N2 / Ar) -----
+        // Particle mass is 1 and the well depth eps is stored as a characteristic
+        // speed squared. The phase is set by the reduced temperature
+        //   T* = (thermal speed)^2 / eps,
+        // and the mapping below pins T*_freeze to meltK and T*_boil to boilK, so
+        // each substance displays its own real melting / boiling points.
+        const SUBSTANCE = {
+            id: 'water',
+            molarMass: 0.018,      // kg/mol (readout only)
+            meltK: 273,
+            boilK: 373,
+            sigma: 30,             // effective molecular diameter, px
+            eps: 13500,            // well depth, px^2/s^2 (attraction speed ~116 px/s)
+            tFreeze: 0.47,         // reduced temperature at which the fluid freezes
+            tBoil: 1.10,           // reduced temperature at which it starts to boil
+            tHot: 2.60             // reduced temperature at 500 K (gas fills the box)
+        };
+        const N_MOLECULES = 150;
+        const MOLAR_MASS = SUBSTANCE.molarMass;
+        const MELT_K = SUBSTANCE.meltK;
+        const BOIL_K = SUBSTANCE.boilK;
+
+        // ---- Simulation parameters ----
+        const CW = 800, CH = 500, BOUND = 16;   // container (px)
+        const R_CUT = 2.5;        // pair-force cutoff, in sigma
+        const R_CORE = 0.8;       // softened core: force stops growing inside this
+        const GRAVITY = 180;      // px/s^2 - sets how compact the pool is
+        const GAMMA = 1;          // Langevin coupling, 1/s
+        const SUBSTEPS = 8;       // integrator substeps per frame
+        const A_MAX = 60000;      // acceleration cap for stability, px/s^2
+        const BASE_ROT = 1.2;     // decorative spin at 300 K, rad/s
+
+        let simTempK = 300;       // displayed/animated temperature (lerps to targetTempK)
+        let phase = 'liquid';     // 'solid' | 'liquid' | 'gas'
+        let pendingLabel = null;  // transient label such as 'melting'
+        let labelUntil = 0;       // wall-clock ms until pendingLabel expires
         let paused = false;
         let molecules = [];
+        // --- temperature mapping ------------------------------------------------
+        function lerp(a, b, t) { return a + (b - a) * t; }
 
-        // The whole canvas box the molecules bounce against (molecule half-width ~6 px).
-        const CW = 800, CH = 500;
-        const BOUND = 16;
-        // Liquid pool: molecules never leave this region in liquid phase.
-        const POOL_H = 170;
-        const POOL_TOP = CH - BOUND - POOL_H;
-
-        // Hexagonal lattice of solid-phase molecule sites (built once at startup).
-        let lattice = [];
-        function buildLattice() {
-            lattice = [];
-            // spacing 52 => hexagonal interstitial holes have radius 52/sqrt(3) ~ 30 px,
-            // which is >= MIN_DIST (28) so no molecule can ever be squeezed permanently
-            // between three neighbours (lattice jamming). 10 x 15 = 150 sites.
-            const spacing = 52, dy = spacing * 0.87;
-            const rows = 10, cols = 15;
-            const y0 = CH - BOUND - (rows - 1) * dy;
-            for (let r = 0; r < rows; r++) {
-                const offset = (r % 2) * spacing / 2;
-                for (let c = 0; c < cols; c++) {
-                    lattice.push({ x: 28 + offset + c * spacing, y: y0 + r * dy });
-                }
-            }
+        function reducedTemp(T) {
+            const cold = 0.01;
+            if (T <= 1) return cold;
+            if (T <= SUBSTANCE.meltK) return lerp(cold, SUBSTANCE.tFreeze, (T - 1) / (SUBSTANCE.meltK - 1));
+            if (T <= SUBSTANCE.boilK) return lerp(SUBSTANCE.tFreeze, SUBSTANCE.tBoil, (T - SUBSTANCE.meltK) / (SUBSTANCE.boilK - SUBSTANCE.meltK));
+            return lerp(SUBSTANCE.tBoil, SUBSTANCE.tHot, (T - SUBSTANCE.boilK) / (500 - SUBSTANCE.boilK));
         }
-        function thermalSpeed(k) {
-            return BASE_SPEED * Math.sqrt(k / 300);
-        }
+        // Target thermal speed (px/s) for a displayed temperature.
+        function thermalSpeed(k) { return Math.sqrt(reducedTemp(k) * SUBSTANCE.eps); }
 
-        // Approximately Gaussian noise (sum of uniforms), mean 0, spread ~±0.87
-        function gauss() {
-            return Math.random() + Math.random() + Math.random() - 1.5;
-        }
+        // Unit-variance Gaussian noise.
+        function gauss() { return (Math.random() + Math.random() + Math.random() - 1.5) * 2; }
 
+        // Start as a loose fluid slab low in the box (about one pool's worth).
         function initMolecules() {
             molecules = [];
-            for (let i = 0; i < N_MOLECULES; i++) {
-                const a = Math.random() * Math.PI * 2;
-                const speed = thermalSpeed(simTempK) * (0.8 + Math.random() * 0.4);
-                molecules.push({
-                    x: BOUND + Math.random() * (CW - 2 * BOUND),
-                    y: POOL_TOP + Math.random() * (CH - BOUND - POOL_TOP),
-                    vx: Math.cos(a) * speed,      // real velocity (px/s), thermalized each frame
-                    vy: Math.sin(a) * speed,
-                    rot: Math.random() * Math.PI * 2,
-                    spin: Math.random() < 0.5 ? -1 : 1,
-                    speedF: 0.8 + Math.random() * 0.4,   // ±20% speed variety
-                    // solid-phase wobble oscillator
-                    site: i                              // lattice site owned in solid phase
-                });
+            const cols = 15, spacing = 34, dy = spacing * 0.87;
+            const x0 = (CW - (cols - 1) * spacing) / 2;
+            const y0 = CH - BOUND - 9 * dy;
+            let n = 0;
+            for (let r = 0; r < 10 && n < N_MOLECULES; r++) {
+                const off = (r % 2) * spacing / 2;
+                for (let c = 0; c < cols && n < N_MOLECULES; c++, n++) {
+                    const a = Math.random() * Math.PI * 2;
+                    const speed = thermalSpeed(300) * (0.7 + Math.random() * 0.6);
+                    molecules.push({
+                        x: x0 + off + c * spacing + (Math.random() - 0.5) * 4,
+                        y: y0 + r * dy + (Math.random() - 0.5) * 4,
+                        vx: Math.cos(a) * speed,
+                        vy: Math.sin(a) * speed,
+                        ax: 0, ay: 0,
+                        rot: Math.random() * Math.PI * 2,
+                        spin: Math.random() < 0.5 ? -1 : 1
+                    });
+                }
             }
         }
 
-        // One unified integrator for every phase and transition: optional lattice spring
-        // (stiffness kS), thermal Langevin noise (q), fluid thermostat (speed relax toward
-        // thermal value), random steering, temporary gravity, moving fluid surface (top).
-        // A stable phase is just one parameter set; a transition is a ramp between two sets.
-        function stepMolecules(dt, ph, opts) {
-            opts = opts || {};
-            const top = opts.top !== undefined ? opts.top : (ph === 'liquid' ? POOL_TOP : BOUND);
-            const vT = thermalSpeed(simTempK);
-            const kS = opts.springK !== undefined ? opts.springK : (ph === 'solid' ? 30 : 0);
-            const qS = opts.springQ !== undefined ? opts.springQ
-                     : (ph === 'solid' ? 82 * Math.sqrt(simTempK / 300) : 0);
-            const thermo = opts.thermo !== undefined ? opts.thermo : (ph === 'solid' ? 0 : 3);
-            const steer = opts.steer !== undefined ? opts.steer : (ph === 'liquid' ? 2.5 : 0.6);
-            const gam = 3.5;                       // spring damping, 1/s
-            const sqdt = Math.sqrt(dt);
+        // Lennard-Jones pair forces + gravity. Both particles of a pair get the
+        // equal-and-opposite acceleration; the repulsive core is softened so a
+        // chance overlap can never blow the integrator up.
+        function computeForces() {
+            const n = molecules.length;
+            for (let i = 0; i < n; i++) { molecules[i].ax = 0; molecules[i].ay = GRAVITY; }
+            const eps = SUBSTANCE.eps;
+            const sig2 = SUBSTANCE.sigma * SUBSTANCE.sigma;
+            const rc2 = (R_CUT * SUBSTANCE.sigma) * (R_CUT * SUBSTANCE.sigma);
+            const core2 = (R_CORE * SUBSTANCE.sigma) * (R_CORE * SUBSTANCE.sigma);
+            for (let i = 0; i < n - 1; i++) {
+                const a = molecules[i];
+                for (let j = i + 1; j < n; j++) {
+                    const b = molecules[j];
+                    const dx = a.x - b.x, dy = a.y - b.y;
+                    const r2 = dx * dx + dy * dy;
+                    if (r2 >= rc2 || r2 < 1e-6) continue;
+                    const rr2 = r2 < core2 ? core2 : r2;
+                    const sr2 = sig2 / rr2;
+                    const sr6 = sr2 * sr2 * sr2;
+                    const sr12 = sr6 * sr6;
+                    const f = 24 * eps * (2 * sr12 - sr6) / rr2;   // 1/length^2
+                    const fx = f * dx, fy = f * dy;                // acceleration
+                    a.ax += fx; a.ay += fy;
+                    b.ax -= fx; b.ay -= fy;
+                }
+            }
+            for (let i = 0; i < n; i++) {
+                const m = molecules[i];
+                const a2 = m.ax * m.ax + m.ay * m.ay;
+                if (a2 > A_MAX * A_MAX) {
+                    const s = A_MAX / Math.sqrt(a2);
+                    m.ax *= s; m.ay *= s;
+                }
+            }
+        }
+
+        // One physics step: Langevin thermostat, then symplectic (semi-implicit
+        // Euler) integration in substeps with hard walls. Gravity is always on;
+        // a fluid simply self-organises, so no gravity ramps are needed.
+        function stepPhysics(dt) {
+            const vth = thermalSpeed(simTempK);
+            const c1 = Math.exp(-GAMMA * dt);
+            const c2 = Math.sqrt(vth * vth * (1 - c1 * c1));
             for (let i = 0; i < molecules.length; i++) {
                 const m = molecules[i];
-                if (kS > 0 || qS > 0) {            // lattice spring + vibrational noise
-                    const s = lattice[m.site];
-                    m.vx += ((s.x - m.x) * kS - gam * m.vx) * dt + qS * sqdt * gauss();
-                    m.vy += ((s.y - m.y) * kS - gam * m.vy) * dt + qS * sqdt * gauss();
-                    m.rot += 0.6 * qS * sqdt * gauss() * dt;
-                }
-                if (thermo > 0) {                  // fluid thermostat: relax |v| to thermal
-                    const v = Math.hypot(m.vx, m.vy);
-                    const target = vT * m.speedF;
-                    if (v > 0.0001) {
-                        const f = 1 + (target - v) / v * Math.min(1, thermo * dt);
-                        m.vx *= f; m.vy *= f;
-                    } else {
-                        const a = Math.random() * Math.PI * 2;
-                        m.vx = Math.cos(a) * target; m.vy = Math.sin(a) * target;
-                    }
-                }
-                if (steer > 0) {                   // random steering of the velocity
-                    const da = (Math.random() - 0.5) * steer * dt;
-                    const c = Math.cos(da), sn = Math.sin(da);
-                    const nvx = m.vx * c - m.vy * sn;
-                    m.vy = m.vx * sn + m.vy * c;
-                    m.vx = nvx;
-                }
-                if (opts.gravity) m.vy += opts.gravity * dt;
-                if (opts.vcap) {                   // speed cap: gentle crystal assembly
-                    const v2 = Math.hypot(m.vx, m.vy);
-                    if (v2 > opts.vcap) { const f = opts.vcap / v2; m.vx *= f; m.vy *= f; }
-                }
-                m.x += m.vx * dt;
-                m.y += m.vy * dt;
-                m.rot += BASE_ROT * Math.sqrt(simTempK / 300) * m.spin * dt * (kS > 15 ? 0.3 : 1);
+                m.vx = m.vx * c1 + c2 * gauss();
+                m.vy = m.vy * c1 + c2 * gauss();
             }
-            collide();
-            applyBounds(top);
-        }
-
-        // Equal-mass elastic collisions: exchange normal velocity components, then push apart.
-        function collide() {
+            const h = dt / SUBSTEPS;
+            for (let s = 0; s < SUBSTEPS; s++) {
+                computeForces();
+                for (let i = 0; i < molecules.length; i++) {
+                    const m = molecules[i];
+                    m.vx += m.ax * h; m.vy += m.ay * h;
+                    m.x += m.vx * h; m.y += m.vy * h;
+                    if (m.x < BOUND) { m.x = BOUND; m.vx = Math.abs(m.vx); }
+                    else if (m.x > CW - BOUND) { m.x = CW - BOUND; m.vx = -Math.abs(m.vx); }
+                    if (m.y < BOUND) { m.y = BOUND; m.vy = Math.abs(m.vy); }
+                    else if (m.y > CH - BOUND) { m.y = CH - BOUND; m.vy = -Math.abs(m.vy); }
+                }
+            }
+            const spinRate = BASE_ROT * Math.sqrt(simTempK / 300);
             for (let i = 0; i < molecules.length; i++) {
-                for (let j = i + 1; j < molecules.length; j++) {
-                    const a = molecules[i], b = molecules[j];
-                    const dx = b.x - a.x, dy = b.y - a.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (!(dist > 0) || dist >= MIN_DIST) continue;
-                    const nx = dx / dist, ny = dy / dist;
-                    const dvn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-                    if (dvn < 0) {  // approaching: true elastic exchange
-                        a.vx += dvn * nx; a.vy += dvn * ny;
-                        b.vx -= dvn * nx; b.vy -= dvn * ny;
-                    }
-                    // Cap per-frame separation so pile-ups (e.g. the last molecules
-                    // squeezing into the finished crystal) relax smoothly, no popping.
-                    const ov = Math.min((MIN_DIST - dist) / 2, 1.2);
-                    a.x -= nx * ov; a.y -= ny * ov;
-                    b.x += nx * ov; b.y += ny * ov;
-                }
+                molecules[i].rot += spinRate * molecules[i].spin * dt;
             }
         }
 
-        // Hard walls with a parameterized ceiling `top` (used by moving-boundary transitions).
-        function applyBounds(top) {
-            for (let i = 0; i < molecules.length; i++) {
-                const m = molecules[i];
-                if (m.x < BOUND) { m.x = BOUND; m.vx = Math.abs(m.vx); }
-                else if (m.x > CW - BOUND) { m.x = CW - BOUND; m.vx = -Math.abs(m.vx); }
-                if (m.y < top) { m.y = top; m.vy = Math.abs(m.vy); }
-                else if (m.y > CH - BOUND) { m.y = CH - BOUND; m.vy = -Math.abs(m.vy); }
-            }
-        }
-
-        function updateReadoutsPhysics() {
+        function updateReadoutsPhysics(now) {
             document.getElementById('keValue').textContent = (1.5 * kB * simTempK / 1e-21).toFixed(2);
             document.getElementById('rmsValue').textContent =
                 Math.round(Math.sqrt(3 * R * simTempK / MOLAR_MASS));
@@ -418,8 +419,9 @@
                 simTempK < MELT_K ? translations[currentLang].structSolid
                    : simTempK < BOIL_K ? translations[currentLang].structLiquid
                    : translations[currentLang].structGas;
+            const showLabel = pendingLabel && (now || 0) < labelUntil;
             document.getElementById('stateText').textContent =
-                transition ? translations[currentLang][transition.label]
+                showLabel ? translations[currentLang][pendingLabel]
                     : simTempK < MELT_K ? translations[currentLang].stateSolid
                        : simTempK < BOIL_K ? translations[currentLang].stateLiquid
                        : translations[currentLang].stateGas;
@@ -466,33 +468,21 @@
             simTempK += (targetTempK - simTempK) * Math.min(1, dt * 0.8);
             if (Math.abs(targetTempK - simTempK) < 0.5) simTempK = targetTempK;
 
+            if (!paused) stepPhysics(dt);
+
+            // The structure always physically relaxes; the label only announces which
+            // boundary the displayed temperature has just crossed.
             const desired = simTempK < MELT_K ? 'solid' : simTempK < BOIL_K ? 'liquid' : 'gas';
-            if (!paused) {
-                if (!transition && desired !== phase) startTransition(phase, desired);
-                else if (transition) {
-                    transition.t += dt;
-                    if (transition.t >= transition.dur) {
-                        phase = transition.to;
-                        transition = null;
-                    }
-                }
-                if (transition) stepTransition(dt);
-                else stepMolecules(dt, phase);
+            if (desired !== phase) {
+                pendingLabel = labelFor(phase, desired);
+                labelUntil = now + 2000;
+                phase = desired;
             }
 
             ctx.clearRect(0, 0, CW, CH);
             for (let i = 0; i < molecules.length; i++) drawMolecule(molecules[i]);
 
-            updateReadoutsPhysics();
-        }
-
-        function lerp(a, b, t) {
-            return a + (b - a) * t;
-        }
-
-        function smoothstep(e0) {
-            const e = Math.min(1, e0);
-            return e * e * (3 - 2 * e);
+            updateReadoutsPhysics(now);
         }
 
         function labelFor(from, to) {
@@ -500,84 +490,14 @@
             if (from === 'liquid' && to === 'solid') return 'freezing';
             if (from === 'liquid' && to === 'gas') return 'boiling';
             if (from === 'gas' && to === 'liquid') return 'condensing';
-            if (from === 'solid' && to === 'gas') return 'boiling'; // rare direct jumps; never blank
+            if (from === 'solid' && to === 'gas') return 'boiling'; // rare direct jumps
             if (from === 'gas' && to === 'solid') return 'desubliming';
             return 'melting';
-        }
-
-        function startTransition(from, to) {
-            transition = {
-                from: from, to: to, t: 0,
-                dur: (from === 'solid' || to === 'solid') ? 2.4 : 1.6,
-                label: labelFor(from, to)
-            };
-            if (to === 'solid') {
-                // Each molecule claims its NEAREST free lattice site (greedy global pairing:
-                // sort all molecule-site distances ascending, assign when both still free).
-                const pairs = [];
-                for (let i = 0; i < molecules.length; i++) {
-                    for (let j = 0; j < lattice.length; j++) {
-                        const dx = molecules[i].x - lattice[j].x;
-                        const dy = molecules[i].y - lattice[j].y;
-                        pairs.push({ i: i, j: j, d: dx * dx + dy * dy });
-                    }
-                }
-                pairs.sort(function (a, b) { return a.d - b.d; });
-                const toSite = new Array(molecules.length).fill(-1);
-                const taken = new Array(lattice.length).fill(false);
-                for (const pr of pairs) {
-                    if (toSite[pr.i] < 0 && !taken[pr.j]) { toSite[pr.i] = pr.j; taken[pr.j] = true; }
-                }
-                for (let i = 0; i < molecules.length; i++) {
-                    if (toSite[i] >= 0) molecules[i].site = toSite[i];
-                }
-            }
-        }
-
-        function stepTransition(dt) {
-            const tr = transition;
-            const e = smoothstep(tr.t / tr.dur);
-            const qS = 82 * Math.sqrt(simTempK / 300);
-            if (tr.to === 'solid') {
-                // Freezing: the lattice grows stiffer around each molecule's chosen site
-                // while the fluid thermostat fades out. (top=BOUND: no surface clamping
-                // while the crystal assembles.)
-                stepMolecules(dt, phase, {
-                    springK: 30 * e, springQ: qS, top: BOUND, vcap: 150,
-                    thermo: 3 * (1 - e), steer: 2.5 * (1 - e)
-                });
-            } else if (tr.from === 'solid') {
-                // Melting: the lattice softens and fades, the fluid thermostat takes over,
-                // and a fading gravity settles the melt downward. The surface stays open
-                // (no mid-air clamping) and only descends to POOL_TOP over the last 40%
-                // of the ramp, so late-melting molecules ride it down instead of popping.
-                stepMolecules(dt, phase, {
-                    springK: 30 * (1 - e), springQ: qS * (1 - e),
-                    top: e < 0.6 ? BOUND : lerp(BOUND, POOL_TOP, (e - 0.6) / 0.4),
-                    thermo: 3 * e, steer: 2.5 * e, gravity: 130 * (1 - e * e)
-                });
-            } else if (tr.to === 'gas') {
-                // Boiling: the liquid surface rises until the box is all gas volume.
-                stepMolecules(dt, phase, {
-                    top: lerp(POOL_TOP, BOUND, e),
-                    steer: lerp(2.5, 0.6, e)
-                });
-            } else {
-                // Condensing: the surface falls and a gentle settling bias packs the gas
-                // back into the pool.
-                stepMolecules(dt, phase, {
-                    top: lerp(BOUND, POOL_TOP, e),
-                    steer: lerp(0.6, 2.5, e),
-                    gravity: 60 * e
-                });
-            }
         }
 
         const simCanvas = document.getElementById('simCanvas');
         const ctx = simCanvas.getContext('2d');
         let lastTime = performance.now();
-
-        // Kick the animation loop off.
 
         function togglePause() {
             paused = !paused;
@@ -589,18 +509,17 @@
             targetTempK = 300;
             simTempK = 300;
             slider.value = 300;
-            initMolecules();
-            transition = null;
+            pendingLabel = null;
             phase = 'liquid';
+            initMolecules();
             updateReadouts();
         }
         document.getElementById('pauseBtn').addEventListener('click', togglePause);
         document.getElementById('resetBtn').addEventListener('click', resetSim);
 
-        // Kick the animation loop off.
+        // Boot.
         setLanguage(currentLang);
-        buildLattice();             // hexagonal solid lattice, built once before molecules
-        initMolecules();            // molecules must exist before the first frame
+        initMolecules();
         lastTime = performance.now();
         loop(lastTime);
     </script>
