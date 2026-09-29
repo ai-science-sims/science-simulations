@@ -16,7 +16,8 @@
         #simCanvas {
             width: 100%;
             max-width: 800px;
-            height: 500px;
+            height: auto;
+            aspect-ratio: 800 / 500;
             border-radius: 0.75rem;
             background-color: #020617;
             display: block;
@@ -25,13 +26,6 @@
             background-color: #308a8f;
             border-color: #308a8f;
             color: #ffffff;
-        }
-        .temp-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 999px;
-            display: inline-block;
-            vertical-align: middle;
         }
     </style>
 </head>
@@ -107,20 +101,6 @@
             </div>
 
             <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-sm font-medium text-slate-200" data-i18n="legendTitle"></span>
-                </div>
-                <div class="mt-3 flex items-center justify-center gap-3">
-                    <span class="flex items-center gap-2 text-sm text-slate-300">
-                        <span class="temp-dot" style="background:#3b82f6"></span><span data-i18n="legendSlow"></span>
-                    </span>
-                    <span class="flex items-center gap-2 text-sm text-slate-300">
-                        <span class="temp-dot" style="background:#ef4444"></span><span data-i18n="legendFast"></span>
-                    </span>
-                </div>
-            </div>
-
-            <div class="border border-slate-700 bg-slate-800/70 rounded-xl p-4">
                 <h2 class="text-sm font-semibold text-slate-100" data-i18n="infoHeading"></h2>
                 <p class="text-sm text-slate-300 mt-2 leading-relaxed" data-i18n="infoText"></p>
             </div>
@@ -156,9 +136,6 @@
                 pauseBtn: "Pause",
                 resumeBtn: "Resume",
                 resetBtn: "Reset Simulation",
-                legendTitle: "Molecular speed",
-                legendSlow: "Slow",
-                legendFast: "Fast",
                 infoHeading: "💡 What you are seeing",
                 infoText: "Temperature is a measure of the average kinetic energy of the molecules: the hotter the water, the faster its molecules move. During melting and boiling the temperature stays constant because the energy supplied goes into separating the molecules, not into speeding them up."
             },
@@ -188,9 +165,6 @@
                 pauseBtn: "暫停",
                 resumeBtn: "繼續",
                 resetBtn: "重置模擬",
-                legendTitle: "分子速率",
-                legendSlow: "慢",
-                legendFast: "快",
                 infoHeading: "💡 你看到甚麼",
                 infoText: "溫度是分子平均動能的度量：水越熱，分子運動越快。熔化和沸騰期間溫度保持不變，因為輸入的能量用於把分子分開，而不是加快分子運動。"
             }
@@ -276,10 +250,11 @@
             meltK: 273,
             boilK: 373,
             sigma: 30,             // effective molecular diameter, px
-            eps: 13500,            // well depth, px^2/s^2 (attraction speed ~116 px/s)
+            eps: 7000,             // well depth, px^2/s^2 (sets the speed scale; scaled
+                                   //   down - with gravity - to slow the solid/liquid)
             tFreeze: 0.47,         // reduced temperature at which the fluid freezes
             tBoil: 1.10,           // reduced temperature at which it starts to boil
-            tHot: 2.60             // reduced temperature at 500 K (gas fills the box)
+            tHot: 5.00             // reduced temperature at 500 K (keeps the gas lively)
         };
         const N_MOLECULES = 150;
         const MOLAR_MASS = SUBSTANCE.molarMass;
@@ -290,7 +265,7 @@
         const CW = 800, CH = 500, BOUND = 16;   // container (px)
         const R_CUT = 2.5;        // pair-force cutoff, in sigma
         const R_CORE = 0.8;       // softened core: force stops growing inside this
-        const GRAVITY = 180;      // px/s^2 - sets how compact the pool is
+        const GRAVITY = 93;       // px/s^2 - scaled with eps so the phase diagram is unchanged
         const GAMMA = 1;          // Langevin coupling, 1/s
         const SUBSTEPS = 8;       // integrator substeps per frame
         const A_MAX = 60000;      // acceleration cap for stability, px/s^2
@@ -308,7 +283,13 @@
         function reducedTemp(T) {
             const cold = 0.01;
             if (T <= 1) return cold;
-            if (T <= SUBSTANCE.meltK) return lerp(cold, SUBSTANCE.tFreeze, (T - 1) / (SUBSTANCE.meltK - 1));
+            if (T <= SUBSTANCE.meltK) {
+                // Convex ramp: the solid stays slow for most of its range and picks up
+                // speed only as it nears melting, so its motion reads calmer than the
+                // liquid's. Continuous (and monotonic) all the way to the melting point.
+                const f = (T - 1) / (SUBSTANCE.meltK - 1);
+                return cold + (SUBSTANCE.tFreeze - cold) * Math.pow(f, 2.5);
+            }
             if (T <= SUBSTANCE.boilK) return lerp(SUBSTANCE.tFreeze, SUBSTANCE.tBoil, (T - SUBSTANCE.meltK) / (SUBSTANCE.boilK - SUBSTANCE.meltK));
             return lerp(SUBSTANCE.tBoil, SUBSTANCE.tHot, (T - SUBSTANCE.boilK) / (500 - SUBSTANCE.boilK));
         }
@@ -427,37 +408,29 @@
                        : translations[currentLang].stateGas;
         }
 
+        const MOLECULE_COLOR = 'rgb(139,92,246)';   // fixed colour for every molecule
+        const O_RADIUS = 7, H_RADIUS = 3;           // original atom sizes
+        // The two H atoms sit at the real 104.5 deg H-O-H angle and overlap the O
+        // (space-filling: the atoms are joined, there are no bond sticks).
+        const BOND = O_RADIUS + H_RADIUS - 1;       // H-O centre distance (slight overlap)
+
         function drawMolecule(m) {
-            const col = colorize(m);
+            const half = 104.5 * Math.PI / 180 / 2;
+            const hx = Math.sin(half) * BOND, hy = -Math.cos(half) * BOND;
             ctx.save();
             ctx.translate(m.x, m.y);
             ctx.rotate(m.rot);
-            ctx.strokeStyle = 'rgba(148,163,184,0.55)';
-            ctx.lineWidth = 2;
+            ctx.fillStyle = MOLECULE_COLOR;
             ctx.beginPath();
-            ctx.moveTo(-Math.cos(52 * Math.PI / 180) * 11, -Math.sin(52 * Math.PI / 180) * 11);
-            ctx.lineTo(0, 0);
-            ctx.moveTo(0, 0);
-            ctx.lineTo(Math.cos(52 * Math.PI / 180) * 11, Math.sin(52 * Math.PI / 180) * 11);
-            ctx.stroke();
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.arc(0, 0, 7, 0, Math.PI * 2);
+            ctx.arc(0, 0, O_RADIUS, 0, Math.PI * 2);
             ctx.fill();
+            // Both hydrogens use the SAME hy (same side of the oxygen) => a bent V.
             ctx.fillStyle = '#e2e8f0';
             ctx.beginPath();
-            ctx.arc(-Math.cos(52 * Math.PI / 180) * 9, -Math.sin(52 * Math.PI / 180) * 9, 3, 0, Math.PI * 2);
-            ctx.arc(Math.cos(52 * Math.PI / 180) * 9, Math.sin(52 * Math.PI / 180) * 9, 3, 0, Math.PI * 2);
+            ctx.arc(hx, hy, H_RADIUS, 0, Math.PI * 2);
+            ctx.arc(-hx, hy, H_RADIUS, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
-        }
-
-        function colorize(m) {
-            const u = Math.pow(Math.max(0, Math.min(1, (simTempK - 1) / 499)), 1.56);
-            const slow = [0x3b, 0x82, 0xf6];
-            const fast = [0xef, 0x44, 0x44];
-            const c = slow.map((v, i) => Math.round(v + (fast[i] - v) * u));
-            return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
         }
 
         function loop(now) {
