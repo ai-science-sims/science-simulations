@@ -666,12 +666,12 @@
             "zh-HK": "熱與氣體"
         },
         "title": {
-            "en-US": "Water: Particle Motion & States of Matter",
-            "zh-HK": "水的微觀世界：粒子運動與三態"
+            "en-US": "Water, Nitrogen & Argon: Particle Motion & States of Matter",
+            "zh-HK": "水、氮與氬：粒子運動與物態"
         },
         "description": {
-            "en-US": "Visualize water molecules from 1 K to 500 K, observing particle motion and structure across solid, liquid, and gaseous states with melting and boiling transitions.",
-            "zh-HK": "在 1 K 至 500 K 之間觀察水分子的運動與結構，呈現固態、液態、氣態的分別，以及熔化和沸騰時的物態轉變。"
+            "en-US": "Compare water molecules, nitrogen molecules and argon atoms from 1 K to 500 K: watch particle motion and structure across solid, liquid and gas, with melting and boiling at each substance's real temperatures.",
+            "zh-HK": "在 1 K 至 500 K 之間比較水分子、氮分子與氬原子：觀察粒子在固態、液態、氣態的運動與結構，以及各自真實熔點與沸點下的物態轉變。"
         },
         "contributors": [
             "Harry Lau"
@@ -679,6 +679,6 @@
         "simulationUrl": "simulations/physics/heat-and-gases/water-states.html",
         "screenshotUrl": "screenshots/water-states.png",
         "createdAt": "2026-09-27",
-        "updatedAt": "2026-09-27"
+        "updatedAt": "2026-09-29"
     }
 ]
