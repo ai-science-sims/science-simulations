@@ -26,6 +26,66 @@ you can do so by running `python3 -m http.server` in the root folder,
 then open your browser to: http://localhost:8000.
 
 
+## Screenshots (developer tooling)
+
+Developer-only tooling for capturing the 1280x720 catalogue screenshots. It is
+not part of the site, and the simulations do not depend on it. Run all commands
+from the repository root.
+
+**Prerequisites:** Python 3.9+ with `venv`/`pip`, plus network and disk access
+for the one-time setup.
+
+**One-time setup** (creates a persistent user-local environment; safe to
+re-run):
+
+```bash
+python3 scripts/setup_browser.py    # macOS / Linux
+py scripts\setup_browser.py         # Windows
+```
+
+This creates a virtual environment at
+`~/.local/share/science-simulations/browser-venv`, installs the pinned
+Playwright version, and ensures Chromium is present. Both the environment and
+the standard Playwright browser cache persist between sessions, so no
+installation happens on later runs:
+
+- macOS: `~/Library/Caches/ms-playwright`
+- Linux: `~/.cache/ms-playwright`
+- Windows: `%LOCALAPPDATA%\ms-playwright`
+
+Re-run setup after the pinned version changes, or if the venv or browser cache
+is deleted (deleting the cache makes Chromium download again).
+
+**Capture a screenshot** — start the local server in a separate terminal, then
+run one of the following.
+
+macOS / Linux:
+
+```bash
+python3 -m http.server
+python3 scripts/screenshot.py \
+  'http://localhost:8000/simulations/physics/optics-and-wave-motion/optics-bench.html?lang=en-US' \
+  screenshots/optics-bench.png
+```
+
+Windows (PowerShell or Command Prompt, one line):
+
+```bat
+py -m http.server
+py scripts\screenshot.py "http://localhost:8000/simulations/physics/optics-and-wave-motion/optics-bench.html?lang=en-US" screenshots\optics-bench.png
+```
+
+The screenshot script uses the persistent environment automatically; if that
+environment is missing, run the setup step above first.
+
+On Linux, Chromium may need system libraries, which are not installed
+automatically (and may require administrator rights):
+
+```bash
+~/.local/share/science-simulations/browser-venv/bin/python -m playwright install-deps chromium
+```
+
+
 ## Contributing
 
 We welcome contributions from other science teachers!

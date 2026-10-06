@@ -1,4 +1,4 @@
-# AGENT.md
+# AGENTS.md
 
 ## What this repo is
 
@@ -26,3 +26,20 @@ Static educational site hosting interactive science simulations (no build step, 
 
 - Avoid unrelated changes and files outside the task scope.
 - Preserve pre-existing worktree modifications that are not part of your task.
+
+## Session protocol
+
+- Read this file and any relevant workflow before starting.
+- Use the persistent browser tooling in `scripts/` and the interpreter at
+  `~/.local/share/science-simulations/browser-venv` for browser testing as well
+  as screenshots; never create temporary or per-session venvs.
+- Run `python3 scripts/setup_browser.py` **only** when the environment is
+  missing, outdated (the pinned Playwright version changed), or Chromium is
+  unavailable. The environment and the standard Playwright browser cache are
+  reused across sessions; do not reinstall on every session.
+- Capture screenshots with the reusable command (1280x720), not ad-hoc browser
+  tools:
+  `python3 scripts/screenshot.py <url> <output.png>`.
+- The static-site invariants still hold: simulations are standalone and
+  framework-free, and the homepage and simulations must be manually checked in
+  both languages.

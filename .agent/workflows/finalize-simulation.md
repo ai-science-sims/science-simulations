@@ -27,14 +27,17 @@ description: Generate screenshot and register simulation in system
 - Save to `screenshots/` directory
 
 **Process:**
-// turbo
+
 ```bash
-# Use browser_subagent to:
-# 1. Open the simulation file
-# 2. Set viewport to 1280x720
-# 3. Wait 3 seconds for rendering
-# 4. Capture screenshot
-# 5. Save to screenshots/[filename].png
+# One-time only: set up the persistent browser environment
+# (skip if it already exists and the pinned version is unchanged)
+python3 scripts/setup_browser.py
+
+# With the local server running in another terminal
+# (python3 -m http.server), capture the screenshot:
+python3 scripts/screenshot.py \
+  'http://localhost:8000/simulations/[subject]/[category]/[filename].html?lang=en-US' \
+  screenshots/[filename].png
 ```
 
 **Naming convention:**
@@ -46,7 +49,7 @@ description: Generate screenshot and register simulation in system
 **Check:**
 - File exists in `screenshots/` directory
 - File size is reasonable (typically 200-500KB)
-- Dimensions are correct (may be 2x due to retina: 2560x1440)
+- Dimensions are correct (1280x720)
 - Visual quality is good
 
 **If screenshot needs adjustment:**
