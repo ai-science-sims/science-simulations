@@ -298,6 +298,10 @@
       const title = sim.title[currentLang] || sim.title['en-US'];
       const desc = sim.description[currentLang] || sim.description['en-US'];
       const contributorsLabel = i18n[currentLang].contributors;
+      const contributor = sim.contributors && sim.contributors.length ? sim.contributors[0] : null;
+      const contributorHtml = contributor
+        ? `<span class="text-xs text-slate-500 font-mono">${contributorsLabel}: ${contributor}</span>`
+        : '';
 
       // Construct URL with lang param
       const simUrl = new URL(sim.simulationUrl, window.location.href);
@@ -317,7 +321,7 @@
                     <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">${title}</h3>
                     <p class="text-slate-400 text-sm mb-4 line-clamp-2">${desc}</p>
                     <div class="flex items-center justify-between mt-auto">
-                        <span class="text-xs text-slate-500 font-mono">${contributorsLabel}: ${sim.contributors[0]}</span>
+                        ${contributorHtml}
                         <span class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </span>

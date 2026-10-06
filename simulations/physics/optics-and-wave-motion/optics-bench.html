@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raybox Bench – Optics Simulation</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#000;--panel:#181818;--panel-border:#333;--text:#e0e0e0;--accent:#ffd700;--btn-bg:#2a2a2a;--btn-hover:#3a3a3a;--btn-active:#505020;--danger:#c33;--glass:rgba(160,190,230,0.18);--glass-stroke:rgba(200,220,255,0.4)}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:12px/1.4 system-ui,sans-serif}
+#app{display:flex;flex-direction:column;height:100vh;width:100vw}
+#toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--panel-border);min-height:44px;z-index:10}
+#toolbar .sep{width:1px;height:28px;background:var(--panel-border);flex-shrink:0}
+.tbtn{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--btn-bg);border:1px solid #444;border-radius:4px;color:var(--text);font:11px/1 system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:background .15s}
+.tbtn:hover{background:var(--btn-hover)}
+.tbtn.active{background:var(--btn-active);border-color:var(--accent);color:var(--accent)}
+.tbtn.power{color:#0f0;border-color:#0f0}
+.tbtn.power.off{color:#f44;border-color:#f44}
+.tbtn.radio{padding:3px 7px}
+.tbtn.radio.active{background:#505020;border-color:var(--accent);color:var(--accent)}
+.tbtn svg{width:19px;height:19px;fill:currentColor;flex-shrink:0}
+.tbtn svg path,.tbtn svg rect,.tbtn svg circle{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+#workspace{flex:1;position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+#props{position:absolute;top:8px;right:8px;width:220px;background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;padding:10px;display:none;z-index:5}
+#props h3{font-size:12px;margin-bottom:6px;color:var(--accent)}
+#props label{display:flex;justify-content:space-between;align-items:center;margin:4px 0;font-size:11px}
+#props input[type=number]{width:70px;background:#111;border:1px solid #444;color:var(--text);padding:2px 4px;border-radius:3px;font-size:11px}
+#props button{padding:3px 8px;background:var(--btn-bg);border:1px solid #555;border-radius:3px;color:var(--text);cursor:pointer;font-size:11px}
+#props button:hover{background:var(--btn-hover)}
+#props button.del{color:var(--danger);border-color:var(--danger)}
+#help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+#help-overlay.show{opacity:1;pointer-events:all}
+#help-box{background:var(--panel);border:1px solid var(--panel-border);border-radius:8px;padding:24px;max-width:500px;max-height:80vh;overflow-y:auto;color:var(--text);line-height:1.6}
+#help-box h2{color:var(--accent);margin-bottom:12px;font-size:16px}
+#help-box h3{color:var(--accent);margin:12px 0 4px;font-size:13px}
+#help-box ul{padding-left:20px}
+#help-box li{margin:2px 0;font-size:12px}
+#help-box button{margin-top:12px;padding:6px 16px;background:var(--btn-bg);border:1px solid var(--accent);border-radius:4px;color:var(--accent);cursor:pointer;font-size:12px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);border-radius:4px;padding:6px 14px;color:var(--accent);font-size:12px;z-index:50;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+@media(max-width:768px){
+  #toolbar{gap:2px;padding:4px 6px}
+  .tbtn{padding:3px 5px;font-size:10px}
+  .tbtn svg{width:15px;height:15px}
+  #props{width:180px;right:4px;top:4px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="toolbar">
+    <button class="tbtn power" id="btn-power" title="Toggle ray box on/off" data-i18n-title="powerTitle" data-i18n="powerLabel">⚡ Power</button>
+    <button class="tbtn" id="btn-white" title="Toggle white-light dispersion mode" data-i18n-title="whiteTitle" data-i18n="whiteLabel">☀ White</button>
+    <label class="tbtn" title="Show partial reflections at glass surfaces" data-i18n-title="partialReflectionTitle"><input type="checkbox" id="partial-reflection" checked> <span data-i18n="partialReflection">Partial reflection</span></label>
+    <button class="tbtn radio active" id="btn-slit-none" title="No slit – continuous beam" data-i18n-title="slitNoneTitle" data-i18n="slitNoneLabel">○ None</button>
+    <button class="tbtn radio" id="btn-slit-single" title="Single-slit – one ray" data-i18n-title="slitSingleTitle" data-i18n="slitSingleLabel">│ Single</button>
+    <button class="tbtn radio" id="btn-slit-triple" title="Triple-slit – three rays" data-i18n-title="slitTripleTitle" data-i18n="slitTripleLabel">┃┃┃ Triple</button>
+    <div class="sep"></div>
+    <button class="tbtn" id="btn-convex100" aria-label="Convex lens A" data-i18n-aria-label="convexAAria" title="Add a convex lens (variant A)" data-i18n-title="convexATitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.5A6.8 6.8 0 0 1 8 14.5A6.8 6.8 0 0 1 8 1.5Z"/></svg><span data-i18n="convexALabel">Convex Lens A</span></button>
+    <button class="tbtn" id="btn-convex200" aria-label="Convex lens B" data-i18n-aria-label="convexBAria" title="Add a convex lens (variant B)" data-i18n-title="convexBTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.5A9 9 0 0 1 8 14.5A9 9 0 0 1 8 1.5Z"/></svg><span data-i18n="convexBLabel">Convex Lens B</span></button>
+    <button class="tbtn" id="btn-convex400" aria-label="Convex lens C" data-i18n-aria-label="convexCAria" title="Add a convex lens (variant C)" data-i18n-title="convexCTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.5A16 16 0 0 1 8 14.5A16 16 0 0 1 8 1.5Z"/></svg><span data-i18n="convexCLabel">Convex Lens C</span></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="btn-concave100" aria-label="Concave lens A" data-i18n-aria-label="concaveAAria" title="Add a concave lens (variant A)" data-i18n-title="concaveATitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 1.5H11.5A10 10 0 0 0 11.5 14.5H4.5A10 10 0 0 0 4.5 1.5Z"/></svg><span data-i18n="concaveALabel">Concave Lens A</span></button>
+    <button class="tbtn" id="btn-concave200" aria-label="Concave lens B" data-i18n-aria-label="concaveBAria" title="Add a concave lens (variant B)" data-i18n-title="concaveBTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 1.5H11.5A16 16 0 0 0 11.5 14.5H4.5A16 16 0 0 0 4.5 1.5Z"/></svg><span data-i18n="concaveBLabel">Concave Lens B</span></button>
+    <button class="tbtn" id="btn-concave400" aria-label="Concave lens C" data-i18n-aria-label="concaveCAria" title="Add a concave lens (variant C)" data-i18n-title="concaveCTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 1.5H11.5A30 30 0 0 0 11.5 14.5H4.5A30 30 0 0 0 4.5 1.5Z"/></svg><span data-i18n="concaveCLabel">Concave Lens C</span></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="btn-flat" aria-label="Flat glass block" data-i18n-aria-label="flatAria" title="Flat glass block 120×60mm" data-i18n-title="flatTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="4.5" width="12" height="7" rx="0.6"/></svg><span data-i18n="flatLabel">Block</span></button>
+    <button class="tbtn" id="btn-prism60" aria-label="Prism 60, equilateral" data-i18n-aria-label="prism60Aria" title="Equilateral prism (60°–60°–60°)" data-i18n-title="prism60Title"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 2L14.75 13.7H1.25Z"/></svg><span data-i18n="prism60Label">Prism-60</span></button>
+    <button class="tbtn" id="btn-prism90" aria-label="Prism 90, right-angle" data-i18n-aria-label="prism90Aria" title="Right-isosceles prism (45°–45°–90°)" data-i18n-title="prism90Title"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 4.85L14.75 11.6H1.25Z"/></svg><span data-i18n="prism90Label">Prism-90</span></button>
+    <button class="tbtn" id="btn-semi" aria-label="Semicircular glass block" data-i18n-aria-label="semiAria" title="Semicircular glass block" data-i18n-title="semiTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M1.5 5H14.5A6.5 6.5 0 0 1 1.5 5Z"/></svg><span data-i18n="semiLabel">Semi</span></button>
+    <button class="tbtn" id="btn-mirror" aria-label="Plane mirror" data-i18n-aria-label="mirrorAria" title="Plane mirror (reflective front, absorbing back)" data-i18n-title="mirrorTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10 1.5V14.5"/><path d="M7.5 1.5V14.5"/><path d="M3.5 14L6.5 11M3.5 10.5L6.5 7.5M3.5 7L6.5 4M3.5 3.5L5 2"/></svg><span data-i18n="mirrorLabel">Mirror</span></button>
+    <button class="tbtn" id="btn-protractor" aria-label="Full-circle protractor" data-i18n-aria-label="protractorAria" title="360° protractor (measurement overlay)" data-i18n-title="protractorTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6.3"/><path d="M1.7 8H14.3M8 1.7V4M12.5 3.5L11.1 4.9M4.8 14H11.2"/></svg><span data-i18n="protractorLabel">Protractor</span></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="btn-delete" title="Delete selected component" data-i18n-title="deleteTitle" data-i18n="deleteLabel">🗑 Del</button>
+    <button class="tbtn" id="btn-clear" title="Clear all placed components" data-i18n-title="clearTitle" data-i18n="clearLabel">Clear</button>
+    <button class="tbtn" id="btn-reset" title="Reset experiment to startup state" data-i18n-title="resetTitle" data-i18n="resetLabel">Reset</button>
+    <div class="sep"></div>
+    <button class="tbtn" id="btn-undo" title="Undo (Ctrl+Z)" data-i18n-title="undoTitle" data-i18n="undoLabel">↩ Undo</button>
+    <button class="tbtn" id="btn-redo" title="Redo (Ctrl+Y)" data-i18n-title="redoTitle" data-i18n="redoLabel">↪ Redo</button>
+    <button class="tbtn" id="btn-zoomin" aria-label="Zoom in" data-i18n-aria-label="zoomInAria" title="Zoom in (+)" data-i18n-title="zoomInTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="6.8" cy="6.8" r="4.6"/><path d="M10.2 10.2L14 14M4.7 6.8H8.9M6.8 4.7V8.9"/></svg><span data-i18n="zoomInLabel">Zoom In</span></button>
+    <button class="tbtn" id="btn-zoomout" aria-label="Zoom out" data-i18n-aria-label="zoomOutAria" title="Zoom out (−)" data-i18n-title="zoomOutTitle"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="6.8" cy="6.8" r="4.6"/><path d="M10.2 10.2L14 14M4.7 6.8H8.9"/></svg><span data-i18n="zoomOutLabel">Zoom Out</span></button>
+    <div class="sep"></div>
+    <button class="tbtn" id="btn-help" title="Show help overlay" data-i18n-title="helpTitle" data-i18n="helpLabel">? Help</button>
+    <div class="sep"></div>
+    <button class="tbtn lang-btn" id="lang-en" data-lang="en-US" type="button">EN</button>
+    <button class="tbtn lang-btn" id="lang-zh" data-lang="zh-HK" type="button">繁</button>
+  </header>
+  <main id="workspace">
+    <canvas id="canvas"></canvas>
+    <div id="props">
+      <h3 id="props-title" data-i18n="component">Component</h3>
+      <div id="props-body"></div>
+    </div>
+  </main>
+</div>
+<div id="help-overlay">
+  <div id="help-box">
+    <h2 data-i18n="helpHeading">Raybox Bench – Help</h2>
+    <h3 data-i18n="helpRayBoxHeading">Ray Box</h3>
+    <ul>
+      <li data-i18n="helpRayBox1">Drag the ray box to move it; drag the rotation handle (circle) to rotate it.</li>
+      <li data-i18n-html="helpRayBox2">Use the <b>Power</b> button to turn the beam on/off.</li>
+      <li data-i18n-html="helpRayBox3">Use <b>None / Single / Triple</b> to switch slit attachments.</li>
+    </ul>
+    <h3 data-i18n="helpPlacingHeading">Placing Components</h3>
+    <ul>
+      <li data-i18n="helpPlacing1">Click a component button in the toolbar to place it at the bench center.</li>
+      <li data-i18n-html="helpPlacing2">Lenses: <b>Convex Lens</b> and <b>Concave Lens</b>, each in three variants (A, B, C). Which variant bends light most is part of the investigation — trace a beam through each one, or check the focal length in the properties panel.</li>
+      <li data-i18n-html="helpPlacing3">Prisms: <b>Prism-60</b> (equilateral, 60°–60°–60°) and <b>Prism-90</b> (right-isosceles, 45°–45°–90°, right angle at the top).</li>
+      <li data-i18n-html="helpPlacing4"><b>Mirror</b>: a flat plane mirror (100 mm) that reflects light from its front; its hatched back stops light.</li>
+      <li data-i18n-html="helpPlacing5"><b>Protractor</b>: a 360° measurement overlay (1° ticks; prominent outer 0–90–0 scale, smaller inner 0–360° scale, labelled every 10°). It never touches the rays; grab its rim, center hub, or baseline to move it, and read its rotation (whole degrees) in the properties panel.</li>
+      <li data-i18n="helpPlacing6">Drag the component body to move it.</li>
+      <li data-i18n="helpPlacing7">Drag the rotation handle (circle above the component) to rotate it.</li>
+      <li data-i18n-html="helpPlacing8">Click to select; press <b>Delete</b> key or the <b>🗑 Del</b> button to remove.</li>
+    </ul>
+    <h3 data-i18n="helpPartialHeading">Partial Reflection</h3>
+    <p data-i18n="helpPartialBody">On by default. Shows faint reflections at glass surfaces, becoming stronger near the critical angle. Uncheck to show only the main refracted ray and total internal reflection.</p>
+    <h3 data-i18n="helpPropsHeading">Properties Panel</h3>
+    <ul>
+      <li data-i18n="helpProps1">Shows the variant name, position, rotation, focal length (lenses), or refractive index.</li>
+      <li data-i18n-html="helpProps2">Lens focal length is editable — type a value and press Enter.</li>
+    </ul>
+    <h3 data-i18n="helpShortcutsHeading">Keyboard Shortcuts</h3>
+    <ul>
+      <li data-i18n-html="helpShortcutUndo"><b>Ctrl+Z</b> – Undo</li>
+      <li data-i18n-html="helpShortcutRedo"><b>Ctrl+Y</b> – Redo</li>
+      <li data-i18n-html="helpShortcutZoom"><b>+ / −</b> – Zoom in / out · <b>0</b> – Reset zoom</li>
+      <li data-i18n-html="helpShortcutDelete"><b>Delete / Backspace</b> – Delete selected</li>
+      <li data-i18n-html="helpShortcutEscape"><b>Escape</b> – Deselect</li>
+    </ul>
+    <button onclick="document.getElementById('help-overlay').classList.remove('show')" data-i18n="helpGotIt">Got it</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+/* Raybox Bench — shared optics core.
+ *
+ * Pure, DOM-free math used by BOTH index.html (production) and
+ * test-production.html. Plain script (no build step): in the browser it
+ * attaches to window.OpticsCore; under Node/JXA it also exports via
+ * module.exports so the same code can be exercised head-lessly.
+ */
+(function (root, factory) {
+  var core = factory();
+  if (root) root.OpticsCore = core;
+  if (typeof module !== 'undefined' && module.exports) module.exports = core;
+})(typeof globalThis !== 'undefined' ? globalThis
+   : (typeof window !== 'undefined' ? window : this), function () {
+  "use strict";
+
+  // ── Vec2 ────────────────────────────────────────────────────
+  class Vec2 {
+    constructor(x = 0, y = 0) { this.x = x; this.y = y; }
+    static fromAngle(a, l = 1) { return new Vec2(Math.cos(a) * l, Math.sin(a) * l); }
+    clone() { return new Vec2(this.x, this.y); }
+    add(v) { return new Vec2(this.x + v.x, this.y + v.y); }
+    sub(v) { return new Vec2(this.x - v.x, this.y - v.y); }
+    mul(s) { return new Vec2(this.x * s, this.y * s); }
+    div(s) { return new Vec2(this.x / s, this.y / s); }
+    dot(v) { return this.x * v.x + this.y * v.y; }
+    cross(v) { return this.x * v.y - this.y * v.x; }
+    len() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+    lenSq() { return this.x * this.x + this.y * this.y; }
+    norm() { const l = this.len(); return l > 1e-12 ? this.div(l) : new Vec2(0, 0); }
+    perp() { return new Vec2(-this.y, this.x); }
+    angle() { return Math.atan2(this.y, this.x); }
+    angleTo(v) { return Math.atan2(this.cross(v), this.dot(v)); }
+    rotate(a) { const c = Math.cos(a), s = Math.sin(a); return new Vec2(this.x * c - this.y * s, this.x * s + this.y * c); }
+    dist(v) { return this.sub(v).len(); }
+    lerp(v, t) { return new Vec2(this.x + (v.x - this.x) * t, this.y + (v.y - this.y) * t); }
+  }
+
+  const TAU = Math.PI * 2;
+  const EPSILON = 1e-4;
+
+  function deg2rad(d) { return d * Math.PI / 180; }
+  function rad2deg(r) { return r * 180 / Math.PI; }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function transformPoint(p, pos, rot) { return p.rotate(rot).add(pos); }
+
+  function aabbOfPoints(points, pad = 0) {
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    return {
+      min: new Vec2(Math.min(...xs) - pad, Math.min(...ys) - pad),
+      max: new Vec2(Math.max(...xs) + pad, Math.max(...ys) + pad)
+    };
+  }
+
+  // ── Angle utilities ─────────────────────────────────────────
+  function normalizeAngle(a) {
+    return ((a % TAU) + TAU) % TAU;
+  }
+
+  function angleInSweep(angle, start, end, epsilon = 1e-8) {
+    angle = normalizeAngle(angle);
+    start = normalizeAngle(start);
+    end = normalizeAngle(end);
+    if (end < start) end += TAU;
+    if (angle < start) angle += TAU;
+    return angle >= start - epsilon && angle <= end + epsilon;
+  }
+
+  // ── Intersection helpers ────────────────────────────────────
+  /** Ray–segment intersection. Returns {point, normal, t, u} or null. */
+  function raySegHit(ro, rd, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const denom = rd.x * dy - rd.y * dx;
+    if (Math.abs(denom) < 1e-10) return null;
+    const t = ((a.x - ro.x) * dy - (a.y - ro.y) * dx) / denom;
+    const u = ((a.x - ro.x) * rd.y - (a.y - ro.y) * rd.x) / denom;
+    if (t < EPSILON || u < 0 || u > 1) return null;
+    const n = new Vec2(-dy, dx).norm();
+    return { point: ro.add(rd.mul(t)), normal: n, t, u };
+  }
+
+  /** Ray–circle intersection with optional angular sweep filter. */
+  function rayCircleHit(ro, rd, center, r, aMin, aMax) {
+    const oc = ro.sub(center);
+    const A = rd.dot(rd);
+    const B = 2 * oc.dot(rd);
+    const C = oc.dot(oc) - r * r;
+    const disc = B * B - 4 * A * C;
+    if (disc < 0) return [];
+    const sq = Math.sqrt(disc);
+    const results = [];
+    for (const t of [(-B - sq) / (2 * A), (-B + sq) / (2 * A)]) {
+      if (t < EPSILON) continue;
+      const pt = ro.add(rd.mul(t));
+      const ang = Math.atan2(pt.y - center.y, pt.x - center.x);
+      if (aMin !== undefined && aMax !== undefined) {
+        if (!angleInSweep(ang, aMin, aMax)) continue;
+      }
+      const n = pt.sub(center).norm();
+      results.push({ point: pt, normal: n, t });
+    }
+    return results;
+  }
+
+  /** Point in convex polygon (cross products all same sign). */
+  function ptInConvex(pt, verts) {
+    if (verts.length < 3) return false;
+    let sign = 0;
+    for (let i = 0; i < verts.length; i++) {
+      const a = verts[i], b = verts[(i + 1) % verts.length];
+      const cp = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
+      if (Math.abs(cp) < 1e-10) continue;
+      const s = cp > 0 ? 1 : -1;
+      if (sign === 0) sign = s; else if (s !== sign) return false;
+    }
+    return true;
+  }
+
+  /** Point in polygon test (any winding). */
+  function ptInPolygon(pt, verts) {
+    let inside = false;
+    for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+      const xi = verts[i].x, yi = verts[i].y;
+      const xj = verts[j].x, yj = verts[j].y;
+      if ((yi > pt.y) !== (yj > pt.y) && pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)
+        inside = !inside;
+    }
+    return inside;
+  }
+
+  // ── Optical surfaces ────────────────────────────────────────
+  class OpticalSurface {
+    constructor(material = 'glass', n = 1.5) { this.material = material; this.n = n; }
+    intersect(ro, rd) { return null; }
+    getNormal(pt) { return new Vec2(0, 1); }
+    clone() { return new OpticalSurface(this.material, this.n); }
+  }
+
+  class LineSurface extends OpticalSurface {
+    constructor(a, b, n = 1.5, outwardSign = 1) {
+      super('glass', n);
+      this.a = a; this.b = b;
+      this.outwardSign = outwardSign;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      this.normal = new Vec2(dy, -dx).norm().mul(outwardSign);
+      this.len = Math.sqrt(dx * dx + dy * dy);
+    }
+    intersect(ro, rd) {
+      const dx = this.b.x - this.a.x, dy = this.b.y - this.a.y;
+      const denom = rd.x * dy - rd.y * dx;
+      if (Math.abs(denom) < 1e-10) return null;
+      const t = ((this.a.x - ro.x) * dy - (this.a.y - ro.y) * dx) / denom;
+      const u = ((this.a.x - ro.x) * rd.y - (this.a.y - ro.y) * rd.x) / denom;
+      if (t < EPSILON || u < -0.001 || u > 1.001) return null;
+      return { point: ro.add(rd.mul(t)), normal: this.normal, t, surface: this };
+    }
+    clone() { return new LineSurface(this.a.clone(), this.b.clone(), this.n, this.outwardSign); }
+  }
+
+  /**
+   * Perfect plane mirror: a reflective line segment. Intersects like a
+   * LineSurface (so it participates in nearest-hit ordering) but never
+   * refracts — callers flip the ray with reflect(dir, n) where n is the
+   * stored outward normal oriented against the incident direction.
+   * The stored normal points toward the reflective front; the back absorbs.
+   */
+  class MirrorSurface extends LineSurface {
+    constructor(a, b) {
+      super(a, b, 1.0, 1);
+      this.material = 'mirror';
+      this.mirror = true;
+    }
+    /** Orient the surface normal against the incident ray (either side works). */
+    normalAgainst(incident) {
+      return incident.dot(this.normal) < 0 ? this.normal : this.normal.mul(-1);
+    }
+    /** Front reflection r = d − 2(d·n)n; null means the back absorbs. */
+    reflectDir(incident) {
+      return incident.dot(this.normal) < 0 ? reflect(incident, this.normal) : null;
+    }
+    clone() { return new MirrorSurface(this.a.clone(), this.b.clone()); }
+  }
+
+  class ArcSurface extends OpticalSurface {
+    constructor(center, radius, startAngle, endAngle, outwardSign = 1, n = 1.5) {
+      super('glass', n);
+      this.center = center; this.radius = radius;
+      this.startAngle = startAngle; this.endAngle = endAngle;
+      this.outwardSign = outwardSign;
+    }
+    intersect(ro, rd) {
+      const hits = rayCircleHit(ro, rd, this.center, Math.abs(this.radius), this.startAngle, this.endAngle);
+      for (const h of hits) {
+        const ang = Math.atan2(h.point.y - this.center.y, h.point.x - this.center.x);
+        if (angleInSweep(ang, this.startAngle, this.endAngle)) {
+          h.normal = h.normal.mul(this.outwardSign);
+          h.surface = this;
+          return h;
+        }
+      }
+      return null;
+    }
+    clone() {
+      return new ArcSurface(this.center.clone(), this.radius,
+        this.startAngle, this.endAngle, this.outwardSign, this.n);
+    }
+  }
+
+  // ── Refraction helpers ──────────────────────────────────────
+  function reflect(incident, normal) {
+    return incident.sub(normal.mul(2 * incident.dot(normal)));
+  }
+
+  function refractRay(incident, normal, n1, n2) {
+    const cosi = -incident.dot(normal);
+    const eta = n1 / n2;
+    const k = 1 - eta * eta * (1 - cosi * cosi);
+    if (k < 0) return null;
+    return incident.mul(eta).add(normal.mul(eta * cosi - Math.sqrt(k)));
+  }
+
+  /** Power reflectances for s/p polarization at a lossless dielectric boundary.
+   * Normal points against the incident ray. TIR returns unit reflectance.
+   */
+  function fresnelReflectance(incident, normal, n1, n2) {
+    const ci = clamp(-incident.dot(normal), 0, 1);
+    const k = 1 - (n1 / n2) ** 2 * (1 - ci * ci);
+    if (k <= 0) return { s: 1, p: 1 };
+    const ct = Math.sqrt(k);
+    const rs = (n1 * ci - n2 * ct) / (n1 * ci + n2 * ct);
+    const rp = (n2 * ci - n1 * ct) / (n2 * ci + n1 * ct);
+    return { s: rs * rs, p: rp * rp };
+  }
+
+  // ── Cauchy dispersion ───────────────────────────────────────
+  const CAUCHY_A = 1.488;
+  const CAUCHY_B = 4163.052;
+  const WAVELENGTHS = [400, 430, 460, 490, 520, 550, 580, 610, 640, 670, 700];
+
+  function cauchyN(wavelength_nm) {
+    return CAUCHY_A + CAUCHY_B / (wavelength_nm * wavelength_nm);
+  }
+
+  function wavelengthToRGB(nm) {
+    let r = 0, g = 0, b = 0;
+    if (nm >= 380 && nm < 440) { r = -(nm - 440) / 60; b = 1; }
+    else if (nm < 490) { g = (nm - 440) / 50; b = 1; }
+    else if (nm < 510) { g = 1; b = -(nm - 510) / 20; }
+    else if (nm < 580) { r = (nm - 510) / 70; g = 1; }
+    else if (nm < 645) { r = 1; g = -(nm - 645) / 65; }
+    else if (nm <= 780) { r = 1; }
+    let f = 1;
+    if (nm >= 380 && nm < 420) f = 0.3 + 0.7 * (nm - 380) / 40;
+    else if (nm > 700) f = 0.3 + 0.7 * (780 - nm) / 80;
+    return { r: Math.round(r * f * 255), g: Math.round(g * f * 255), b: Math.round(b * f * 255) };
+  }
+
+  // ── Lens design optics ──────────────────────────────────────
+  // Symmetric thick-lens power (lensmaker, sign convention: light travels +x):
+  //   biconvex  R1=+R, R2=−R  →  φ = 2(n−1)/R − (n−1)²·d/(n·R²)   (>0)
+  //   biconcave R1=−R, R2=+R  →  φ = −2(n−1)/R − (n−1)²·d/(n·R²)  (<0)
+  // sign = +1 for biconvex, −1 for biconcave.
+  const LENS_N = 1.5;
+
+  // Relative residual tolerance for the closed-form solution. The quadratic
+  // below is solved exactly, so |φ_calc − φ_target| / |φ_target| is at the
+  // 1e-13 double-rounding level; 1e-6 leaves 7 orders of headroom while still
+  // rejecting a radius that belongs to a different EFL (a wrong R from the
+  // quadratic branches changes φ by ≫ 1e-6 relative).
+  const SOLVER_REL_TOL = 1e-6;
+
+  function lensPower(R, n, d, sign) {
+    const a = n - 1;
+    return 2 * sign * a / R - a * a * d / (n * R * R);
+  }
+
+  /**
+   * Closed-form radius for a symmetric lens of requested signed EFL.
+   * Solving  lensPower(R) = sign/|efl|  for R gives the quadratic
+   *   P·R² − 2·sign·(n−1)·R + (n−1)²·d/n = 0 ,  P = 1/|efl|
+   * whose physical (large-root) branch is
+   *   R = (n−1)·(1 + sqrt(1 − sign·P·d/n)) / P .
+   * Returns null (NEVER a substituted aperture/2 value) when:
+   *   - input invalid / non-finite / |efl| < 1 mm;
+   *   - discriminant negative (requested power unreachable for d, n);
+   *   - radius non-finite, non-positive, or R < aperture/2 (must span aperture);
+   *   - final optical-power residual exceeds SOLVER_REL_TOL.
+   */
+  function solveLensRadius(efl, thickness, aperture, n = LENS_N) {
+    if (!Number.isFinite(efl) || efl === 0) return null;
+    if (!Number.isFinite(thickness) || thickness <= 0) return null;
+    if (!Number.isFinite(aperture) || aperture <= 0) return null;
+    if (!Number.isFinite(n) || n <= 1) return null;
+    const sign = efl > 0 ? 1 : -1;
+    const f = Math.abs(efl);
+    if (f < 1) return null;
+    const a = n - 1, d = thickness;
+    const P = 1 / f;
+    const disc = 1 - sign * P * d / n;
+    if (disc < 0) return null;
+    const R = a * (1 + Math.sqrt(disc)) / P;
+    if (!Number.isFinite(R) || R <= 0) return null;
+    if (R < aperture / 2) return null;
+    const target = sign * P;
+    const calc = lensPower(R, n, d, sign);
+    if (!Number.isFinite(calc)) return null;
+    if (Math.abs(calc - target) > SOLVER_REL_TOL * Math.abs(target)) return null;
+    return R;
+  }
+
+  /** Take |efl| magnitude; produce a positive biconvex power. null on failure. */
+  function solveConvexRadius(eflMag, thickness, aperture, n = LENS_N) {
+    return solveLensRadius(Math.abs(eflMag), thickness, aperture, n);
+  }
+
+  /** Take |efl| magnitude; produce a negative (diverging) power. null on failure. */
+  function solveConcaveRadius(eflMag, thickness, aperture, n = LENS_N) {
+    return solveLensRadius(-Math.abs(eflMag), thickness, aperture, n);
+  }
+
+  // ── Outline builders ────────────────────────────────────────
+  /** Sampled closed outline for a symmetric biconvex lens (local coords). */
+  function makeLensOutline(R, hw, halfAp, nPts) {
+    const halfAngle = Math.asin(halfAp / R);
+    const leftCX = R - hw;
+    const rightCX = -R + hw;
+    const pts = [];
+    for (let i = 0; i <= nPts; i++) {
+      const a = -halfAngle + (2 * halfAngle * i / nPts);
+      pts.push(new Vec2(leftCX + R * Math.cos(Math.PI - a), R * Math.sin(Math.PI - a)));
+    }
+    for (let i = nPts; i >= 0; i--) {
+      const a = -halfAngle + (2 * halfAngle * i / nPts);
+      pts.push(new Vec2(rightCX + R * Math.cos(a), R * Math.sin(a)));
+    }
+    return pts;
+  }
+
+  /** Sampled closed outline for a symmetric biconcave lens (local coords). */
+  function makeConcaveLensOutline(R, hw, halfAp, nPts = 48) {
+    const theta = Math.asin(Math.min(1, halfAp / R));
+    const leftCenter = new Vec2(-R - hw, 0);
+    const rightCenter = new Vec2(R + hw, 0);
+    const points = [];
+    for (let i = 0; i <= nPts; i++) {
+      const angle = theta - (2 * theta * i) / nPts;
+      points.push(leftCenter.add(new Vec2(R * Math.cos(angle), R * Math.sin(angle))));
+    }
+    for (let i = 0; i <= nPts; i++) {
+      const angle = Math.PI + theta - (2 * theta * i) / nPts;
+      points.push(rightCenter.add(new Vec2(R * Math.cos(angle), R * Math.sin(angle))));
+    }
+    return points;
+  }
+
+  // ── Geometry validation (pure; never mutates the argument) ──
+  /**
+   * Validate a candidate lens geometry:
+   *   { efl, radius, outline: Vec2[], surfaces: OpticalSurface[] }
+   * opts: { sign (+1 convex / −1 concave), thickness, aperture, n }
+   * Returns true only when every coordinate/centre/radius is finite, the
+   * radius spans the aperture, centre/edge thickness are physical, the two
+   * faces do not cross, outline width/height are sane, and the thick-lens
+   * power matches the requested EFL within SOLVER_REL_TOL.
+   */
+  function validateLensGeometry(geom, opts) {
+    const { sign, thickness, aperture, n = LENS_N } = opts || {};
+    if (!geom || (sign !== 1 && sign !== -1)) return false;
+    if (!Array.isArray(geom.outline) || geom.outline.length < 6) return false;
+    if (!Array.isArray(geom.surfaces) || geom.surfaces.length < 2) return false;
+    if (!Number.isFinite(geom.radius) || geom.radius <= 0) return false;
+    if (!Number.isFinite(geom.efl) || geom.efl === 0 || Math.sign(geom.efl) !== sign) return false;
+
+    const halfAp = aperture / 2, hw = thickness / 2;
+    if (geom.radius < halfAp) return false; // radius must span the aperture
+
+    // Outline coordinates finite and within sane bounds.
+    for (const p of geom.outline) {
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+    }
+    const xs = geom.outline.map(p => p.x), ys = geom.outline.map(p => p.y);
+    const width = Math.max(...xs) - Math.min(...xs);
+    const height = Math.max(...ys) - Math.min(...ys);
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return false;
+    // Height must reach the full aperture; width stays in a sane range for
+    // both lens types (convex: < thickness; concave: up to ~2·sagitta wider).
+    if (Math.abs(height - aperture) > 1e-6 * aperture + 1e-6) return false;
+    if (width < 0.5 * thickness || width > 1.5 * aperture) return false;
+
+    // Surface centres/radii finite; arcs must reach the aperture edges.
+    let arcs = 0;
+    for (const s of geom.surfaces) {
+      if (!s) return false;
+      if (s instanceof ArcSurface) {
+        arcs++;
+        if (!s.center || !Number.isFinite(s.center.x) || !Number.isFinite(s.center.y)) return false;
+        if (!Number.isFinite(s.radius) || s.radius < halfAp - 1e-9) return false;
+        const reach = Math.abs(Math.sin(s.startAngle)) * s.radius;
+        if (Math.abs(reach - halfAp) > 1e-6 * halfAp + 1e-6) return false;
+        if (!Number.isFinite(s.endAngle)) return false;
+      } else if (s instanceof LineSurface) {
+        if (!Number.isFinite(s.a.x) || !Number.isFinite(s.a.y) ||
+            !Number.isFinite(s.b.x) || !Number.isFinite(s.b.y)) return false;
+        if (s.len <= 0 || !Number.isFinite(s.len)) return false;
+      } else {
+        return false;
+      }
+    }
+    if (arcs !== 2) return false;
+
+    // Optical power vs requested EFL.
+    const target = sign / Math.abs(geom.efl);
+    const calc = lensPower(geom.radius, n, thickness, sign);
+    if (!Number.isFinite(calc)) return false;
+    if (Math.abs(calc - target) > SOLVER_REL_TOL * Math.abs(target)) return false;
+
+    // Thickness + surface-crossing checks.
+    const halfAngle = Math.asin(clamp(halfAp / geom.radius, 0, 1));
+    const R = geom.radius;
+    if (sign === 1) {
+      // Biconvex: apexes at ∓hw; faces cross when one sagitta exceeds hw.
+      const sagitta = R * (1 - Math.cos(halfAngle));
+      if (!Number.isFinite(sagitta) || sagitta >= hw) return false;
+      const leftEdgeX = (R - hw) - R * Math.cos(halfAngle);
+      const rightEdgeX = (-R + hw) + R * Math.cos(halfAngle);
+      if (leftEdgeX >= rightEdgeX) return false; // faces crossed
+    } else {
+      // Biconcave: centre thickness 2·hw, edges thicker still.
+      const leftEdgeX = (-R - hw) + R * Math.cos(halfAngle);
+      const rightEdgeX = (R + hw) + R * Math.cos(Math.PI + halfAngle);
+      const edgeThk = rightEdgeX - leftEdgeX;
+      if (!Number.isFinite(edgeThk) || edgeThk <= thickness) return false;
+      if (edgeThk >= 2 * R) return false; // crossed / degenerate
+    }
+    return true;
+  }
+
+  // ── Geometry builders (pure; return candidate or null) ──────
+  function buildConvexGeometry(efl, opts = {}) {
+    const { thickness = 8, aperture = 50, n = LENS_N, nPts = 48 } = opts;
+    if (!Number.isFinite(efl) || efl <= 0) return null;
+    const halfAp = aperture / 2, hw = thickness / 2;
+    const R = solveLensRadius(efl, thickness, aperture, n);
+    if (R === null || !Number.isFinite(R) || R < halfAp) return null;
+    const halfAngle = Math.asin(clamp(halfAp / R, 0, 1));
+    const outline = makeLensOutline(R, hw, halfAp, nPts);
+    const surfaces = [
+      new ArcSurface(new Vec2(R - hw, 0), R, Math.PI - halfAngle, Math.PI + halfAngle, 1, n),
+      new ArcSurface(new Vec2(-R + hw, 0), R, -halfAngle, halfAngle, 1, n)
+    ];
+    const geom = { efl, radius: R, outline, surfaces };
+    return validateLensGeometry(geom, { sign: 1, thickness, aperture, n }) ? geom : null;
+  }
+
+  function buildConcaveGeometry(efl, opts = {}) {
+    const { thickness = 8, aperture = 50, n = LENS_N, nPts = 48 } = opts;
+    if (!Number.isFinite(efl) || efl >= 0) return null;
+    const halfAp = aperture / 2, hw = thickness / 2;
+    const R = solveLensRadius(efl, thickness, aperture, n);
+    if (R === null || !Number.isFinite(R) || R < halfAp) return null;
+    const halfAngle = Math.asin(clamp(halfAp / R, 0, 1));
+    const leftCX = -R - hw, rightCX = R + hw;
+    const outline = makeConcaveLensOutline(R, hw, halfAp, nPts);
+    const leftTop = new Vec2(leftCX + R * Math.cos(halfAngle), R * Math.sin(halfAngle));
+    const leftBottom = new Vec2(leftCX + R * Math.cos(-halfAngle), R * Math.sin(-halfAngle));
+    const rightBottom = new Vec2(rightCX + R * Math.cos(Math.PI + halfAngle), R * Math.sin(Math.PI + halfAngle));
+    const rightTop = new Vec2(rightCX + R * Math.cos(Math.PI - halfAngle), R * Math.sin(Math.PI - halfAngle));
+    const surfaces = [
+      new ArcSurface(new Vec2(leftCX, 0), R, -halfAngle, halfAngle, -1, n),
+      new ArcSurface(new Vec2(rightCX, 0), R, Math.PI - halfAngle, Math.PI + halfAngle, -1, n),
+      new LineSurface(leftBottom, rightBottom, n, 1),
+      new LineSurface(rightTop, leftTop, n, 1)
+    ];
+    const geom = { efl, radius: R, outline, surfaces };
+    return validateLensGeometry(geom, { sign: -1, thickness, aperture, n }) ? geom : null;
+  }
+
+  /** Deep copy of a lens geometry snapshot — snapshots stay immutable. */
+  function cloneLensGeometry(geom) {
+    if (!geom) return null;
+    return {
+      efl: geom.efl,
+      radius: geom.radius,
+      outline: geom.outline.map(p => p.clone()),
+      surfaces: geom.surfaces.map(s => s.clone())
+    };
+  }
+
+  return {
+    Vec2, TAU, EPSILON, deg2rad, rad2deg, clamp, transformPoint, aabbOfPoints,
+    normalizeAngle, angleInSweep, raySegHit, rayCircleHit, ptInConvex, ptInPolygon,
+    OpticalSurface, LineSurface, ArcSurface, MirrorSurface,
+    reflect, refractRay, fresnelReflectance,
+    CAUCHY_A, CAUCHY_B, WAVELENGTHS, cauchyN, wavelengthToRGB,
+    LENS_N, SOLVER_REL_TOL, lensPower,
+    solveLensRadius, solveConvexRadius, solveConcaveRadius,
+    makeLensOutline, makeConcaveLensOutline,
+    validateLensGeometry, buildConvexGeometry, buildConcaveGeometry, cloneLensGeometry
+  };
+});
+</script>
+<script>
+"use strict";
+
+// ─────────────────────────────────────────────────────────────
+//  § 1. SHARED CORE (optics-core.js — also used by tests)
+// ─────────────────────────────────────────────────────────────
+
+const {
+  Vec2, EPSILON, rad2deg, clamp, normalizeAngle,
+  ptInConvex, ptInPolygon,
+  LineSurface, ArcSurface, MirrorSurface,
+  reflect, refractRay, fresnelReflectance,
+  cauchyN, WAVELENGTHS, wavelengthToRGB,
+  buildConvexGeometry, buildConcaveGeometry, cloneLensGeometry
+} = window.OpticsCore;
+
+// ─────────────────────────────────────────────────────────────
+//  § 1b. INTERNATIONALIZATION (en-US / zh-HK)
+// ─────────────────────────────────────────────────────────────
+
+const translations = {
+  'en-US': {
+    title: 'Raybox Bench – Optics Simulation',
+    // Toolbar
+    powerLabel: '⚡ Power',
+    powerTitle: 'Toggle ray box on/off',
+    whiteLabel: '☀ White',
+    whiteTitle: 'Toggle white-light dispersion mode',
+    partialReflection: 'Partial reflection',
+    partialReflectionTitle: 'Show partial reflections at glass surfaces',
+    slitNoneLabel: '○ None',
+    slitNoneTitle: 'No slit – continuous beam',
+    slitSingleLabel: '│ Single',
+    slitSingleTitle: 'Single-slit – one ray',
+    slitTripleLabel: '┃┃┃ Triple',
+    slitTripleTitle: 'Triple-slit – three rays',
+    convexALabel: 'Convex Lens A',
+    convexAAria: 'Convex lens A',
+    convexATitle: 'Add a convex lens (variant A)',
+    convexBLabel: 'Convex Lens B',
+    convexBAria: 'Convex lens B',
+    convexBTitle: 'Add a convex lens (variant B)',
+    convexCLabel: 'Convex Lens C',
+    convexCAria: 'Convex lens C',
+    convexCTitle: 'Add a convex lens (variant C)',
+    concaveALabel: 'Concave Lens A',
+    concaveAAria: 'Concave lens A',
+    concaveATitle: 'Add a concave lens (variant A)',
+    concaveBLabel: 'Concave Lens B',
+    concaveBAria: 'Concave lens B',
+    concaveBTitle: 'Add a concave lens (variant B)',
+    concaveCLabel: 'Concave Lens C',
+    concaveCAria: 'Concave lens C',
+    concaveCTitle: 'Add a concave lens (variant C)',
+    flatLabel: 'Block',
+    flatAria: 'Flat glass block',
+    flatTitle: 'Flat glass block 120×60mm',
+    prism60Label: 'Prism-60',
+    prism60Aria: 'Prism 60, equilateral',
+    prism60Title: 'Equilateral prism (60°–60°–60°)',
+    prism90Label: 'Prism-90',
+    prism90Aria: 'Prism 90, right-angle',
+    prism90Title: 'Right-isosceles prism (45°–45°–90°)',
+    semiLabel: 'Semi',
+    semiAria: 'Semicircular glass block',
+    semiTitle: 'Semicircular glass block',
+    mirrorLabel: 'Mirror',
+    mirrorAria: 'Plane mirror',
+    mirrorTitle: 'Plane mirror (reflective front, absorbing back)',
+    protractorLabel: 'Protractor',
+    protractorAria: 'Full-circle protractor',
+    protractorTitle: '360° protractor (measurement overlay)',
+    deleteLabel: '🗑 Del',
+    deleteTitle: 'Delete selected component',
+    clearLabel: 'Clear',
+    clearTitle: 'Clear all placed components',
+    resetLabel: 'Reset',
+    resetTitle: 'Reset experiment to startup state',
+    undoLabel: '↩ Undo',
+    undoTitle: 'Undo (Ctrl+Z)',
+    redoLabel: '↪ Redo',
+    redoTitle: 'Redo (Ctrl+Y)',
+    zoomInLabel: 'Zoom In',
+    zoomInAria: 'Zoom in',
+    zoomInTitle: 'Zoom in (+)',
+    zoomOutLabel: 'Zoom Out',
+    zoomOutAria: 'Zoom out',
+    zoomOutTitle: 'Zoom out (−)',
+    helpLabel: '? Help',
+    helpTitle: 'Show help overlay',
+    // Component names (toolbar / properties panel)
+    component: 'Component',
+    rayBox: 'Ray Box',
+    convexLens: 'Convex Lens',
+    concaveLens: 'Concave Lens',
+    flatBlock: 'Flat Block',
+    prism: 'Prism',
+    semicircle: 'Semicircle',
+    mirror: 'Mirror',
+    protractor: 'Protractor',
+    // Properties panel
+    power: 'Power',
+    slit: 'Slit',
+    slitNoneOption: 'None',
+    slitSingleOption: 'Single',
+    slitTripleOption: 'Triple',
+    position: 'Position',
+    rotation: 'Rotation',
+    eflLabel: 'EFL (mm)',
+    radius: 'Radius',
+    length: 'Length',
+    deleteBtn: 'Delete',
+    duplicateBtn: 'Duplicate',
+    onLabel: 'ON',
+    offLabel: 'OFF',
+    // Toasts
+    invalidEFL: 'Invalid EFL',
+    concaveNegative: 'Concave lens EFL must be negative',
+    convexPositive: 'Convex lens EFL must be positive',
+    eflTooSmall: 'EFL too small (min 50 mm)',
+    cannotRealise: 'Cannot realise f = {f} mm with this lens (aperture/thickness limit)',
+    // Help overlay
+    helpHeading: 'Raybox Bench – Help',
+    helpRayBoxHeading: 'Ray Box',
+    helpRayBox1: 'Drag the ray box to move it; drag the rotation handle (circle) to rotate it.',
+    helpRayBox2: 'Use the <b>Power</b> button to turn the beam on/off.',
+    helpRayBox3: 'Use <b>None / Single / Triple</b> to switch slit attachments.',
+    helpPlacingHeading: 'Placing Components',
+    helpPlacing1: 'Click a component button in the toolbar to place it at the bench center.',
+    helpPlacing2: 'Lenses: <b>Convex Lens</b> and <b>Concave Lens</b>, each in three variants (A, B, C). Which variant bends light most is part of the investigation — trace a beam through each one, or check the focal length in the properties panel.',
+    helpPlacing3: 'Prisms: <b>Prism-60</b> (equilateral, 60°–60°–60°) and <b>Prism-90</b> (right-isosceles, 45°–45°–90°, right angle at the top).',
+    helpPlacing4: '<b>Mirror</b>: a flat plane mirror (100 mm) that reflects light from its front; its hatched back stops light.',
+    helpPlacing5: '<b>Protractor</b>: a 360° measurement overlay (1° ticks; prominent outer 0–90–0 scale, smaller inner 0–360° scale, labelled every 10°). It never touches the rays; grab its rim, center hub, or baseline to move it, and read its rotation (whole degrees) in the properties panel.',
+    helpPlacing6: 'Drag the component body to move it.',
+    helpPlacing7: 'Drag the rotation handle (circle above the component) to rotate it.',
+    helpPlacing8: 'Click to select; press <b>Delete</b> key or the <b>🗑 Del</b> button to remove.',
+    helpPartialHeading: 'Partial Reflection',
+    helpPartialBody: 'On by default. Shows faint reflections at glass surfaces, becoming stronger near the critical angle. Uncheck to show only the main refracted ray and total internal reflection.',
+    helpPropsHeading: 'Properties Panel',
+    helpProps1: 'Shows the variant name, position, rotation, focal length (lenses), or refractive index.',
+    helpProps2: 'Lens focal length is editable — type a value and press Enter.',
+    helpShortcutsHeading: 'Keyboard Shortcuts',
+    helpShortcutUndo: '<b>Ctrl+Z</b> – Undo',
+    helpShortcutRedo: '<b>Ctrl+Y</b> – Redo',
+    helpShortcutZoom: '<b>+ / −</b> – Zoom in / out · <b>0</b> – Reset zoom',
+    helpShortcutDelete: '<b>Delete / Backspace</b> – Delete selected',
+    helpShortcutEscape: '<b>Escape</b> – Deselect',
+    helpGotIt: 'Got it'
+  },
+  'zh-HK': {
+    title: '光線箱實驗台 – 光學模擬',
+    // Toolbar
+    powerLabel: '⚡ 電源',
+    powerTitle: '開啟／關閉光線箱',
+    whiteLabel: '☀ 白光',
+    whiteTitle: '切換白光色散模式',
+    partialReflection: '部分反射',
+    partialReflectionTitle: '顯示玻璃表面的部分反射',
+    slitNoneLabel: '○ 無',
+    slitNoneTitle: '無狹縫 – 連續光束',
+    slitSingleLabel: '│ 單縫',
+    slitSingleTitle: '單狹縫 – 單一光線',
+    slitTripleLabel: '┃┃┃ 三縫',
+    slitTripleTitle: '三狹縫 – 三條光線',
+    convexALabel: '凸透鏡 A',
+    convexAAria: '凸透鏡 A',
+    convexATitle: '加入凸透鏡（變體 A）',
+    convexBLabel: '凸透鏡 B',
+    convexBAria: '凸透鏡 B',
+    convexBTitle: '加入凸透鏡（變體 B）',
+    convexCLabel: '凸透鏡 C',
+    convexCAria: '凸透鏡 C',
+    convexCTitle: '加入凸透鏡（變體 C）',
+    concaveALabel: '凹透鏡 A',
+    concaveAAria: '凹透鏡 A',
+    concaveATitle: '加入凹透鏡（變體 A）',
+    concaveBLabel: '凹透鏡 B',
+    concaveBAria: '凹透鏡 B',
+    concaveBTitle: '加入凹透鏡（變體 B）',
+    concaveCLabel: '凹透鏡 C',
+    concaveCAria: '凹透鏡 C',
+    concaveCTitle: '加入凹透鏡（變體 C）',
+    flatLabel: '玻璃磚',
+    flatAria: '長方形玻璃磚',
+    flatTitle: '長方形玻璃磚 120×60 毫米',
+    prism60Label: '稜鏡-60',
+    prism60Aria: '等邊稜鏡 60',
+    prism60Title: '等邊稜鏡（60°–60°–60°）',
+    prism90Label: '稜鏡-90',
+    prism90Aria: '直角稜鏡 90',
+    prism90Title: '直角等腰稜鏡（45°–45°–90°）',
+    semiLabel: '半圓',
+    semiAria: '半圓形玻璃磚',
+    semiTitle: '半圓形玻璃磚',
+    mirrorLabel: '平面鏡',
+    mirrorAria: '平面鏡',
+    mirrorTitle: '平面鏡（正面反射、背面吸收）',
+    protractorLabel: '量角器',
+    protractorAria: '全方位量角器',
+    protractorTitle: '360° 量角器（測量疊加層）',
+    deleteLabel: '🗑 刪除',
+    deleteTitle: '刪除選取的元件',
+    clearLabel: '清除',
+    clearTitle: '清除所有已放置的元件',
+    resetLabel: '重設',
+    resetTitle: '將實驗重設至初始狀態',
+    undoLabel: '↩ 復原',
+    undoTitle: '復原（Ctrl+Z）',
+    redoLabel: '↪ 重做',
+    redoTitle: '重做（Ctrl+Y）',
+    zoomInLabel: '放大',
+    zoomInAria: '放大',
+    zoomInTitle: '放大（+）',
+    zoomOutLabel: '縮小',
+    zoomOutAria: '縮小',
+    zoomOutTitle: '縮小（−）',
+    helpLabel: '? 說明',
+    helpTitle: '顯示說明',
+    // Component names (toolbar / properties panel)
+    component: '元件',
+    rayBox: '光線箱',
+    convexLens: '凸透鏡',
+    concaveLens: '凹透鏡',
+    flatBlock: '長方形玻璃磚',
+    prism: '稜鏡',
+    semicircle: '半圓形',
+    mirror: '平面鏡',
+    protractor: '量角器',
+    // Properties panel
+    power: '電源',
+    slit: '狹縫',
+    slitNoneOption: '無',
+    slitSingleOption: '單縫',
+    slitTripleOption: '三縫',
+    position: '位置',
+    rotation: '旋轉',
+    eflLabel: '有效焦距（毫米）',
+    radius: '半徑',
+    length: '長度',
+    deleteBtn: '刪除',
+    duplicateBtn: '複製',
+    onLabel: '開',
+    offLabel: '關',
+    // Toasts
+    invalidEFL: '有效焦距無效',
+    concaveNegative: '凹透鏡的有效焦距必須為負數',
+    convexPositive: '凸透鏡的有效焦距必須為正數',
+    eflTooSmall: '有效焦距太小（最小 50 毫米）',
+    cannotRealise: '此透鏡無法實現 f = {f} 毫米（受孔徑／厚度限制）',
+    // Help overlay
+    helpHeading: '光線箱實驗台 – 說明',
+    helpRayBoxHeading: '光線箱',
+    helpRayBox1: '拖曳光線箱以移動；拖曳旋轉把手（圓形）以旋轉。',
+    helpRayBox2: '使用<b>電源</b>按鈕開啟或關閉光束。',
+    helpRayBox3: '使用<b>無／單縫／三縫</b>切換狹縫配件。',
+    helpPlacingHeading: '放置元件',
+    helpPlacing1: '點擊工具列上的元件按鈕，將其放置在實驗台中央。',
+    helpPlacing2: '透鏡：<b>凸透鏡</b>與<b>凹透鏡</b>，各有三個變體（A、B、C）。哪個變體折射光線最多是探究的一部分——可讓光束穿過每個透鏡，或在屬性面板查看焦距。',
+    helpPlacing3: '稜鏡：<b>稜鏡-60</b>（等邊，60°–60°–60°）與<b>稜鏡-90</b>（直角等腰，45°–45°–90°，直角位於頂部）。',
+    helpPlacing4: '<b>平面鏡</b>：一塊平坦的平面鏡（100 毫米），光線從正面反射；背面有斜線，會阻擋光線。',
+    helpPlacing5: '<b>量角器</b>：360° 測量疊加層（1° 刻度；外圈為醒目 0–90–0 刻度，內圈為較小的 0–360° 刻度，每 10° 標註一次）。它不會接觸光線；可抓住其邊緣、中心或基線移動，並在屬性面板讀取其旋轉角度（整數度）。',
+    helpPlacing6: '拖曳元件本體以移動。',
+    helpPlacing7: '拖曳旋轉把手（元件上方的圓形）以旋轉。',
+    helpPlacing8: '點擊以選取；按 <b>Delete</b> 鍵或<b>🗑 刪除</b>按鈕以移除。',
+    helpPartialHeading: '部分反射',
+    helpPartialBody: '預設開啟。顯示玻璃表面的微弱反射，接近臨界角時會增強。取消勾選則只顯示主要折射光線與全內反射。',
+    helpPropsHeading: '屬性面板',
+    helpProps1: '顯示變體名稱、位置、旋轉、焦距（透鏡）或折射率。',
+    helpProps2: '透鏡焦距可編輯——輸入數值並按 Enter。',
+    helpShortcutsHeading: '鍵盤快捷鍵',
+    helpShortcutUndo: '<b>Ctrl+Z</b> – 復原',
+    helpShortcutRedo: '<b>Ctrl+Y</b> – 重做',
+    helpShortcutZoom: '<b>+ / −</b> – 放大／縮小 · <b>0</b> – 重設縮放',
+    helpShortcutDelete: '<b>Delete / Backspace</b> – 刪除選取項目',
+    helpShortcutEscape: '<b>Escape</b> – 取消選取',
+    helpGotIt: '明白了'
+  }
+};
+
+let currentLang = 'en-US';
+
+function t(key) {
+  const dict = translations[currentLang] || translations['en-US'];
+  return dict[key] !== undefined ? dict[key] : key;
+}
+
+// Maps the English component label stored on a component to a translation key,
+// so the properties panel keeps showing the right variant after a language switch.
+const componentNameKeys = {
+  'Ray Box': 'rayBox',
+  'Convex Lens A': 'convexALabel',
+  'Convex Lens B': 'convexBLabel',
+  'Convex Lens C': 'convexCLabel',
+  'Convex Lens': 'convexLens',
+  'Concave Lens A': 'concaveALabel',
+  'Concave Lens B': 'concaveBLabel',
+  'Concave Lens C': 'concaveCLabel',
+  'Concave Lens': 'concaveLens',
+  'Flat Block': 'flatBlock',
+  'Prism-60': 'prism60Label',
+  'Prism-90': 'prism90Label',
+  'Prism': 'prism',
+  'Semicircle': 'semicircle',
+  'Mirror': 'mirror',
+  'Protractor': 'protractor'
+};
+
+function translateComponentName(name) {
+  if (!name) return '';
+  return componentNameKeys[name] ? t(componentNameKeys[name]) : name;
+}
+
+function updateLangButtons() {
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+  });
+}
+
+function changeLanguage(lang, skipUrlUpdate = false) {
+  if (!translations[lang]) lang = 'en-US';
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const val = translations[lang][el.getAttribute('data-i18n')];
+    if (val !== undefined) el.textContent = val;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const val = translations[lang][el.getAttribute('data-i18n-html')];
+    if (val !== undefined) el.innerHTML = val;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const val = translations[lang][el.getAttribute('data-i18n-title')];
+    if (val !== undefined) el.title = val;
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    const val = translations[lang][el.getAttribute('data-i18n-aria-label')];
+    if (val !== undefined) el.setAttribute('aria-label', val);
+  });
+  updateLangButtons();
+  updatePropsPanel();
+  if (!skipUrlUpdate) {
+    const url = new URL(window.location);
+    url.searchParams.set('lang', lang);
+    window.history.pushState({}, '', url);
+  }
+}
+
+function initLanguage() {
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => changeLanguage(btn.getAttribute('data-lang')));
+  });
+  const langParam = new URLSearchParams(window.location.search).get('lang');
+  changeLanguage(translations[langParam] ? langParam : 'en-US', true);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 2. OPTICAL COMPONENTS
+// ─────────────────────────────────────────────────────────────
+
+let compIdCounter = 0;
+
+class Component {
+  constructor(type, pos, rot = 0) {
+    this.id = compIdCounter++;
+    this.type = type;
+    this.pos = pos.clone();
+    this.rot = rot;
+    this.selected = false;
+    this.surfaces = [];
+    this.apertures = [];
+  }
+  getTransform() { return { pos: this.pos, rot: this.rot }; }
+  localToWorld(p) { return p.rotate(this.rot).add(this.pos); }
+  worldToLocal(p) { return p.sub(this.pos).rotate(-this.rot); }
+  containsPoint(p) { return false; }
+  render(ctx, view) {}
+  getAABB() { return { min: this.pos.sub(new Vec2(50, 50)), max: this.pos.add(new Vec2(50, 50)) }; }
+  getRotHandlePos() {
+    return this.localToWorld(new Vec2(0, -55));
+  }
+}
+
+class RayBox extends Component {
+  constructor(pos, rot, cfg = {}) {
+    super('raybox', pos, rot);
+    this.power = cfg.power !== false;
+    this.slitAttachment = cfg.slitAttachment || 'none';
+    this.width = 60; this.height = 40;
+    this.apertureWidth = 30;
+  }
+  containsPoint(p) {
+    const lp = this.worldToLocal(p);
+    return lp.x >= -this.width / 2 && lp.x <= this.width / 2 &&
+           lp.y >= -this.height / 2 && lp.y <= this.height / 2;
+  }
+  getAABB() {
+    const hw = this.width / 2, hh = this.height / 2;
+    const corners = [new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(hw, hh), new Vec2(-hw, hh)];
+    const worldCorners = corners.map(c => this.localToWorld(c));
+    const xs = worldCorners.map(c => c.x), ys = worldCorners.map(c => c.y);
+    return { min: new Vec2(Math.min(...xs), Math.min(...ys)), max: new Vec2(Math.max(...xs), Math.max(...ys)) };
+  }
+  render(ctx, view) {
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    const hw = this.width / 2, hh = this.height / 2;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
+    ctx.strokeStyle = this.power ? '#0f0' : '#666';
+    ctx.lineWidth = this.selected ? 2 / view.zoom : 1 / view.zoom;
+    ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
+    ctx.fillStyle = this.power ? '#0f0' : '#666';
+    ctx.font = `10px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // beginComponentTransform mirrors Y (scale(zoom,−zoom)) so geometry stays
+    // Y-up in world space; canvas text would render upside down without this
+    // compensating flip. Both labels sit at y = 0, so positions are unchanged.
+    ctx.save();
+    ctx.scale(1, -1);
+    ctx.fillText(t(this.power ? 'onLabel' : 'offLabel'), 0, 0);
+    ctx.fillStyle = '#ffd700';
+    ctx.font = `8px system-ui`;
+    const slitLabel = this.slitAttachment === 'single' ? '│' : this.slitAttachment === 'triple' ? '┃┃┃' : '';
+    ctx.fillText(slitLabel, hw - 8, 0);
+    ctx.restore();
+    ctx.restore();
+    this.renderSlit(ctx, view);
+  }
+  renderSlit(ctx, view) {
+    if (this.slitAttachment === 'none') return;
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    const hw = this.width / 2;
+    const plateW = 4, plateH = this.apertureWidth;
+    const x = hw + plateW / 2;
+    const sh = plateH / 2;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x - plateW / 2, -sh, plateW, sh * 2);
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1 / view.zoom;
+    ctx.strokeRect(x - plateW / 2, -sh, plateW, sh * 2);
+    ctx.fillStyle = '#ffd700';
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 1.5 / view.zoom;
+    if (this.slitAttachment === 'single') {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 1);
+      ctx.stroke();
+    } else if (this.slitAttachment === 'triple') {
+      const sp = 10;
+      for (const dy of [-sp, 0, sp]) {
+        ctx.beginPath();
+        ctx.moveTo(x, dy);
+        ctx.lineTo(x, dy + 1);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+/** Inquiry-based variant naming: A/B/C per lens type (±100/±200/±400 mm).
+ *  Labels intentionally reveal neither focal length nor curvature strength. */
+function lensLabel(efl) {
+  const kind = efl > 0 ? 'Convex Lens' : 'Concave Lens';
+  const variant = { 100: 'A', 200: 'B', 400: 'C' }[Math.abs(efl)];
+  return variant ? kind + ' ' + variant : kind;
+}
+
+class ConvexLens extends Component {
+  constructor(pos, rot, efl = 200, label = null) {
+    super('convex', pos, rot);
+    this.efl = efl;
+    this.label = label || lensLabel(efl);
+    this.thickness = 8;
+    this.aperture = 50;
+    this.recalcSurfaces();
+  }
+  buildGeometryForEFL(candidateEFL) {
+    return buildConvexGeometry(candidateEFL, {
+      thickness: this.thickness, aperture: this.aperture
+    });
+  }
+  applyGeometry(geometry) {
+    const g = cloneLensGeometry(geometry);
+    this.efl = g.efl;
+    this.radius = g.radius;
+    this.outline = g.outline;
+    this.surfaces = g.surfaces;
+  }
+  snapshotGeometry() {
+    if (!this.outline || !this.surfaces) return null;
+    return cloneLensGeometry({
+      efl: this.efl, radius: this.radius, outline: this.outline, surfaces: this.surfaces
+    });
+  }
+  recalcSurfaces() {
+    const geom = this.buildGeometryForEFL(this.efl);
+    if (geom) { this.applyGeometry(geom); return true; }
+    return false;
+  }
+  containsPoint(p) {
+    const lp = this.worldToLocal(p);
+    if (this.outline) return ptInPolygon(lp, this.outline);
+    return lp.x >= -this.thickness / 2 - 2 && lp.x <= this.thickness / 2 + 2 &&
+           lp.y >= -this.aperture / 2 - 2 && lp.y <= this.aperture / 2 + 2;
+  }
+  getAABB() {
+    if (!this.outline?.length) {
+      const hw = this.aperture / 2 + 5;
+      const corners = [new Vec2(-hw, -hw), new Vec2(hw, -hw), new Vec2(hw, hw), new Vec2(-hw, hw)];
+      const wc = corners.map(c => this.localToWorld(c));
+      const xs = wc.map(c => c.x), ys = wc.map(c => c.y);
+      return { min: new Vec2(Math.min(...xs), Math.min(...ys)), max: new Vec2(Math.max(...xs), Math.max(...ys)) };
+    }
+    const worldPoints = this.outline.map(p => this.localToWorld(p));
+    const xs = worldPoints.map(p => p.x), ys = worldPoints.map(p => p.y);
+    const pad = 5;
+    return { min: new Vec2(Math.min(...xs) - pad, Math.min(...ys) - pad),
+             max: new Vec2(Math.max(...xs) + pad, Math.max(...ys) + pad) };
+  }
+  render(ctx, view) {
+    if (!this.outline) return;
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    ctx.beginPath();
+    this.outline.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(160,190,230,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.6)' : 'rgba(200,220,255,0.4)';
+    ctx.lineWidth = (this.selected ? 1.5 : 1) / view.zoom;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class ConcaveLens extends Component {
+  constructor(pos, rot, efl = -200, label = null) {
+    super('concave', pos, rot);
+    this.efl = efl;
+    this.label = label || lensLabel(efl);
+    this.thickness = 8;
+    this.aperture = 50;
+    this.recalcSurfaces();
+  }
+  buildGeometryForEFL(candidateEFL) {
+    return buildConcaveGeometry(candidateEFL, {
+      thickness: this.thickness, aperture: this.aperture
+    });
+  }
+  applyGeometry(geometry) {
+    const g = cloneLensGeometry(geometry);
+    this.efl = g.efl;
+    this.radius = g.radius;
+    this.outline = g.outline;
+    this.surfaces = g.surfaces;
+  }
+  snapshotGeometry() {
+    if (!this.outline || !this.surfaces) return null;
+    return cloneLensGeometry({
+      efl: this.efl, radius: this.radius, outline: this.outline, surfaces: this.surfaces
+    });
+  }
+  recalcSurfaces() {
+    const geom = this.buildGeometryForEFL(this.efl);
+    if (geom) { this.applyGeometry(geom); return true; }
+    return false;
+  }
+  containsPoint(p) {
+    const lp = this.worldToLocal(p);
+    if (this.outline) return ptInPolygon(lp, this.outline);
+    return lp.x >= -this.thickness / 2 - 2 && lp.x <= this.thickness / 2 + 2 &&
+           lp.y >= -this.aperture / 2 - 2 && lp.y <= this.aperture / 2 + 2;
+  }
+  getAABB() {
+    if (!this.outline?.length) {
+      const hw = this.aperture / 2 + 5;
+      const corners = [new Vec2(-hw, -hw), new Vec2(hw, -hw), new Vec2(hw, hw), new Vec2(-hw, hw)];
+      const wc = corners.map(c => this.localToWorld(c));
+      const xs = wc.map(c => c.x), ys = wc.map(c => c.y);
+      return { min: new Vec2(Math.min(...xs), Math.min(...ys)), max: new Vec2(Math.max(...xs), Math.max(...ys)) };
+    }
+    const worldPoints = this.outline.map(p => this.localToWorld(p));
+    const xs = worldPoints.map(p => p.x), ys = worldPoints.map(p => p.y);
+    const pad = 5;
+    return { min: new Vec2(Math.min(...xs) - pad, Math.min(...ys) - pad),
+             max: new Vec2(Math.max(...xs) + pad, Math.max(...ys) + pad) };
+  }
+  render(ctx, view) {
+    if (!this.outline) return;
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    ctx.beginPath();
+    this.outline.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(160,190,230,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.6)' : 'rgba(200,220,255,0.4)';
+    ctx.lineWidth = (this.selected ? 1.5 : 1) / view.zoom;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class FlatBlock extends Component {
+  constructor(pos, rot, w = 120, h = 60) {
+    super('flatblock', pos, rot);
+    this.w = w; this.h = h;
+    const hw = w / 2, hh = h / 2;
+    const verts = [new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(hw, hh), new Vec2(-hw, hh)];
+    this.verts = verts;
+    this.surfaces = [];
+    for (let i = 0; i < 4; i++) {
+      this.surfaces.push(new LineSurface(verts[i], verts[(i + 1) % 4], 1.5));
+    }
+  }
+  containsPoint(p) { return ptInConvex(this.worldToLocal(p), this.verts); }
+  getAABB() {
+    const corners = this.verts.map(c => this.localToWorld(c));
+    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    return { min: new Vec2(Math.min(...xs), Math.min(...ys)), max: new Vec2(Math.max(...xs), Math.max(...ys)) };
+  }
+  render(ctx, view) {
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    const hw = this.w / 2, hh = this.h / 2;
+    ctx.fillStyle = 'rgba(160,190,230,0.15)';
+    ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.6)' : 'rgba(200,220,255,0.4)';
+    ctx.lineWidth = (this.selected ? 1.5 : 1) / view.zoom;
+    ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
+    ctx.restore();
+  }
+}
+
+class Prism extends Component {
+  /**
+   * cfg.variant '60': equilateral triangle, side 90 mm (height = s·√3/2).
+   * cfg.variant '90': right-isosceles, hypotenuse 100 mm as the lab-prism
+   * base with the 90° corner at the top (legs = L/√2, apex height L/2).
+   * Both are centroid-centered so move/rotate/selection bounds stay natural.
+   */
+  constructor(pos, rot, cfg = {}) {
+    super('prism', pos, rot);
+    this.variant = cfg.variant === '90' ? '90' : '60';
+    this.label = this.variant === '90' ? 'Prism-90' : 'Prism-60';
+    let verts;
+    if (this.variant === '90') {
+      const L = 100;              // hypotenuse along the bottom
+      verts = [
+        new Vec2(-L / 2, -L / 6), // centroid of a triangle sits 1/3 of the
+        new Vec2(L / 2, -L / 6),  // median above the base; apex median L/3
+        new Vec2(0, L / 3)
+      ];
+    } else {
+      const s = 90, h = s * Math.sqrt(3) / 2;
+      verts = [
+        new Vec2(-s / 2, -h / 3),
+        new Vec2(s / 2, -h / 3),
+        new Vec2(0, 2 * h / 3)
+      ];
+    }
+    this.verts = verts;          // CCW winding → (dy,−dx) normals point outward
+    this.sides = [
+      verts[0].dist(verts[1]),
+      verts[1].dist(verts[2]),
+      verts[2].dist(verts[0])
+    ];
+    this.surfaces = [];
+    for (let i = 0; i < 3; i++) {
+      this.surfaces.push(new LineSurface(verts[i], verts[(i + 1) % 3], 1.5));
+    }
+  }
+  containsPoint(p) { return ptInConvex(this.worldToLocal(p), this.verts); }
+  getAABB() {
+    const corners = this.verts.map(c => this.localToWorld(c));
+    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    return { min: new Vec2(Math.min(...xs), Math.min(...ys)), max: new Vec2(Math.max(...xs), Math.max(...ys)) };
+  }
+  render(ctx, view) {
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    ctx.beginPath();
+    this.verts.forEach((v, i) => {
+      if (i === 0) ctx.moveTo(v.x, v.y);
+      else ctx.lineTo(v.x, v.y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(160,190,230,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.6)' : 'rgba(200,220,255,0.4)';
+    ctx.lineWidth = (this.selected ? 1.5 : 1) / view.zoom;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class SemicircularBlock extends Component {
+  constructor(pos, rot, radius = 80) {
+    super('semicircle', pos, rot);
+    this.radius = radius;
+    const a = radius;
+    this.verts = [new Vec2(-a, 0), new Vec2(a, 0)];
+    const arcSegs = 24;
+    for (let i = 0; i <= arcSegs; i++) {
+      const ang = Math.PI + (Math.PI * i / arcSegs);
+      this.verts.push(new Vec2(Math.cos(ang) * a, Math.sin(ang) * a));
+    }
+    this.flatSurface = new LineSurface(new Vec2(-a, 0), new Vec2(a, 0), 1.5, -1);
+    this.arcSurface = new ArcSurface(new Vec2(0, 0), radius, Math.PI, 2 * Math.PI, 1, 1.5);
+    this.surfaces = [this.flatSurface, this.arcSurface];
+  }
+  containsPoint(p) {
+    const lp = this.worldToLocal(p);
+    if (lp.y > 0) return false;
+    return lp.len() <= this.radius + 2;
+  }
+  getAABB() {
+    const corners = this.verts.map(c => this.localToWorld(c));
+    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    return { min: new Vec2(Math.min(...xs), Math.min(...ys)), max: new Vec2(Math.max(...xs), Math.max(...ys)) };
+  }
+  render(ctx, view) {
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    const r = this.radius;
+    ctx.beginPath();
+    ctx.moveTo(-r, 0);
+    ctx.lineTo(r, 0);
+    ctx.arc(0, 0, r, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(160,190,230,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.6)' : 'rgba(200,220,255,0.4)';
+    ctx.lineWidth = (this.selected ? 1.5 : 1) / view.zoom;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 2b. MIRROR & MEASUREMENT OVERLAY
+// ─────────────────────────────────────────────────────────────
+
+class PlaneMirror extends Component {
+  constructor(pos, rot, length = 100) {
+    super('mirror', pos, rot);
+    this.length = length;
+    this.label = 'Mirror';
+    const hl = length / 2;
+    this.face = [new Vec2(-hl, 0), new Vec2(hl, 0)];   // local: along X, normal +Y
+    this.verts = [new Vec2(-hl, -3), new Vec2(hl, -3), new Vec2(hl, 3), new Vec2(-hl, 3)];
+    this.surfaces = [new MirrorSurface(this.face[1], this.face[0])];
+  }
+  containsPoint(p) {
+    const lp = this.worldToLocal(p);
+    if (Math.abs(lp.y) > 6) return false;
+    return Math.abs(lp.x) <= this.length / 2 + 4;
+  }
+  getAABB() {
+    const corners = this.verts.map(c => this.localToWorld(c));
+    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    const pad = 5;
+    return { min: new Vec2(Math.min(...xs) - pad, Math.min(...ys) - pad),
+             max: new Vec2(Math.max(...xs) + pad, Math.max(...ys) + pad) };
+  }
+  render(ctx, view) {
+    const hl = this.length / 2;
+    ctx.save();
+    beginComponentTransform(ctx, view, this);
+    // Glass substrate between the reflective face (y = 0) and backing (y = −3).
+    ctx.fillStyle = 'rgba(160,190,230,0.15)';
+    ctx.fillRect(-hl, -3, this.length, 3);
+    // Silvered reflective edge.
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.9)' : 'rgba(235,244,255,0.95)';
+    ctx.lineWidth = 1.6 / view.zoom;
+    ctx.beginPath(); ctx.moveTo(-hl, 0); ctx.lineTo(hl, 0); ctx.stroke();
+    // Dark backing strip + hatch ticks so reflective and back sides read clearly.
+    ctx.strokeStyle = '#39404c';
+    ctx.lineWidth = 2.6 / view.zoom;
+    ctx.beginPath(); ctx.moveTo(-hl, -3); ctx.lineTo(hl, -3); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,132,150,0.8)';
+    ctx.lineWidth = 0.8 / view.zoom;
+    ctx.beginPath();
+    for (let x = -hl + 3; x <= hl; x += 7) {
+      ctx.moveTo(x - 3, -6.5); ctx.lineTo(x, -3);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class Protractor extends Component {
+  /** Measurement overlay only: no surfaces, skipped by the tracer, drawn
+   *  in screen space (upright dual scales — outer 0–90–0, inner 0–360 — and
+   *  crisp 1° ticks at any zoom). */
+  constructor(pos, rot, radius = 110) {
+    super('protractor', pos, rot);
+    this.radius = radius;
+    this.label = 'Protractor';
+    this.surfaces = [];   // never optical
+    const r = radius;
+    this.verts = [new Vec2(-r, -r), new Vec2(r, -r), new Vec2(r, r), new Vec2(-r, r)];
+  }
+  getRotHandlePos() { return this.localToWorld(new Vec2(0, -(this.radius + 18))); }
+  containsPoint(p) {
+    const lp = this.worldToLocal(p);
+    const r = lp.len(), R = this.radius;
+    if (r <= 12) return true;                                    // center hub
+    if (Math.abs(r - R) <= 10) return true;                      // rim band (ticks + labels)
+    if (Math.abs(lp.y) <= 5 && Math.abs(lp.x) <= R) return true; // 0–180 baseline
+    return false;                                                // interior passes clicks through
+  }
+  getAABB() {
+    const corners = this.verts.map(c => this.localToWorld(c));
+    const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+    const pad = 5;
+    return { min: new Vec2(Math.min(...xs) - pad, Math.min(...ys) - pad),
+             max: new Vec2(Math.max(...xs) + pad, Math.max(...ys) + pad) };
+  }
+  render(ctx, view) {
+    const c = view.worldToScreen(this.pos);
+    const R = this.radius * view.zoom;
+    if (R < 12) return;                       // too small to be useful
+    const rot = this.rot;
+    const pt = (deg, rad) => {
+      const wa = deg * Math.PI / 180 + rot;   // world angle (CCW, y-up)
+      return new Vec2(c.x + Math.cos(wa) * rad, c.y - Math.sin(wa) * rad);
+    };
+    ctx.save();
+    ctx.strokeStyle = this.selected ? 'rgba(255,215,0,0.75)' : 'rgba(190,215,255,0.6)';
+    ctx.lineWidth = 1;
+    // Faint disc + rim.
+    ctx.fillStyle = 'rgba(120,160,220,0.05)';
+    ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.stroke();
+    // Ticks: 1° minor, 5° medium, 10° major (batched one path per band).
+    const tickStyle = [
+      [0.055, 'rgba(255,255,255,0.35)'],
+      [0.09,  'rgba(255,255,255,0.55)'],
+      [0.13,  'rgba(220,235,255,0.85)']
+    ];
+    for (let pass = 0; pass < 3; pass++) {
+      ctx.strokeStyle = tickStyle[pass][1];
+      ctx.beginPath();
+      for (let d = 0; d < 360; d++) {
+        const isMinor = d % 5 !== 0;
+        const isMedium = d % 5 === 0 && d % 10 !== 0;
+        const isMajor = d % 10 === 0;
+        if ((pass === 0 && !isMinor) || (pass === 1 && !isMedium) || (pass === 2 && !isMajor)) continue;
+        const p0 = pt(d, R), p1 = pt(d, R * (1 - tickStyle[pass][0]));
+        ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+      }
+      ctx.stroke();
+    }
+    // 0–180 baseline through the center (rotates with the protractor).
+    ctx.strokeStyle = 'rgba(150,200,255,0.8)';
+    ctx.lineWidth = 1;
+    let a0 = pt(0, R), a180 = pt(180, R);
+    ctx.beginPath(); ctx.moveTo(a0.x, a0.y); ctx.lineTo(a180.x, a180.y); ctx.stroke();
+    // 0° reference arrow at the rim.
+    ctx.strokeStyle = 'rgba(255,215,0,0.9)';
+    ctx.lineWidth = 2;
+    const z0 = pt(0, R), z1 = pt(0, R + 9);
+    ctx.beginPath(); ctx.moveTo(z0.x, z0.y); ctx.lineTo(z1.x, z1.y); ctx.stroke();
+    // Center mark.
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(c.x - 5, c.y); ctx.lineTo(c.x + 5, c.y);
+    ctx.moveTo(c.x, c.y - 5); ctx.lineTo(c.x, c.y + 5);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(c.x, c.y, 1.6, 0, Math.PI * 2); ctx.fill();
+    // Dual scales, both aligned to the same 1° ticks (labels sit just inside
+    // the major-tick band at multiples of 10° of bearing). Outer scale is the
+    // bidirectional 0–90–0 reading (angle from the baseline LINE, so it runs
+    // 0→90→0→90→0 around the circle) and carries the prominent labels; the
+    // 0–360 scale lives on a smaller inner ring. Text is drawn in screen
+    // space → always upright; positions orbit with the protractor's rotation.
+    // Steps widen at small radii so labels never overlap or crowd.
+    const outerStep = R >= 120 ? 10 : 30;
+    const innerStep = R >= 160 ? 10 : R >= 80 ? 20 : 30;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Outer ring: 0–90–0, bold and bright.
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = 'bold 11px system-ui';
+    for (let d = 0; d < 360; d += outerStep) {
+      const v = 90 - Math.abs(90 - (d % 180));           // fold 0–180 onto 0–90–0
+      const lp = pt(d, R * 0.78);
+      ctx.fillText(v + '°', lp.x, lp.y);
+    }
+    // Inner ring: full 0–360 bearing, smaller and dimmer.
+    ctx.fillStyle = 'rgba(205,222,245,0.62)';
+    ctx.font = '8px system-ui';
+    for (let d = 0; d < 360; d += innerStep) {
+      const lp = pt(d, R * 0.62);
+      ctx.fillText(d + '°', lp.x, lp.y);
+    }
+    if (this.selected) {
+      const deg = Math.round(normalizeAngle(rot) * 180 / Math.PI);
+      ctx.fillStyle = 'rgba(255,215,0,0.95)';
+      ctx.font = 'bold 12px system-ui';
+      ctx.fillText(deg + '°', c.x, c.y - 14);
+    }
+    ctx.restore();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 3. RAY TRACING ENGINE
+// ─────────────────────────────────────────────────────────────
+
+class RaySample {
+  constructor(origin, direction, weight = 1, wavelength = 550, depth = 0) {
+    this.origin = origin.clone();
+    this.direction = direction.clone().norm();
+    this.weight = weight;
+    this.sWeight = weight / 2;
+    this.pWeight = weight / 2;
+    this.segments = [];
+    this.branches = [];
+    this.wavelength = wavelength;
+    this.depth = depth;
+    this.path = [origin.clone()];
+    this.terminated = false;
+    this.currentMedium = { type: 'air', componentId: null };
+  }
+}
+
+const MAX_DEPTH = 12;
+const MIN_WEIGHT = 0.005;
+
+function traceRay(sample, components, partialReflection = true) {
+  while (!sample.terminated && sample.depth < MAX_DEPTH && sample.weight > MIN_WEIGHT) {
+    let bestHit = null, bestT = Infinity, bestComp = null, bestSurf = null;
+    for (const comp of components) {
+      // Ray boxes emit light; protractors are measurement overlays and must
+      // never intersect, refract, reflect or block a ray.
+      if (comp.type === 'raybox' || comp.type === 'protractor') continue;
+      const cosR = Math.cos(-comp.rot), sinR = Math.sin(-comp.rot);
+      const dx = sample.origin.x - comp.pos.x, dy = sample.origin.y - comp.pos.y;
+      const localO = new Vec2(dx * cosR - dy * sinR, dx * sinR + dy * cosR);
+      const localD = new Vec2(sample.direction.x * cosR - sample.direction.y * sinR,
+                              sample.direction.x * sinR + sample.direction.y * cosR);
+      for (const surf of comp.surfaces) {
+        const hit = surf.intersect(localO, localD);
+        if (hit && hit.t > EPSILON && hit.t < bestT) {
+          bestT = hit.t;
+          bestComp = comp;
+          bestSurf = surf;
+          const wp = hit.point.rotate(comp.rot).add(comp.pos);
+          const csn = Math.cos(comp.rot), ssn = Math.sin(comp.rot);
+          const wn = new Vec2(hit.normal.x * csn - hit.normal.y * ssn,
+                              hit.normal.x * ssn + hit.normal.y * csn).norm();
+          bestHit = { point: wp, normal: wn, t: hit.t, surface: hit.surface };
+        }
+      }
+    }
+    if (!bestHit) {
+      const end = sample.origin.add(sample.direction.mul(500));
+      sample.segments.push({ a: sample.path[sample.path.length - 1], b: end, weight: sample.weight });
+      sample.path.push(end);
+      sample.terminated = true;
+      break;
+    }
+    const outward = bestHit.normal;
+    const alignment = sample.direction.dot(outward);
+    // Plane mirror: front-side specular reflection with the law of reflection
+    // r = d − 2(d·n)n (shared core reflect()). Wavelength, weight and the
+    // current medium are preserved; the origin is offset along the reflected
+    // direction to avoid immediate self-intersection.
+    if (bestSurf.mirror) {
+      if (Math.abs(alignment) <= EPSILON) {
+        sample.origin = bestHit.point.add(sample.direction.mul(EPSILON * 10));
+        continue;
+      }
+      sample.segments.push({ a: sample.path[sample.path.length - 1], b: bestHit.point, weight: sample.weight });
+      sample.path.push(bestHit.point);
+      if (alignment > 0) {
+        sample.terminated = true;
+        break;
+      }
+      sample.direction = reflect(sample.direction, outward);
+      sample.origin = bestHit.point.add(sample.direction.mul(EPSILON * 10));
+      sample.depth++;
+      continue;
+    }
+    let entering, interfaceNormal, n1, n2;
+    if (alignment < -EPSILON) {
+      entering = true;
+      interfaceNormal = outward;
+      n1 = 1.0;
+      n2 = cauchyN(sample.wavelength);
+    } else if (alignment > EPSILON) {
+      entering = false;
+      interfaceNormal = outward.mul(-1);
+      n1 = cauchyN(sample.wavelength);
+      n2 = 1.0;
+    } else {
+      sample.origin = bestHit.point.add(sample.direction.mul(EPSILON * 10));
+      continue;
+    }
+    const validEntry = entering && sample.currentMedium.type === 'air';
+    const validExit = !entering && sample.currentMedium.type === 'glass' &&
+                      sample.currentMedium.componentId === bestComp.id;
+    if (!validEntry && !validExit) {
+      sample.origin = bestHit.point.add(sample.direction.mul(EPSILON * 10));
+      continue;
+    }
+    const cosi = -sample.direction.dot(interfaceNormal);
+    const eta = n1 / n2;
+    const k = 1 - eta * eta * (1 - cosi * cosi);
+    sample.segments.push({ a: sample.path[sample.path.length - 1], b: bestHit.point, weight: sample.weight });
+    sample.path.push(bestHit.point);
+    if (k < 0) {
+      sample.direction = reflect(sample.direction, interfaceNormal);
+    } else {
+      const R = partialReflection
+        ? fresnelReflectance(sample.direction, interfaceNormal, n1, n2)
+        : { s: 0, p: 0 };
+      const reflectedS = sample.sWeight * R.s;
+      const reflectedP = sample.pWeight * R.p;
+      if (reflectedS + reflectedP > MIN_WEIGHT && sample.depth + 1 < MAX_DEPTH) {
+        const dir = reflect(sample.direction, interfaceNormal);
+        const branch = new RaySample(bestHit.point, dir, reflectedS + reflectedP,
+                                     sample.wavelength, sample.depth + 1);
+        branch.sWeight = reflectedS;
+        branch.pWeight = reflectedP;
+        branch.currentMedium = { ...sample.currentMedium };
+        branch.origin = bestHit.point.add(dir.mul(EPSILON * 10));
+        sample.branches.push(traceRay(branch, components, partialReflection));
+      }
+      sample.sWeight -= reflectedS;
+      sample.pWeight -= reflectedP;
+      sample.weight = sample.sWeight + sample.pWeight;
+      sample.direction = refractRay(sample.direction, interfaceNormal, n1, n2);
+      if (entering) {
+        sample.currentMedium = { type: 'glass', componentId: bestComp.id };
+      } else {
+        sample.currentMedium = { type: 'air', componentId: null };
+      }
+    }
+    sample.origin = bestHit.point.add(sample.direction.mul(EPSILON * 10));
+    sample.depth++;
+  }
+  return sample;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 4. RAYBOX EMISSION
+// ─────────────────────────────────────────────────────────────
+
+function generateEmission(raybox, whiteLight = false) {
+  if (!raybox.power) return [];
+  const samples = [];
+  const dir = Vec2.fromAngle(raybox.rot);
+  const perp = dir.perp();
+  const aperHalf = raybox.apertureWidth / 2;
+  const emitOrigin = raybox.localToWorld(new Vec2(raybox.width / 2 + 2, 0));
+  const wavelengths = whiteLight ? WAVELENGTHS : [550];
+  if (raybox.slitAttachment === 'single') {
+    for (const wl of wavelengths) {
+      samples.push(new RaySample(emitOrigin, dir, 1, wl));
+    }
+  } else if (raybox.slitAttachment === 'triple') {
+    const sp = 10;
+    for (const dy of [-sp, 0, sp]) {
+      const origin = emitOrigin.add(perp.mul(dy));
+      for (const wl of wavelengths) {
+        samples.push(new RaySample(origin, dir, 0.8, wl));
+      }
+    }
+  } else {
+    const count = clamp(Math.round(40 + raybox.apertureWidth * 0.8), 40, 100);
+    // Wider profile than a tight laser (σ ≈ 0.4·halfAperture) so the beam
+    // edges stay visible instead of falling off within the first few samples.
+    const sigma = aperHalf * 0.4;
+    for (let i = 0; i < count; i++) {
+      const t = count > 1 ? (i / (count - 1)) * 2 - 1 : 0;
+      const offset = t * aperHalf;
+      const origin = emitOrigin.add(perp.mul(offset));
+      const weight = Math.exp(-0.5 * (offset / sigma) * (offset / sigma));
+      for (const wl of wavelengths) {
+        samples.push(new RaySample(origin, dir, weight, wl));
+      }
+    }
+  }
+  return samples;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 5. VIEW / CAMERA
+// ─────────────────────────────────────────────────────────────
+
+const ZOOM_STEP = 1.2;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 8;
+
+class View {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.cameraPos = new Vec2(100, 0);
+    this.zoom = 1;
+    this.resize();
+  }
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.getBoundingClientRect();
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.screenW = rect.width;
+    this.screenH = rect.height;
+    this.fitZoom = Math.min(this.screenW / 800, this.screenH / 400);
+    this.zoom = this.fitZoom;
+  }
+  // worldToScreen maps cameraPos exactly onto the screen center, so scaling
+  // zoom alone is a zoom about the visible workspace center.
+  zoomBy(factor) { this.zoom = clamp(this.zoom * factor, ZOOM_MIN, ZOOM_MAX); }
+  zoomIn() { this.zoomBy(ZOOM_STEP); }
+  zoomOut() { this.zoomBy(1 / ZOOM_STEP); }
+  resetZoom() { this.zoom = this.fitZoom; }
+  worldToScreen(v) {
+    return new Vec2(
+      (v.x - this.cameraPos.x) * this.zoom + this.screenW / 2,
+      -(v.y - this.cameraPos.y) * this.zoom + this.screenH / 2
+    );
+  }
+  screenToWorld(v) {
+    return new Vec2(
+      (v.x - this.screenW / 2) / this.zoom + this.cameraPos.x,
+      -(v.y - this.screenH / 2) / this.zoom + this.cameraPos.y
+    );
+  }
+}
+
+/** Set up canvas transform for a component: translate to screen center, rotate, Y-flip.
+ *  After this call, local mm coordinates map directly to screen pixels. */
+function beginComponentTransform(ctx, view, comp) {
+  const sc = view.worldToScreen(comp.pos);
+  ctx.translate(sc.x, sc.y);
+  ctx.scale(view.zoom, -view.zoom);
+  ctx.rotate(comp.rot);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 6. RENDERING
+// ─────────────────────────────────────────────────────────────
+
+let beamBuffer = null;
+let glowBuffer = null;
+let haloBuffer = null;
+
+function ensureBuffers(w, h) {
+  if (!beamBuffer || !glowBuffer || !haloBuffer ||
+      beamBuffer.width !== w || beamBuffer.height !== h) {
+    beamBuffer = document.createElement('canvas');
+    beamBuffer.width = w; beamBuffer.height = h;
+    glowBuffer = document.createElement('canvas');
+    glowBuffer.width = w; glowBuffer.height = h;
+    haloBuffer = document.createElement('canvas');
+    haloBuffer.width = w; haloBuffer.height = h;
+  }
+}
+
+function drawGrid(ctx, view) {
+  const step = 10, major = 50, labelEvery = 100;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 0.5;
+  const tl = view.screenToWorld(new Vec2(0, view.screenH));
+  const br = view.screenToWorld(new Vec2(view.screenW, 0));
+  for (let x = Math.floor(tl.x / step) * step; x <= br.x; x += step) {
+    const s = view.worldToScreen(new Vec2(x, 0));
+    ctx.beginPath(); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, view.screenH); ctx.stroke();
+  }
+  for (let y = Math.floor(br.y / step) * step; y <= tl.y; y += step) {
+    const s = view.worldToScreen(new Vec2(0, y));
+    ctx.beginPath(); ctx.moveTo(0, s.y); ctx.lineTo(view.screenW, s.y); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.5;
+  for (let x = Math.floor(tl.x / major) * major; x <= br.x; x += major) {
+    const s = view.worldToScreen(new Vec2(x, 0));
+    ctx.beginPath(); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, view.screenH); ctx.stroke();
+  }
+  for (let y = Math.floor(br.y / major) * major; y <= tl.y; y += major) {
+    const s = view.worldToScreen(new Vec2(0, y));
+    ctx.beginPath(); ctx.moveTo(0, s.y); ctx.lineTo(view.screenW, s.y); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.font = '9px system-ui';
+  ctx.textAlign = 'center';
+  for (let x = Math.floor(tl.x / labelEvery) * labelEvery; x <= br.x; x += labelEvery) {
+    if (x === 0) continue;
+    const s = view.worldToScreen(new Vec2(x, 0));
+    ctx.fillText(x + '', s.x, view.screenH - 4);
+  }
+  ctx.restore();
+}
+
+function drawScaleBar(ctx, view) {
+  ctx.save();
+  const barLen = 100 * view.zoom;
+  const x = 16, y = view.screenH - 24;
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y); ctx.lineTo(x + barLen, y);
+  ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4);
+  ctx.moveTo(x + barLen, y - 4); ctx.lineTo(x + barLen, y + 4);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('100 mm', x + barLen / 2, y - 6);
+  ctx.restore();
+}
+
+function drawRays(ctx, view, samples, whiteLight) {
+  if (!samples.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(view.screenW * dpr);
+  const h = Math.round(view.screenH * dpr);
+  ensureBuffers(w, h);
+  const bctx = beamBuffer.getContext('2d');
+  const hctx = haloBuffer.getContext('2d');
+  const gctx = glowBuffer.getContext('2d');
+  // All three off-screen buffers live in the same device-pixel space as the
+  // main canvas: reset each to the DPR transform and clear in CSS-pixel
+  // coordinates before any drawing, so core/halo/glow stay perfectly
+  // registered on Retina (otherwise halo/glow land at half scale in the
+  // top-left corner as a detached ghost beam).
+  for (const bufferCtx of [bctx, hctx, gctx]) {
+    bufferCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    bufferCtx.clearRect(0, 0, view.screenW, view.screenH);
+  }
+  const isDiscrete = samples.length <= 35;
+  // Flatten only for drawing: emission count still controls beam style and
+  // normalization. Each segment keeps its power before the next boundary.
+  const strokes = [];
+  function collect(ray) {
+    if (ray.segments.length) {
+      for (const segment of ray.segments) {
+        strokes.push({ path: [segment.a, segment.b], weight: segment.weight,
+                       wavelength: ray.wavelength });
+      }
+    } else strokes.push(ray);
+    for (const branch of ray.branches) collect(branch);
+  }
+  for (const ray of samples) collect(ray);
+  if (isDiscrete) {
+    for (const s of strokes) {
+      const col = whiteLight ? wavelengthToRGB(s.wavelength) : { r: 255, g: 215, b: 0 };
+      ctx.save();
+      // White-light spectral layers are coincident before dispersion: blend
+      // them additively so 11 wavelengths sum to white instead of the
+      // last-drawn red wavelength occluding the rest (order-independent).
+      // Ordinary yellow rays keep the original source-over appearance.
+      ctx.globalCompositeOperation = whiteLight ? 'lighter' : 'source-over';
+      const alpha = (whiteLight ? 0.15 : 0.85) * s.weight;
+      const glowAlpha = (whiteLight ? 0.08 : 0.4) * s.weight;
+      ctx.strokeStyle = `rgba(${col.r},${col.g},${col.b},${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = `rgba(${col.r},${col.g},${col.b},${glowAlpha})`;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      for (let i = 0; i < s.path.length; i++) {
+        const sp = view.worldToScreen(s.path[i]);
+        if (i === 0) ctx.moveTo(sp.x, sp.y); else ctx.lineTo(sp.x, sp.y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  } else {
+    // Continuous (unslit) beam. Tuned independently from the discrete
+    // single/triple-slit rays above. Brightness is normalised against the
+    // sample count so adaptive sampling changes do not alter the total;
+    // a defined core plus two blurred halos keeps the band luminous with
+    // soft edges, while caustic pile-ups still saturate toward white-hot.
+    const norm = clamp(64 / samples.length, 0.4, 2.5);
+    const coreAlpha = 0.11 * norm;
+    bctx.globalCompositeOperation = 'lighter';
+    for (const s of strokes) {
+      const col = whiteLight ? wavelengthToRGB(s.wavelength) : { r: 255, g: 215, b: 0 };
+      bctx.strokeStyle = `rgba(${col.r},${col.g},${col.b},${(s.weight * coreAlpha).toFixed(4)})`;
+      bctx.lineWidth = 1.6;
+      bctx.beginPath();
+      for (let i = 0; i < s.path.length; i++) {
+        const sp = view.worldToScreen(s.path[i]);
+        if (i === 0) bctx.moveTo(sp.x, sp.y); else bctx.lineTo(sp.x, sp.y);
+      }
+      bctx.stroke();
+    }
+    // Buffers already share the DPR transform and were cleared above; all
+    // drawing below stays in CSS-pixel coordinates.
+    hctx.filter = 'blur(2.5px)';
+    hctx.drawImage(beamBuffer, 0, 0, view.screenW, view.screenH);
+    hctx.filter = 'none';
+    gctx.filter = 'blur(11px)';
+    gctx.drawImage(beamBuffer, 0, 0, view.screenW, view.screenH);
+    gctx.filter = 'none';
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.75; ctx.drawImage(glowBuffer, 0, 0, view.screenW, view.screenH);
+    ctx.globalAlpha = 0.90; ctx.drawImage(haloBuffer, 0, 0, view.screenW, view.screenH);
+    ctx.globalAlpha = 0.90; ctx.drawImage(beamBuffer, 0, 0, view.screenW, view.screenH);
+    ctx.restore();
+  }
+}
+
+function drawRotationHandle(ctx, view, comp) {
+  if (!comp.selected) return;
+  const hp = view.worldToScreen(comp.getRotHandlePos());
+  const cp = view.worldToScreen(comp.pos);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(cp.x, cp.y); ctx.lineTo(hp.x, hp.y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,215,0,0.3)';
+  ctx.strokeStyle = 'rgba(255,215,0,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(hp.x, hp.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawSelectionOutline(ctx, view, comp) {
+  if (!comp.selected || comp.type === 'raybox') return;
+
+  // getAABB() returns a WORLD-space bounding box, so it must be mapped to
+  // screen directly — applying beginComponentTransform() on top would apply
+  // the component's rotation/position a second time and displace the box.
+  const bounds = comp.getAABB();
+  const topLeft = view.worldToScreen(
+    new Vec2(bounds.min.x, bounds.max.y)
+  );
+  const bottomRight = view.worldToScreen(
+    new Vec2(bounds.max.x, bounds.min.y)
+  );
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,215,0,0.4)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+
+  ctx.strokeRect(
+    topLeft.x,
+    topLeft.y,
+    bottomRight.x - topLeft.x,
+    bottomRight.y - topLeft.y
+  );
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 7. UNDO / REDO
+// ─────────────────────────────────────────────────────────────
+
+class Command {
+  execute() {}
+  undo() {}
+}
+
+class TransformCommand extends Command {
+  constructor(comp, oldPos, oldRot, newPos, newRot) {
+    super(); this.comp = comp;
+    this.oldPos = oldPos.clone(); this.oldRot = oldRot;
+    this.newPos = newPos.clone(); this.newRot = newRot;
+  }
+  execute() { this.comp.pos = this.newPos.clone(); this.comp.rot = this.newRot; }
+  undo() { this.comp.pos = this.oldPos.clone(); this.comp.rot = this.oldRot; }
+}
+
+class AddCommand extends Command {
+  constructor(comp) { super(); this.comp = comp; }
+  execute() { app.components.push(this.comp); }
+  undo() { app.components = app.components.filter(c => c.id !== this.comp.id); }
+}
+
+class RemoveCommand extends Command {
+  constructor(comp) { super(); this.comp = comp; this.idx = app.components.indexOf(comp); }
+  execute() { app.components = app.components.filter(c => c.id !== this.comp.id); }
+  undo() { app.components.splice(this.idx, 0, this.comp); }
+}
+
+class ClearCommand extends Command {
+  constructor(comps) { super(); this.comps = [...comps]; }
+  execute() { app.components = app.components.filter(c => c.type === 'raybox'); }
+  undo() { app.components = [...this.comps]; }
+}
+
+class PropertyCommand extends Command {
+  constructor(comp, prop, oldVal, newVal, oldGeom = null, newGeom = null) {
+    super(); this.comp = comp; this.prop = prop;
+    this.oldVal = oldVal; this.newVal = newVal;
+    this.oldGeom = oldGeom; this.newGeom = newGeom;
+  }
+  execute() {
+    this.comp[this.prop] = this.newVal;
+    if (this.newGeom && this.comp.applyGeometry) {
+      this.comp.applyGeometry(this.newGeom);
+    } else if (this.prop === 'efl' && this.comp.recalcSurfaces) {
+      this.comp.recalcSurfaces();
+    }
+  }
+  undo() {
+    this.comp[this.prop] = this.oldVal;
+    if (this.oldGeom && this.comp.applyGeometry) {
+      this.comp.applyGeometry(this.oldGeom);
+    } else if (this.prop === 'efl' && this.comp.recalcSurfaces) {
+      this.comp.recalcSurfaces();
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 8. APPLICATION
+// ─────────────────────────────────────────────────────────────
+
+const app = {
+  components: [],
+  selected: null,
+  raybox: null,
+  whiteLight: false,
+  partialReflection: true,
+  undoStack: [],
+  redoStack: [],
+  dragging: null,
+  dragType: null,
+  dragStartWorld: null,
+  dragStartPos: null,
+  dragStartRot: null,
+};
+
+function pushCommand(cmd) {
+  cmd.execute();
+  app.undoStack.push(cmd);
+  if (app.undoStack.length > 50) app.undoStack.shift();
+  app.redoStack = [];
+}
+
+function undo() {
+  if (!app.undoStack.length) return;
+  const cmd = app.undoStack.pop();
+  cmd.undo();
+  app.redoStack.push(cmd);
+  if (app.selected && !app.components.includes(app.selected)) app.selected = null;
+}
+
+function redo() {
+  if (!app.redoStack.length) return;
+  const cmd = app.redoStack.pop();
+  cmd.execute();
+  app.undoStack.push(cmd);
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function spawnPosition() {
+  const base = new Vec2(0, 0);
+  for (let i = 0; i < 20; i++) {
+    const p = base.add(new Vec2(i * 20, 0));
+    let occupied = false;
+    for (const c of app.components) {
+      if (c.type === 'raybox') continue;
+      if (c.pos.dist(p) < 40) { occupied = true; break; }
+    }
+    if (!occupied) return p;
+  }
+  return base;
+}
+
+function createComponent(type, efl) {
+  const pos = spawnPosition();
+  let comp;
+  switch (type) {
+    case 'convex': comp = new ConvexLens(pos, 0, efl); break;
+    case 'concave': comp = new ConcaveLens(pos, 0, efl); break;
+    case 'flatblock': comp = new FlatBlock(pos, 0); break;
+    case 'prism60': comp = new Prism(pos, 0, { variant: '60' }); break;
+    case 'prism90': comp = new Prism(pos, 0, { variant: '90' }); break;
+    case 'semicircle': comp = new SemicircularBlock(pos, 0); break;
+    case 'mirror': comp = new PlaneMirror(pos, 0); break;
+    case 'protractor': comp = new Protractor(pos, 0); break;
+  }
+  if (comp) pushCommand(new AddCommand(comp));
+}
+
+function hitTest(pt, view) {
+  for (let i = app.components.length - 1; i >= 0; i--) {
+    const c = app.components[i];
+    if (c.type === 'raybox') {
+      if (c.containsPoint(pt)) return { comp: c, part: 'body' };
+    } else {
+      const rh = c.getRotHandlePos();
+      if (pt.dist(rh) < 8 / view.zoom) return { comp: c, part: 'rotateHandle' };
+      if (c.containsPoint(pt)) return { comp: c, part: 'body' };
+    }
+  }
+  if (app.raybox) {
+    const rh = app.raybox.getRotHandlePos();
+    if (pt.dist(rh) < 8 / view.zoom) return { comp: app.raybox, part: 'rotateHandle' };
+    if (app.raybox.containsPoint(pt)) return { comp: app.raybox, part: 'body' };
+  }
+  return null;
+}
+
+function selectComp(comp) {
+  if (app.selected) app.selected.selected = false;
+  app.selected = comp;
+  if (comp) comp.selected = true;
+  updatePropsPanel();
+}
+
+function updatePropsPanel() {
+  const panel = document.getElementById('props');
+  const title = document.getElementById('props-title');
+  const body = document.getElementById('props-body');
+  const c = app.selected;
+  if (!c) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  let html = '';
+  if (c.type === 'raybox') {
+    title.textContent = t('rayBox');
+    html += `<label>${t('power')} <button onclick="togglePower()">${t(c.power ? 'onLabel' : 'offLabel')}</button></label>`;
+    html += `<label>${t('slit')} <select onchange="setSlit(this.value)">
+      <option value="none"${c.slitAttachment === 'none' ? ' selected' : ''}>${t('slitNoneOption')}</option>
+      <option value="single"${c.slitAttachment === 'single' ? ' selected' : ''}>${t('slitSingleOption')}</option>
+      <option value="triple"${c.slitAttachment === 'triple' ? ' selected' : ''}>${t('slitTripleOption')}</option>
+    </select></label>`;
+    html += `<label>${t('position')} <span>${Math.round(c.pos.x)}, ${Math.round(c.pos.y)} mm</span></label>`;
+    html += `<label>${t('rotation')} <span>${rad2deg(c.rot).toFixed(1)}°</span></label>`;
+  } else {
+    const names = { convex: 'Convex Lens', concave: 'Concave Lens', flatblock: 'Flat Block', prism: 'Prism', semicircle: 'Semicircle', mirror: 'Mirror', protractor: 'Protractor' };
+    title.textContent = translateComponentName(c.label || names[c.type] || c.type);
+    if (c.type === 'convex' || c.type === 'concave') {
+      html += `<label>${t('eflLabel')} <input type="number" value="${c.efl}" onchange="setEFL(${c.id}, this.value)" /></label>`;
+      html += `<label>${t('radius')} <span>${c.radius ? c.radius.toFixed(1) : '—'} mm</span></label>`;
+    }
+    if (c.type === 'mirror') {
+      html += `<label>${t('length')} <span>${c.length} mm</span></label>`;
+    }
+    html += `<label>${t('position')} <span>${Math.round(c.pos.x)}, ${Math.round(c.pos.y)} mm</span></label>`;
+    // Protractor readings are a measuring tool: whole degrees (1° precision).
+    const rotText = c.type === 'protractor'
+      ? (((Math.round(rad2deg(c.rot)) % 360) + 360) % 360) + '°'
+      : rad2deg(c.rot).toFixed(1) + '°';
+    html += `<label>${t('rotation')} <span>${rotText}</span></label>`;
+    html += `<button class="del" onclick="deleteSelected()">${t('deleteBtn')}</button>`;
+    html += ` <button onclick="duplicateSelected()">${t('duplicateBtn')}</button>`;
+  }
+  body.innerHTML = html;
+}
+
+window.togglePower = function() {
+  const c = app.raybox;
+  if (!c) return;
+  pushCommand(new PropertyCommand(c, 'power', c.power, !c.power));
+  updatePropsPanel();
+};
+
+window.setSlit = function(val) {
+  const c = app.raybox;
+  if (!c) return;
+  pushCommand(new PropertyCommand(c, 'slitAttachment', c.slitAttachment, val));
+  document.querySelectorAll('.tbtn.radio').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-slit-' + val).classList.add('active');
+  updatePropsPanel();
+};
+
+window.setEFL = function(id, val) {
+  const comp = app.components.find(c => c.id === id);
+  if (!comp || !comp.recalcSurfaces) return;
+  const newEfl = parseFloat(val);
+  if (!Number.isFinite(newEfl) || newEfl === 0) { showToast(t('invalidEFL')); updatePropsPanel(); return; }
+  if (comp.type === 'concave' && newEfl > 0) { showToast(t('concaveNegative')); updatePropsPanel(); return; }
+  if (comp.type === 'convex' && newEfl < 0) { showToast(t('convexPositive')); updatePropsPanel(); return; }
+  if (Math.abs(newEfl) < 50) { showToast(t('eflTooSmall')); updatePropsPanel(); return; }
+  const oldEfl = comp.efl;
+  if (oldEfl === newEfl) return;
+  // Build and fully validate the candidate geometry WITHOUT touching the
+  // component. On failure nothing changes: previous EFL/radius/outline/
+  // surfaces are retained, the input is restored, no undo entry is pushed.
+  const newGeom = comp.buildGeometryForEFL(newEfl);
+  if (!newGeom) {
+    showToast(t('cannotRealise').replace('{f}', newEfl));
+    updatePropsPanel();
+    return;
+  }
+  const oldGeom = comp.snapshotGeometry();
+  pushCommand(new PropertyCommand(comp, 'efl', oldEfl, newEfl, oldGeom, newGeom));
+  updatePropsPanel();
+};
+
+window.deleteSelected = function() {
+  if (!app.selected || app.selected.type === 'raybox') return;
+  pushCommand(new RemoveCommand(app.selected));
+  app.selected = null;
+  updatePropsPanel();
+};
+
+window.duplicateSelected = function() {
+  if (!app.selected || app.selected.type === 'raybox') return;
+  const c = app.selected;
+  let dup;
+  const p = spawnPosition();
+  switch (c.type) {
+    case 'convex': dup = new ConvexLens(p, c.rot, c.efl, c.label); break;
+    case 'concave': dup = new ConcaveLens(p, c.rot, c.efl, c.label); break;
+    case 'flatblock': dup = new FlatBlock(p, c.rot, c.w, c.h); break;
+    case 'prism': dup = new Prism(p, c.rot, { variant: c.variant }); break;
+    case 'semicircle': dup = new SemicircularBlock(p, c.rot, c.radius); break;
+    case 'mirror': dup = new PlaneMirror(p, c.rot, c.length); break;
+    case 'protractor': dup = new Protractor(p, c.rot, c.radius); break;
+  }
+  if (dup) pushCommand(new AddCommand(dup));
+};
+
+// ─────────────────────────────────────────────────────────────
+//  § 9. INPUT HANDLING
+// ─────────────────────────────────────────────────────────────
+
+let view;
+
+function initInput() {
+  const canvas = document.getElementById('canvas');
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('keydown', onKeyDown);
+}
+
+function onPointerDown(e) {
+  const rect = view.canvas.getBoundingClientRect();
+  const sp = new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+  const wp = view.screenToWorld(sp);
+  const hit = hitTest(wp, view);
+  if (hit) {
+    selectComp(hit.comp);
+    app.dragging = hit.comp;
+    app.dragType = hit.part;
+    app.dragStartWorld = wp.clone();
+    app.dragStartPos = hit.comp.pos.clone();
+    app.dragStartRot = hit.comp.rot;
+    view.canvas.style.cursor = 'grabbing';
+  } else {
+    selectComp(null);
+  }
+}
+
+function onPointerMove(e) {
+  if (!app.dragging) return;
+  const rect = view.canvas.getBoundingClientRect();
+  const sp = new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+  const wp = view.screenToWorld(sp);
+  const delta = wp.sub(app.dragStartWorld);
+  if (app.dragType === 'rotateHandle') {
+    const baseAngle = Math.atan2(app.dragStartWorld.y - app.dragStartPos.y, app.dragStartWorld.x - app.dragStartPos.x);
+    const curAngle = Math.atan2(wp.y - app.dragStartPos.y, wp.x - app.dragStartPos.x);
+    app.dragging.rot = app.dragStartRot + (curAngle - baseAngle);
+  } else {
+    app.dragging.pos = app.dragStartPos.add(delta);
+  }
+  updatePropsPanel();
+}
+
+function onPointerUp() {
+  if (app.dragging) {
+    const comp = app.dragging;
+    if (comp.pos.dist(app.dragStartPos) > 0.01 || Math.abs(comp.rot - app.dragStartRot) > 0.001) {
+      const cmd = new TransformCommand(comp, app.dragStartPos, app.dragStartRot, comp.pos, comp.rot);
+      comp.pos = app.dragStartPos.clone();
+      comp.rot = app.dragStartRot;
+      pushCommand(cmd);
+    }
+    app.dragging = null;
+    app.dragType = null;
+    view.canvas.style.cursor = 'crosshair';
+    updatePropsPanel();
+  }
+}
+
+function onKeyDown(e) {
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+  else if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (app.selected) { e.preventDefault(); deleteSelected(); } }
+  else if (e.key === 'Escape') { selectComp(null); }
+  // Zoom shortcuts; ignored while typing in a form field.
+  else if (!/^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) {
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); view.zoomIn(); }
+    else if (e.key === '-' || e.key === '_') { e.preventDefault(); view.zoomOut(); }
+    else if (e.key === '0') { e.preventDefault(); view.resetZoom(); }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 10. TOOLBAR BINDING
+// ─────────────────────────────────────────────────────────────
+
+function initToolbar() {
+  const bind = (id, fn) => { document.getElementById(id).addEventListener('click', fn); };
+  bind('btn-power', () => togglePower());
+  bind('btn-slit-none', () => setSlit('none'));
+  bind('btn-slit-single', () => setSlit('single'));
+  bind('btn-slit-triple', () => setSlit('triple'));
+  bind('btn-convex100', () => createComponent('convex', 100));
+  bind('btn-convex200', () => createComponent('convex', 200));
+  bind('btn-convex400', () => createComponent('convex', 400));
+  bind('btn-concave100', () => createComponent('concave', -100));
+  bind('btn-concave200', () => createComponent('concave', -200));
+  bind('btn-concave400', () => createComponent('concave', -400));
+  bind('btn-flat', () => createComponent('flatblock'));
+  bind('btn-prism60', () => createComponent('prism60'));
+  bind('btn-prism90', () => createComponent('prism90'));
+  bind('btn-semi', () => createComponent('semicircle'));
+  bind('btn-mirror', () => createComponent('mirror'));
+  bind('btn-protractor', () => createComponent('protractor'));
+  bind('btn-delete', () => deleteSelected());
+  bind('btn-clear', () => {
+    const comps = [...app.components];
+    app.components = app.components.filter(c => c.type === 'raybox');
+    app.undoStack.push(new ClearCommand(comps));
+    app.redoStack = [];
+    selectComp(null);
+  });
+  bind('btn-reset', () => {
+    const oldComps = [...app.components];
+    app.components = [];
+    const rb = new RayBox(new Vec2(-150, 0), 0);
+    app.raybox = rb;
+    app.components.push(rb);
+    app.undoStack.push({
+      execute() { app.components = []; const r = new RayBox(new Vec2(-150, 0), 0); app.raybox = r; app.components.push(r); },
+      undo() { app.components = oldComps; app.raybox = oldComps.find(c => c.type === 'raybox') || oldComps[0]; }
+    });
+    app.redoStack = [];
+    selectComp(null);
+  });
+  bind('btn-undo', () => undo());
+  bind('btn-redo', () => redo());
+  bind('btn-zoomin', () => view.zoomIn());
+  bind('btn-zoomout', () => view.zoomOut());
+  bind('btn-white', () => {
+    app.whiteLight = !app.whiteLight;
+    document.getElementById('btn-white').classList.toggle('active', app.whiteLight);
+  });
+  const reflectionCheckbox = document.getElementById('partial-reflection');
+  reflectionCheckbox.checked = app.partialReflection;
+  reflectionCheckbox.addEventListener('change', () => {
+    app.partialReflection = reflectionCheckbox.checked;
+    samplesCache = null;
+  });
+  bind('btn-help', () => { document.getElementById('help-overlay').classList.add('show'); });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 11. MAIN LOOP
+// ─────────────────────────────────────────────────────────────
+
+let lastTime = 0;
+let samplesCache = null;
+let cacheFrame = 0;
+
+function frame(time) {
+  requestAnimationFrame(frame);
+  if (time - lastTime < 16) return;
+  lastTime = time;
+  const ctx = view.ctx;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, view.screenW, view.screenH);
+  drawGrid(ctx, view);
+  if (app.raybox && app.raybox.power) {
+    cacheFrame++;
+    if (cacheFrame % 2 === 0 || !samplesCache) {
+      samplesCache = generateEmission(app.raybox, app.whiteLight);
+      for (const s of samplesCache) traceRay(s, app.components, app.partialReflection);
+    }
+    drawRays(ctx, view, samplesCache, app.whiteLight);
+  }
+  for (const c of app.components) {
+    if (c.type !== 'protractor') c.render(ctx, view);   // optics first
+  }
+  for (const c of app.components) {
+    if (c.type === 'protractor') c.render(ctx, view);   // measurement overlays above rays/components
+  }
+  for (const c of app.components) {
+    drawSelectionOutline(ctx, view, c);
+    drawRotationHandle(ctx, view, c);
+  }
+  drawScaleBar(ctx, view);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  § 12. INITIALIZATION
+// ─────────────────────────────────────────────────────────────
+
+function init() {
+  view = new View(document.getElementById('canvas'));
+  const rb = new RayBox(new Vec2(-150, 0), 0);
+  app.raybox = rb;
+  app.components.push(rb);
+  initToolbar();
+  initInput();
+  initLanguage();
+  window.addEventListener('resize', () => { view.resize(); });
+  requestAnimationFrame(frame);
+}
+
+init();
+</script>
+</body>
+</html>

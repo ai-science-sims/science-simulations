@@ -680,5 +680,25 @@
         "screenshotUrl": "screenshots/water-states.png",
         "createdAt": "2026-09-27",
         "updatedAt": "2026-09-29"
+    },
+    {
+        "id": "optics-bench",
+        "category": {
+            "en-US": "Optics and Wave Motion",
+            "zh-HK": "光學與波動"
+        },
+        "title": {
+            "en-US": "Raybox Bench",
+            "zh-HK": "光線箱實驗台"
+        },
+        "description": {
+            "en-US": "Investigate refraction, dispersion, reflection and lens imaging with a ray box, lenses, prisms, mirrors and a protractor on an optical bench.",
+            "zh-HK": "在光學實驗台上使用光線箱、透鏡、稜鏡、平面鏡與量角器，探究折射、色散、反射與透鏡成像。"
+        },
+        "contributors": ["Harry Lau"],
+        "simulationUrl": "simulations/physics/optics-and-wave-motion/optics-bench.html",
+        "screenshotUrl": "screenshots/optics-bench.png",
+        "createdAt": "2026-10-06",
+        "updatedAt": "2026-10-06"
     }
 ]
